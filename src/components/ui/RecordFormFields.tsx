@@ -8,6 +8,7 @@ export interface RecordFieldState {
   session_count: number
   payment_method: PaymentMethod
   after_school_support?: number
+  payment_note?: string
 }
 
 interface Props {
@@ -99,6 +100,17 @@ export default function RecordFormFields({ state, feeTables, total, support, sel
           ))}
         </div>
       </div>
+
+      {/* 결제 방식 직접입력 */}
+      {state.payment_method === 'other' && (
+        <input
+          type="text"
+          placeholder="결제 방식 입력 (예: 국가바우처, 지자체지원 등)"
+          value={state.payment_note ?? ''}
+          onChange={(e) => onChange({ payment_note: e.target.value })}
+          className="w-full border border-[#00b4d8]/40 bg-[#e8f7fb]/50 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#00b4d8]"
+        />
+      )}
 
       {/* 방과후 지원금 직접입력 */}
       {state.payment_method === 'after_school' && (

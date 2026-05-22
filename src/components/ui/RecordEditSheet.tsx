@@ -13,6 +13,7 @@ interface EditState {
   session_count: number
   payment_method: PaymentMethod
   after_school_support?: number
+  payment_note?: string
 }
 
 interface Props {
@@ -32,6 +33,7 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
     // 방과후인 경우 기존 support_amount를 초기값으로 설정
     after_school_support:
       record.payment_method === 'after_school' ? record.support_amount : undefined,
+    payment_note: record.payment_note ?? undefined,
   })
   const [feeTables, setFeeTables] = useState<FeeTable[]>([])
   // 이달 지원금 사용량 (현재 레코드 제외)
@@ -42,6 +44,7 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
     card: 0,
     cash: 0,
     bank_transfer: 0,
+    other: 0,
   })
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -92,6 +95,7 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
           card: 0,
           cash: 0,
           bank_transfer: 0,
+          other: 0,
         }
         for (const r of data) {
           used[r.payment_method as PaymentMethod] += r.support_amount
@@ -135,6 +139,7 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
       session_count: state.session_count,
       total_amount: total,
       payment_method: state.payment_method,
+      payment_note: state.payment_method === 'other' ? (state.payment_note || null) : null,
       support_amount: support,
       self_payment: selfPayment,
     }

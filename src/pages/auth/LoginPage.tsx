@@ -13,6 +13,8 @@ export default function LoginPage() {
   const [users, setUsers] = useState<User[]>([])
   const [branches, setBranches] = useState<{ id: string; name: string }[]>([])
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [branchFilter, setBranchFilter] = useState<string>('all')
+  const [search, setSearch] = useState('')
   const [pin, setPin] = useState('')
   const [error, setError] = useState('')
   const [attempts, setAttempts] = useState(0)
@@ -68,11 +70,9 @@ export default function LoginPage() {
 
   const handlePinSubmit = useCallback(async () => {
     if (pin.length !== 4 || !selectedUser || loginLoading || lockedUntil) return
-
     setLoginLoading(true)
     const { error: loginError } = await login(selectedUser.id, pin)
     setLoginLoading(false)
-
     if (loginError) {
       const newAttempts = attempts + 1
       setAttempts(newAttempts)
@@ -93,14 +93,18 @@ export default function LoginPage() {
   }, [pin, handlePinSubmit])
 
   const directors = users.filter((u) => u.role === 'director')
-  const teachers  = users.filter((u) => u.role === 'teacher')
-  const pinReady  = !!selectedUser && !lockedUntil
+  const teachers  = users.filter((u) => {
+    if (u.role !== 'teacher') return false
+    if (branchFilter !== 'all' && u.branch_id !== branchFilter) return false
+    if (search.trim() && !u.name.includes(search.trim())) return false
+    return true
+  })
+  const pinReady = !!selectedUser && !lockedUntil
 
   const BRANCH_SUBTITLES: Record<string, string> = {
     '1호점': '비위더스 재활운동센터',
     '2호점': '비위더스 운동발달연구소',
   }
-
   const subtitle = (() => {
     if (!selectedUser) return '비위더스'
     if (selectedUser.role === 'director') return '비위더스'
@@ -108,19 +112,40 @@ export default function LoginPage() {
     return branch ? (BRANCH_SUBTITLES[branch.name] ?? '비위더스') : '비위더스'
   })()
 
+  const UserBtn = ({ u }: { u: User }) => (
+    <button
+      onClick={() => handleUserSelect(u)}
+      className={`w-full py-3 px-3 rounded-2xl text-left transition-all duration-150 active:scale-[0.98] ${
+        selectedUser?.id === u.id
+          ? 'bg-[#e8f7fb] border-2 border-[#00b4d8] text-[#007a93]'
+          : 'bg-gray-50 border-2 border-transparent text-gray-700 active:bg-gray-100'
+      }`}
+    >
+      <div className="flex items-center justify-between">
+        <p className="font-bold text-sm truncate">{u.name}</p>
+        {selectedUser?.id === u.id && (
+          <div className="w-4 h-4 rounded-full bg-[#00b4d8] flex items-center justify-center shrink-0 ml-1">
+            <svg width="8" height="7" viewBox="0 0 10 8" fill="none">
+              <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+        )}
+      </div>
+    </button>
+  )
+
   return (
     <div className="flex flex-col min-h-dvh bg-[#f7f8fc]">
-
-      {/* 상단 브랜드 */}
-      <div className="flex flex-col items-center pt-12 pb-6 px-6">
-        <img src={logo} alt="비위더스 로고" className="w-24 h-24 object-contain mb-3" />
+      {/* 브랜드 */}
+      <div className="flex flex-col items-center pt-10 pb-4 px-6">
+        <img src={logo} alt="비위더스 로고" className="w-20 h-20 object-contain mb-2" />
         <p className="text-gray-500 text-sm font-semibold transition-all duration-300">{subtitle}</p>
       </div>
 
-      <div className="flex-1 px-4 pb-8 flex flex-col gap-3">
+      <div className="flex-1 px-4 pb-8 flex flex-col gap-3 overflow-y-auto">
 
         {/* 이름 선택 카드 */}
-        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-5">
+        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-4">
           <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">이름 선택</p>
 
           {users.length === 0 ? (
@@ -129,7 +154,7 @@ export default function LoginPage() {
               <span className="text-gray-400 text-sm">불러오는 중...</span>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-3">
               {/* 대표 */}
               {directors.map((u) => (
                 <button
@@ -158,37 +183,55 @@ export default function LoginPage() {
               ))}
 
               {/* 구분선 */}
-              {directors.length > 0 && teachers.length > 0 && (
-                <div className="flex items-center gap-2 py-0.5">
+              {directors.length > 0 && (
+                <div className="flex items-center gap-2">
                   <div className="flex-1 h-px bg-gray-100" />
                   <span className="text-[11px] text-gray-300 font-medium">선생님</span>
                   <div className="flex-1 h-px bg-gray-100" />
                 </div>
               )}
 
-              {/* 선생님 */}
-              {teachers.map((u) => (
-                <button
-                  key={u.id}
-                  onClick={() => handleUserSelect(u)}
-                  className={`w-full py-3.5 px-4 rounded-2xl text-left transition-all duration-150 active:scale-[0.98] ${
-                    selectedUser?.id === u.id
-                      ? 'bg-[#e8f7fb] border-2 border-[#00b4d8] text-[#007a93]'
-                      : 'bg-gray-50 border-2 border-transparent text-gray-700 active:bg-gray-100'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <p className="font-bold text-sm">{u.name}</p>
-                    {selectedUser?.id === u.id && (
-                      <div className="w-5 h-5 rounded-full bg-[#00b4d8] flex items-center justify-center">
-                        <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                          <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      </div>
-                    )}
-                  </div>
-                </button>
-              ))}
+              {/* 지점 탭 필터 */}
+              {branches.length > 0 && (
+                <div className="flex gap-1.5">
+                  <button
+                    onClick={() => setBranchFilter('all')}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                      branchFilter === 'all' ? 'bg-[#00b4d8] text-white' : 'bg-gray-100 text-gray-500'
+                    }`}
+                  >전체</button>
+                  {branches.map((b) => (
+                    <button
+                      key={b.id}
+                      onClick={() => setBranchFilter(b.id)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                        branchFilter === b.id ? 'bg-[#00b4d8] text-white' : 'bg-gray-100 text-gray-500'
+                      }`}
+                    >{b.name}</button>
+                  ))}
+                </div>
+              )}
+
+              {/* 검색 (선생님 5명 이상일 때만) */}
+              {users.filter(u => u.role === 'teacher').length >= 5 && (
+                <input
+                  type="text"
+                  placeholder="이름 검색..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-[#00b4d8]"
+                />
+              )}
+
+              {/* 선생님 2열 그리드 */}
+              <div className="grid grid-cols-2 gap-2">
+                {teachers.map((u) => <UserBtn key={u.id} u={u} />)}
+                {teachers.length === 0 && (
+                  <p className="col-span-2 text-center text-gray-300 text-sm py-4">
+                    {search ? '검색 결과가 없습니다' : '등록된 선생님이 없습니다'}
+                  </p>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -204,24 +247,17 @@ export default function LoginPage() {
                 key={i}
                 style={{ width: 52, height: 52 }}
                 className={`rounded-full border-2 flex items-center justify-center transition-all duration-150 ${
-                  loginLoading
-                    ? 'bg-[#e8f7fb] border-[#00b4d8]/40'
-                    : pin.length > i
-                    ? 'bg-[#00b4d8] border-[#00b4d8] shadow-md scale-110'
+                  loginLoading ? 'bg-[#e8f7fb] border-[#00b4d8]/40'
+                    : pin.length > i ? 'bg-[#00b4d8] border-[#00b4d8] shadow-md scale-110'
                     : 'bg-gray-50 border-gray-200'
                 }`}
               >
-                {pin.length > i && !loginLoading && (
-                  <div className="w-3.5 h-3.5 bg-white rounded-full" />
-                )}
-                {loginLoading && i < pin.length && (
-                  <div className="w-3 h-3 rounded-full bg-[#00b4d8] animate-pulse" />
-                )}
+                {pin.length > i && !loginLoading && <div className="w-3.5 h-3.5 bg-white rounded-full" />}
+                {loginLoading && i < pin.length && <div className="w-3 h-3 rounded-full bg-[#00b4d8] animate-pulse" />}
               </div>
             ))}
           </div>
 
-          {/* 에러 */}
           {error && (
             <p className="text-red-400 text-xs text-center mb-3 font-medium">
               {lockedUntil ? `🔒 잠금 중 (${countdown}초 후 해제)` : error}
@@ -236,25 +272,19 @@ export default function LoginPage() {
                 onClick={() => handlePinInput(String(n))}
                 disabled={!pinReady || loginLoading}
                 className="h-14 rounded-2xl bg-gray-50 border border-gray-100 text-gray-800 text-xl font-semibold active:bg-[#e8f7fb] active:border-[#00b4d8] active:scale-95 disabled:opacity-30 transition-all duration-100"
-              >
-                {n}
-              </button>
+              >{n}</button>
             ))}
             <div />
             <button
               onClick={() => handlePinInput('0')}
               disabled={!pinReady || loginLoading}
               className="h-14 rounded-2xl bg-gray-50 border border-gray-100 text-gray-800 text-xl font-semibold active:bg-[#e8f7fb] active:border-[#00b4d8] active:scale-95 disabled:opacity-30 transition-all duration-100"
-            >
-              0
-            </button>
+            >0</button>
             <button
               onClick={handlePinDelete}
               disabled={loginLoading}
               className="h-14 rounded-2xl bg-gray-50 border border-gray-100 text-gray-400 text-lg active:bg-gray-100 active:scale-95 disabled:opacity-30 transition-all duration-100"
-            >
-              ⌫
-            </button>
+            >⌫</button>
           </div>
         </div>
       </div>

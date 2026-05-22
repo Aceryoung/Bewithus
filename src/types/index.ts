@@ -1,7 +1,7 @@
 export type Role = 'director' | 'teacher'
 export type BranchId = 'branch1' | 'branch2'
 export type Attendance = 'present' | 'absent' | 'makeup'
-export type PaymentMethod = 'education' | 'sports_voucher' | 'after_school' | 'card' | 'cash' | 'bank_transfer'
+export type PaymentMethod = 'education' | 'sports_voucher' | 'after_school' | 'card' | 'cash' | 'bank_transfer' | 'other'
 export type MakeupStatus = 'pending' | 'completed'
 
 export interface Branch {
@@ -41,6 +41,7 @@ export interface Record {
   support_amount: number
   self_payment: number
   receipt_url: string | null
+  payment_note: string | null
   created_at: string
   updated_at: string
   teacher?: User

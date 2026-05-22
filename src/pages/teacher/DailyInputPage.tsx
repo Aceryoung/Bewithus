@@ -5,6 +5,7 @@ import { todayStr, formatKRW, calcSupport } from '@/lib/utils'
 import { ATTENDANCE_LABELS } from '@/constants'
 import { uploadReceipt } from '@/lib/storage'
 import PageHeader from '@/components/ui/PageHeader'
+import BottomNav from '@/components/ui/BottomNav'
 import RecordFormFields from '@/components/ui/RecordFormFields'
 import type { Attendance, PaymentMethod, FeeTable } from '@/types'
 
@@ -20,6 +21,7 @@ interface Row {
   self_payment: number
   total_amount: number
   after_school_support?: number
+  payment_note?: string
   receiptFile?: File
 }
 
@@ -117,7 +119,7 @@ export default function DailyInputPage() {
         for (const r of data) {
           if (!used[r.patient_name]) {
             used[r.patient_name] = {
-              education: 0, sports_voucher: 0, after_school: 0, card: 0, cash: 0, bank_transfer: 0,
+              education: 0, sports_voucher: 0, after_school: 0, card: 0, cash: 0, bank_transfer: 0, other: 0,
             }
           }
           used[r.patient_name][r.payment_method as PaymentMethod] += r.support_amount
@@ -161,6 +163,7 @@ export default function DailyInputPage() {
         unit_price: r.unit_price,
         total_amount: r.total_amount,
         payment_method: r.payment_method,
+        payment_note: r.payment_note || null,
         support_amount: r.support_amount,
         self_payment: r.self_payment,
       })),
@@ -191,10 +194,10 @@ export default function DailyInputPage() {
   const totalSupport = rows.reduce((acc, r) => acc + r.support_amount, 0)
 
   return (
-    <div className="flex flex-col min-h-dvh pb-16">
+    <div className="flex flex-col min-h-dvh bg-[#f7f8fc]">
       <PageHeader title="일 건수 입력" showBack />
 
-      <div className="flex-1 px-4 py-4 space-y-4">
+      <div className="flex-1 px-4 py-4 space-y-4 pb-52">
         {/* 날짜 선택 */}
         <div className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-3">
           <span className="text-sm text-gray-500 shrink-0">날짜</span>
@@ -271,6 +274,7 @@ export default function DailyInputPage() {
                   session_count: row.session_count,
                   payment_method: row.payment_method,
                   after_school_support: row.after_school_support,
+                  payment_note: row.payment_note,
                 }}
                 feeTables={feeTables}
                 total={row.total_amount}
@@ -328,8 +332,10 @@ export default function DailyInputPage() {
         </button>
       </div>
 
-      {/* 저장 버튼 고정 */}
-      <div className="fixed bottom-16 left-1/2 -translate-x-1/2 w-full max-w-[480px] px-4 pb-3 bg-white border-t border-gray-100">
+      <BottomNav />
+
+      {/* 저장 버튼 고정 (BottomNav 위) */}
+      <div className="fixed bottom-16 left-1/2 -translate-x-1/2 w-full max-w-[480px] px-4 pb-3 pt-2 bg-white border-t border-gray-100 shadow-lg">
         <div className="flex justify-between text-sm text-gray-500 py-2">
           <span>자부담 합계</span>
           <span className="font-bold text-gray-900">{formatKRW(totalSelfPayment)}</span>

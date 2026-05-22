@@ -18,6 +18,7 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   card: '카드',
   cash: '현금',
   bank_transfer: '계좌이체',
+  other: '직접입력',
 }
 
 // 월별 지원금 한도 (원)
