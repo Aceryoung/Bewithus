@@ -135,15 +135,15 @@ export default function LoginPage() {
                 <span className="text-gray-400 text-sm">불러오는 중...</span>
               </div>
             ) : (
-              <div className="space-y-2.5">
+              <div className="space-y-3">
                 {branches.map((b) => (
                   <button
                     key={b.id}
                     onClick={() => handleBranchSelect(b)}
-                    className="w-full py-4 rounded-2xl bg-gray-50 border-2 border-transparent text-gray-700 font-bold text-base active:bg-[#e8f7fb] active:border-[#00b4d8] active:text-[#007a93] active:scale-[0.98] transition-all duration-150"
+                    className="w-full py-7 rounded-3xl bg-gray-50 border-2 border-transparent text-gray-800 font-bold text-xl active:bg-[#e8f7fb] active:border-[#00b4d8] active:text-[#007a93] active:scale-[0.98] transition-all duration-150"
                   >
                     {b.name}
-                    <p className="text-xs text-gray-400 font-normal mt-0.5">
+                    <p className="text-sm text-gray-400 font-normal mt-1">
                       {BRANCH_SUBTITLES[b.name] ?? ''}
                     </p>
                   </button>
