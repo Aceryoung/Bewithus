@@ -190,6 +190,14 @@ export default function LoginPage() {
               </div>
             </div>
 
+            {/* 뒤로가기 - 항상 활성 */}
+            <button
+              onClick={() => { setStep('branch'); setSelectedBranch(null); setSelectedUser(null); setPin(''); setError('') }}
+              className="w-full py-3 rounded-2xl border border-gray-200 bg-white text-gray-400 text-sm font-medium active:bg-gray-50 transition-colors"
+            >
+              ← 호점 선택으로 돌아가기
+            </button>
+
             {/* PIN 카드 */}
             <div className={`bg-white rounded-3xl shadow-sm border border-gray-100 p-5 transition-opacity duration-300 ${selectedUser ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
               <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-5">PIN 번호</p>
@@ -241,13 +249,6 @@ export default function LoginPage() {
                 >⌫</button>
               </div>
 
-              {/* 뒤로가기 */}
-              <button
-                onClick={() => { setStep('branch'); setSelectedBranch(null); setSelectedUser(null); setPin(''); setError('') }}
-                className="w-full mt-4 py-3 rounded-2xl border border-gray-200 text-gray-400 text-sm font-medium active:bg-gray-50 transition-colors"
-              >
-                ← 호점 선택으로 돌아가기
-              </button>
             </div>
           </>
         )}
