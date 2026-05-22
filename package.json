@@ -12,10 +12,10 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.106.0",
     "@tanstack/react-query": "^5.100.11",
+    "exceljs": "^4.4.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-router-dom": "^7.15.1",
-    "xlsx": "^0.18.5",
     "zustand": "^5.0.13"
   },
   "devDependencies": {

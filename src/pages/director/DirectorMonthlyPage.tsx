@@ -102,7 +102,7 @@ export default function DirectorMonthlyPage() {
           </div>
           <button
             onClick={() =>
-              exportAllTeachersMonthly(
+              void exportAllTeachersMonthly(
                 summaries.map((s) => ({ teacherName: s.teacher.name, records: s.records as import('@/types').Record[], year, month })),
                 year, month,
               )
@@ -173,7 +173,7 @@ export default function DirectorMonthlyPage() {
                     </button>
                     <button
                       onClick={() =>
-                        exportTeacherMonthly({
+                        void exportTeacherMonthly({
                           teacherName: s.teacher.name,
                           records: s.records as import('@/types').Record[],
                           year,

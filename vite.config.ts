@@ -5,6 +5,10 @@ import { VitePWA } from 'vite-plugin-pwa'
 import path from 'path'
 
 export default defineConfig({
+  define: {
+    // exceljs가 브라우저에서 Buffer를 사용하기 위한 폴리필
+    global: 'globalThis',
+  },
   plugins: [
     react(),
     tailwindcss(),

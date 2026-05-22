@@ -11,7 +11,6 @@ import DirectorDashboard from '@/pages/director/DirectorDashboard'
 import DirectorDailyPage from '@/pages/director/DirectorDailyPage'
 import DirectorMonthlyPage from '@/pages/director/DirectorMonthlyPage'
 import AccountsPage from '@/pages/director/AccountsPage'
-import PreviewPage from '@/pages/preview/PreviewPage'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user)
@@ -73,8 +72,6 @@ export default function App() {
         <Route path="/director/daily"    element={<RequireDirector><DirectorDailyPage /></RequireDirector>} />
         <Route path="/director/monthly"  element={<RequireDirector><DirectorMonthlyPage /></RequireDirector>} />
         <Route path="/director/accounts" element={<RequireDirector><AccountsPage /></RequireDirector>} />
-
-        <Route path="/preview" element={<PreviewPage />} />
 
         <Route
           path="*"
