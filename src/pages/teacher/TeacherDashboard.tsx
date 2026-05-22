@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '@/lib/supabase'
+import { supabase, createTempClient, userEmail, pinToPassword } from '@/lib/supabase'
 import { useAuthStore } from '@/store/auth'
-import { createTempClient, userEmail, pinToPassword } from '@/lib/supabase'
 import { todayStr, formatKRW, formatDate } from '@/lib/utils'
 import { ATTENDANCE_LABELS, PAYMENT_METHOD_LABELS } from '@/constants'
 import BottomNav from '@/components/ui/BottomNav'
@@ -192,7 +191,7 @@ export default function TeacherDashboard() {
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-slate-900 truncate">{r.patient_name}</p>
                       <p className="text-xs text-slate-400 mt-0.5">
-                        {ATTENDANCE_LABELS[r.attendance]} · {r.fee_type} {r.session_count}회 · {PAYMENT_METHOD_LABELS[r.payment_method]}
+                        {ATTENDANCE_LABELS[r.attendance]} · {r.fee_type} {r.session_count}회 · {r.payment_method === 'other' && r.payment_note ? r.payment_note : PAYMENT_METHOD_LABELS[r.payment_method]}
                       </p>
                     </div>
                   </div>

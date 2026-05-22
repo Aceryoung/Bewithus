@@ -152,7 +152,7 @@ export default function MonthlyViewPage() {
                           <p className="text-xs text-gray-400 mt-0.5">
                             {r.date.slice(5)} · {ATTENDANCE_LABELS[r.attendance]}
                             {' · '}{r.fee_type} {r.session_count}회
-                            {' · '}{PAYMENT_METHOD_LABELS[r.payment_method as PaymentMethod]}
+                            {' · '}{r.payment_method === 'other' && r.payment_note ? r.payment_note : PAYMENT_METHOD_LABELS[r.payment_method as PaymentMethod]}
                           </p>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">

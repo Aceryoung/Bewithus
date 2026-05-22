@@ -1,10 +1,5 @@
 import type { PaymentMethod } from '@/types'
 
-export const BRANCH_NAMES: Record<string, string> = {
-  branch1: '1호점',
-  branch2: '2호점',
-}
-
 export const ATTENDANCE_LABELS: Record<string, string> = {
   present: '출석',
   absent: '결석',

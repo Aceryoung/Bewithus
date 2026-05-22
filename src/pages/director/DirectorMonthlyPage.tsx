@@ -200,7 +200,7 @@ export default function DirectorMonthlyPage() {
                             <p className="text-sm text-gray-800">{r.patient_name}</p>
                             <p className="text-xs text-gray-400">
                               {r.date.slice(5)} · {ATTENDANCE_LABELS[r.attendance]} · {r.fee_type} {r.session_count}회
-                              {' · '}{PAYMENT_METHOD_LABELS[r.payment_method as PaymentMethod]}
+                              {' · '}{r.payment_method === 'other' && r.payment_note ? r.payment_note : PAYMENT_METHOD_LABELS[r.payment_method as PaymentMethod]}
                             </p>
                           </div>
                           <div className="text-right">

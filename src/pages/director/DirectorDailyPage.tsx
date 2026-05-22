@@ -158,7 +158,7 @@ export default function DirectorDailyPage() {
                     <p className="text-sm font-medium text-gray-900">{r.patient_name}</p>
                     <p className="text-xs text-gray-400 mt-0.5">
                       {(r.teacher as unknown as User)?.name ?? '—'} · {ATTENDANCE_LABELS[r.attendance]}
-                      {' · '}{r.fee_type} {r.session_count}회 · {PAYMENT_METHOD_LABELS[r.payment_method as PaymentMethod]}
+                      {' · '}{r.fee_type} {r.session_count}회 · {r.payment_method === 'other' && r.payment_note ? r.payment_note : PAYMENT_METHOD_LABELS[r.payment_method as PaymentMethod]}
                     </p>
                   </div>
                   <div className="text-right">

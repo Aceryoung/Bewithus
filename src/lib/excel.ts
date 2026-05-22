@@ -12,7 +12,7 @@ const COLUMNS = [
   { header: '총 청구액',  key: 'total_amount',   width: 13 },
   { header: '지원금',     key: 'support_amount', width: 13 },
   { header: '자부담',     key: 'self_payment',   width: 13 },
-  { header: '결제 방식',  key: 'payment_method', width: 14 },
+  { header: '결제 방식',  key: 'payment_method', width: 18 },
 ]
 
 function toRows(records: SessionRecord[]) {
@@ -26,7 +26,10 @@ function toRows(records: SessionRecord[]) {
     total_amount:   r.total_amount,
     support_amount: r.support_amount,
     self_payment:   r.self_payment,
-    payment_method: PAYMENT_METHOD_LABELS[r.payment_method],
+    // 직접입력인 경우 payment_note 내용을 표시
+    payment_method: r.payment_method === 'other' && r.payment_note
+      ? r.payment_note
+      : PAYMENT_METHOD_LABELS[r.payment_method],
   }))
 }
 
