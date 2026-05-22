@@ -10,21 +10,12 @@ interface TeacherWithStats extends User {
   monthSelf: number
 }
 
-interface PinEditState {
-  teacherId: string
-  currentPin: string
-  newPin: string
-  confirmPin: string
-}
-
 export default function AccountsPage() {
   const [branches, setBranches] = useState<{ id: string; name: string }[]>([])
   const [teachers, setTeachers] = useState<TeacherWithStats[]>([])
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ name: '', branch_id: '', pin: '' })
   const [saving, setSaving] = useState(false)
-  const [pinEdit, setPinEdit] = useState<PinEditState | null>(null)
-  const [pinChanging, setPinChanging] = useState(false)
 
   useEffect(() => { loadData() }, [])
 
@@ -113,47 +104,15 @@ export default function AccountsPage() {
     loadData()
   }
 
-  // ── PIN 변경 ─────────────────────────────────────────────────
-  // 현재 PIN 검증 → 새 PIN 설정 (tempClient로 사용자 로그인 후 updateUser)
-  const handlePinChange = async () => {
-    if (!pinEdit) return
-    const { teacherId, currentPin, newPin, confirmPin } = pinEdit
-
-    if (newPin.length !== 4) { alert('새 PIN은 4자리여야 합니다.'); return }
-    if (newPin !== confirmPin) { alert('새 PIN과 확인 PIN이 다릅니다.'); return }
-
-    const teacher = teachers.find((t) => t.id === teacherId)
-    if (!teacher) return
-
-    setPinChanging(true)
-
-    // 현재 PIN 으로 임시 로그인
-    const tmp = createTempClient()
-    const { error: signInError } = await tmp.auth.signInWithPassword({
-      email: userEmail(teacherId),
-      password: pinToPassword(currentPin),
-    })
-
-    if (signInError) {
-      setPinChanging(false)
-      alert('현재 PIN이 올바르지 않습니다.')
+  // ── PIN 초기화 (0000으로 리셋) ──────────────────────────────
+  const handlePinReset = async (id: string, name: string) => {
+    if (!confirm(`"${name}" 선생님의 PIN을 0000으로 초기화할까요?`)) return
+    const { error } = await supabase.rpc('reset_teacher_pin', { p_teacher_id: id })
+    if (error) {
+      alert(`PIN 초기화 실패: ${error.message}`)
       return
     }
-
-    // 비밀번호(PIN) 변경
-    const { error: updateError } = await tmp.auth.updateUser({
-      password: pinToPassword(newPin),
-    })
-
-    setPinChanging(false)
-
-    if (updateError) {
-      alert(`PIN 변경 실패: ${updateError.message}`)
-      return
-    }
-
-    alert(`${teacher.name} 선생님의 PIN이 변경되었습니다.`)
-    setPinEdit(null)
+    alert(`${name} 선생님의 PIN이 0000으로 초기화되었습니다.`)
   }
 
   const byBranch = branches.map((b) => ({
@@ -163,7 +122,7 @@ export default function AccountsPage() {
 
   return (
     <div className="flex flex-col min-h-dvh pb-16">
-      <PageHeader title="계정 관리" />
+      <PageHeader title="직원 관리" />
 
       <div className="flex-1 px-4 py-4 space-y-4">
 
@@ -224,58 +183,6 @@ export default function AccountsPage() {
           </div>
         )}
 
-        {/* PIN 변경 모달 */}
-        {pinEdit && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
-            onClick={() => setPinEdit(null)}>
-            <div className="bg-white rounded-2xl p-5 w-full max-w-xs space-y-3"
-              onClick={(e) => e.stopPropagation()}>
-              <h2 className="font-bold text-gray-900 text-base">
-                {teachers.find((t) => t.id === pinEdit.teacherId)?.name} PIN 변경
-              </h2>
-              <input
-                type="password"
-                inputMode="numeric"
-                placeholder="현재 PIN 4자리"
-                maxLength={4}
-                value={pinEdit.currentPin}
-                onChange={(e) => setPinEdit((p) => p && ({ ...p, currentPin: e.target.value.replace(/\D/g,'').slice(0,4) }))}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#00b4d8]"
-              />
-              <input
-                type="password"
-                inputMode="numeric"
-                placeholder="새 PIN 4자리"
-                maxLength={4}
-                value={pinEdit.newPin}
-                onChange={(e) => setPinEdit((p) => p && ({ ...p, newPin: e.target.value.replace(/\D/g,'').slice(0,4) }))}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#00b4d8]"
-              />
-              <input
-                type="password"
-                inputMode="numeric"
-                placeholder="새 PIN 확인"
-                maxLength={4}
-                value={pinEdit.confirmPin}
-                onChange={(e) => setPinEdit((p) => p && ({ ...p, confirmPin: e.target.value.replace(/\D/g,'').slice(0,4) }))}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#00b4d8]"
-              />
-              <p className="text-xs text-gray-400">현재 PIN을 먼저 입력해야 변경할 수 있습니다.</p>
-              <div className="flex gap-2">
-                <button onClick={() => setPinEdit(null)}
-                  className="flex-1 py-2.5 border border-gray-200 rounded-xl text-gray-500 text-sm">
-                  취소
-                </button>
-                <button
-                  onClick={handlePinChange}
-                  disabled={pinChanging || pinEdit.currentPin.length !== 4 || pinEdit.newPin.length !== 4 || pinEdit.confirmPin.length !== 4}
-                  className="flex-1 py-2.5 bg-[#00b4d8] text-white rounded-xl text-sm font-semibold disabled:opacity-40"
-                >{pinChanging ? '변경 중…' : 'PIN 변경'}</button>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* 호점별 선생님 목록 */}
         {byBranch.map(({ branch, teachers: bt }) => (
           <div key={branch.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
@@ -294,10 +201,10 @@ export default function AccountsPage() {
                     </div>
                     <div className="flex gap-1.5">
                       <button
-                        onClick={() => setPinEdit({ teacherId: t.id, currentPin: '', newPin: '', confirmPin: '' })}
-                        className="text-xs text-[#00b4d8] px-2 py-1 bg-[#e8f7fb] rounded-lg"
+                        onClick={() => handlePinReset(t.id, t.name)}
+                        className="text-xs text-[#00b4d8] px-2 py-1 bg-[#e8f7fb] rounded-lg active:bg-[#d0eff7] transition-colors"
                       >
-                        PIN 변경
+                        PIN 초기화
                       </button>
                       <button
                         onClick={() => handleDelete(t.id, t.name)}

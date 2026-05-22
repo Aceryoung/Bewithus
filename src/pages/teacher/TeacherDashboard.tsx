@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/auth'
+import { createTempClient, userEmail, pinToPassword } from '@/lib/supabase'
 import { todayStr, formatKRW, formatDate } from '@/lib/utils'
 import { ATTENDANCE_LABELS, PAYMENT_METHOD_LABELS } from '@/constants'
 import BottomNav from '@/components/ui/BottomNav'
@@ -20,6 +21,11 @@ export default function TeacherDashboard() {
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
   const logout = useAuthStore((s) => s.logout)
+
+  const [showPinModal, setShowPinModal] = useState(false)
+  const [pinForm, setPinForm] = useState({ current: '', next: '', confirm: '' })
+  const [pinLoading, setPinLoading] = useState(false)
+  const [pinError, setPinError] = useState('')
   const today = todayStr()
 
   const [todayRecords, setTodayRecords] = useState<SessionRecord[]>([])
@@ -60,6 +66,35 @@ export default function TeacherDashboard() {
     setLoading(false)
   }
 
+  const handlePinChange = async () => {
+    if (pinForm.next.length !== 4) { setPinError('새 PIN은 4자리여야 합니다.'); return }
+    if (pinForm.next !== pinForm.confirm) { setPinError('새 PIN과 확인 PIN이 다릅니다.'); return }
+    if (!user) return
+    setPinLoading(true)
+    setPinError('')
+    const tmp = createTempClient()
+    const { error: signInErr } = await tmp.auth.signInWithPassword({
+      email: userEmail(user.id),
+      password: pinToPassword(pinForm.current),
+    })
+    if (signInErr) {
+      setPinLoading(false)
+      setPinError('현재 PIN이 올바르지 않습니다.')
+      return
+    }
+    const { error: updateErr } = await tmp.auth.updateUser({
+      password: pinToPassword(pinForm.next),
+    })
+    setPinLoading(false)
+    if (updateErr) {
+      setPinError(`변경 실패: ${updateErr.message}`)
+      return
+    }
+    setShowPinModal(false)
+    setPinForm({ current: '', next: '', confirm: '' })
+    alert('PIN이 변경되었습니다.')
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-dvh bg-slate-50">
@@ -87,12 +122,20 @@ export default function TeacherDashboard() {
             <h1 className="text-gray-900 text-2xl font-bold">{user?.name} 선생님</h1>
             <p className="text-gray-400 text-sm mt-1">{formatDate(today)}</p>
           </div>
-          <button
-            onClick={async () => { await logout(); navigate('/login') }}
-            className="text-xs text-gray-400 bg-gray-100 px-3 py-1.5 rounded-full mt-1 active:bg-gray-200 transition-colors"
-          >
-            로그아웃
-          </button>
+          <div className="flex gap-1.5 mt-1">
+            <button
+              onClick={() => { setShowPinModal(true); setPinError(''); setPinForm({ current: '', next: '', confirm: '' }) }}
+              className="text-xs text-[#00b4d8] bg-[#e8f7fb] px-3 py-1.5 rounded-full active:bg-[#d0eff7] transition-colors"
+            >
+              PIN 변경
+            </button>
+            <button
+              onClick={async () => { await logout(); navigate('/login') }}
+              className="text-xs text-gray-400 bg-gray-100 px-3 py-1.5 rounded-full active:bg-gray-200 transition-colors"
+            >
+              로그아웃
+            </button>
+          </div>
         </div>
       </div>
 
@@ -178,6 +221,39 @@ export default function TeacherDashboard() {
       </div>
 
       <BottomNav />
+
+      {/* PIN 변경 모달 */}
+      {showPinModal && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={() => setShowPinModal(false)}>
+          <div className="bg-white rounded-t-3xl w-full max-w-[480px] p-6 space-y-3" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-1">
+              <h2 className="font-bold text-gray-900">PIN 번호 변경</h2>
+              <button onClick={() => setShowPinModal(false)} className="text-gray-400 text-xl px-1">×</button>
+            </div>
+            {(['current', 'next', 'confirm'] as const).map((key, i) => (
+              <input
+                key={key}
+                type="password"
+                inputMode="numeric"
+                placeholder={['현재 PIN 4자리', '새 PIN 4자리', '새 PIN 확인'][i]}
+                maxLength={4}
+                value={pinForm[key]}
+                onChange={(e) => { setPinForm((f) => ({ ...f, [key]: e.target.value.replace(/\D/g, '').slice(0, 4) })); setPinError('') }}
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-[#00b4d8] tracking-widest text-center text-lg"
+              />
+            ))}
+            {pinError && <p className="text-red-400 text-xs text-center">{pinError}</p>}
+            <div className="flex gap-2 pt-1">
+              <button onClick={() => setShowPinModal(false)} className="flex-1 py-3 border border-gray-200 rounded-xl text-gray-500 text-sm">취소</button>
+              <button
+                onClick={handlePinChange}
+                disabled={pinLoading || pinForm.current.length !== 4 || pinForm.next.length !== 4 || pinForm.confirm.length !== 4}
+                className="flex-1 py-3 bg-[#00b4d8] text-white rounded-xl text-sm font-bold disabled:opacity-40 active:bg-[#0096b8] transition-colors"
+              >{pinLoading ? '변경 중…' : 'PIN 변경'}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {editingRecord && (
         <RecordEditSheet

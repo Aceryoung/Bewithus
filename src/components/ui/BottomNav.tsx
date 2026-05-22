@@ -18,7 +18,7 @@ const DIRECTOR_NAVS: NavItem[] = [
   { to: '/director', label: '대시보드', icon: '📊' },
   { to: '/director/daily', label: '일건수', icon: '📋' },
   { to: '/director/monthly', label: '월건수', icon: '📅' },
-  { to: '/director/accounts', label: '계정관리', icon: '👤' },
+  { to: '/director/accounts', label: '직원관리', icon: '👤' },
 ]
 
 export default function BottomNav() {
