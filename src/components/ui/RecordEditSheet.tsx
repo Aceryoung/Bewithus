@@ -183,10 +183,10 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
                   ${
                     state.attendance === a
                       ? a === 'absent'
-                        ? 'bg-red-500 text-white'
+                        ? 'bg-[#e85b8a] text-white'
                         : a === 'makeup'
-                        ? 'bg-green-500 text-white'
-                        : 'bg-blue-600 text-white'
+                        ? 'bg-[#7db83a] text-white'
+                        : 'bg-[#00b4d8] text-white'
                       : 'bg-gray-100 text-gray-500'
                   }`}
               >
@@ -226,7 +226,7 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
             <button
               onClick={handleSave}
               disabled={saving || deleting}
-              className="flex-1 py-3 bg-blue-600 text-white rounded-xl text-sm font-bold disabled:opacity-40 active:bg-blue-700 transition-colors"
+              className="flex-1 py-3 bg-[#00b4d8] text-white rounded-xl text-sm font-bold disabled:opacity-40 active:bg-[#0096b8] transition-colors"
             >
               {saving ? '저장 중…' : '수정 저장'}
             </button>

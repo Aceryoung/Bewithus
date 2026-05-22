@@ -71,7 +71,7 @@ export default function MakeupPage() {
       <div className="flex-1 px-4 py-4 space-y-4">
         <button
           onClick={() => setShowForm((v) => !v)}
-          className="w-full py-3 bg-green-600 text-white rounded-xl font-semibold active:bg-green-700 transition-colors"
+          className="w-full py-3 bg-[#7db83a] text-white rounded-xl font-semibold active:bg-[#5f9428] transition-colors"
         >
           + 보강 추가
         </button>
@@ -85,7 +85,7 @@ export default function MakeupPage() {
               placeholder="환자명"
               value={form.patient_name}
               onChange={(e) => setForm((f) => ({ ...f, patient_name: e.target.value }))}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-400"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#00b4d8]"
             />
             <div className="grid grid-cols-2 gap-2">
               <div>
@@ -131,7 +131,7 @@ export default function MakeupPage() {
               <button
                 onClick={handleAdd}
                 disabled={!form.patient_name.trim()}
-                className="flex-1 py-2 bg-green-600 text-white rounded-lg text-sm font-semibold disabled:opacity-40"
+                className="flex-1 py-2 bg-[#7db83a] text-white rounded-lg text-sm font-semibold disabled:opacity-40"
               >
                 추가
               </button>
@@ -150,7 +150,7 @@ export default function MakeupPage() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleComplete(s.id)}
-                      className="text-xs text-green-600 font-medium px-2 py-1 bg-green-50 rounded"
+                      className="text-xs text-[#7db83a] font-medium px-2 py-1 bg-[#f0f9e8] rounded"
                     >
                       완료
                     </button>

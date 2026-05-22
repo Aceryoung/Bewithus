@@ -72,7 +72,7 @@ export default function DirectorDailyPage() {
           <button
             onClick={() => { setSelectedBranch('all'); setSelectedTeacher('all') }}
             className={`px-4 py-2 rounded-full text-sm font-medium shrink-0 transition-colors
-              ${selectedBranch === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}
+              ${selectedBranch === 'all' ? 'bg-[#00b4d8] text-white' : 'bg-gray-100 text-gray-600'}`}
           >
             전체
           </button>
@@ -81,7 +81,7 @@ export default function DirectorDailyPage() {
               key={b.id}
               onClick={() => { setSelectedBranch(b.id); setSelectedTeacher('all') }}
               className={`px-4 py-2 rounded-full text-sm font-medium shrink-0 transition-colors
-                ${selectedBranch === b.id ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}
+                ${selectedBranch === b.id ? 'bg-[#00b4d8] text-white' : 'bg-gray-100 text-gray-600'}`}
             >
               {b.name}
             </button>
@@ -133,8 +133,8 @@ export default function DirectorDailyPage() {
             </div>
             {supportAmount > 0 && (
               <div className="flex justify-between text-sm">
-                <span className="text-blue-500">지원금</span>
-                <span className="text-blue-500">{formatKRW(supportAmount)}</span>
+                <span className="text-[#00b4d8]">지원금</span>
+                <span className="text-[#00b4d8]">{formatKRW(supportAmount)}</span>
               </div>
             )}
             <div className="flex justify-between text-sm font-semibold">
@@ -166,7 +166,7 @@ export default function DirectorDailyPage() {
                       {r.attendance === 'absent' ? '—' : formatKRW(r.self_payment)}
                     </p>
                     {r.support_amount > 0 && (
-                      <p className="text-xs text-blue-400">지원금 {formatKRW(r.support_amount)}</p>
+                      <p className="text-xs text-[#00b4d8]">지원금 {formatKRW(r.support_amount)}</p>
                     )}
                   </div>
                 </div>

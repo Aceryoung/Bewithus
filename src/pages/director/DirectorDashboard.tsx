@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
-import { formatKRW, todayStr } from '@/lib/utils'
-import PageHeader from '@/components/ui/PageHeader'
+import { formatKRW } from '@/lib/utils'
+import { useAuthStore } from '@/store/auth'
 import BottomNav from '@/components/ui/BottomNav'
 import type { User, Record as SessionRecord } from '@/types'
 
@@ -17,14 +18,15 @@ interface BranchStats {
 }
 
 export default function DirectorDashboard() {
-  const [_branches, setBranches] = useState<{ id: string; name: string }[]>([])
+  const navigate = useNavigate()
+  const user = useAuthStore((s) => s.user)
+  const logout = useAuthStore((s) => s.logout)
   const [stats, setStats] = useState<BranchStats[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     loadData()
 
-    // 실시간 구독
     const sub = supabase
       .channel('records_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'records' }, () => {
@@ -38,7 +40,7 @@ export default function DirectorDashboard() {
   const loadData = async () => {
     const now = new Date()
     const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
-    const today = todayStr()
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 
     const [branchRes, userRes, recordRes] = await Promise.all([
       supabase.from('branches').select('id, name'),
@@ -49,8 +51,6 @@ export default function DirectorDashboard() {
     const branchList = (branchRes.data ?? []) as { id: string; name: string }[]
     const userList = (userRes.data ?? []) as User[]
     const recordList = (recordRes.data ?? []) as SessionRecord[]
-
-    setBranches(branchList)
 
     const branchStats = branchList.map((branch) => {
       const branchTeachers = userList.filter((u) => u.branch_id === branch.id)
@@ -83,67 +83,123 @@ export default function DirectorDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-dvh">
-        <p className="text-gray-400">불러오는 중...</p>
+      <div className="flex items-center justify-center min-h-dvh bg-slate-50">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 rounded-full border-2 border-sky-400 border-t-transparent animate-spin" />
+          <p className="text-slate-400 text-sm">불러오는 중...</p>
+        </div>
       </div>
     )
   }
 
-  const maxCount = Math.max(...stats.flatMap((s) => s.teacherStats.map((t) => t.count)), 1)
+  const totalCount   = stats.reduce((a, s) => a + s.totalCount, 0)
+  const totalAmount  = stats.reduce((a, s) => a + s.totalAmount, 0)
+  const totalSelf    = stats.reduce((a, s) => a + s.selfPayment, 0)
+  const totalSupport = stats.reduce((a, s) => a + s.supportAmount, 0)
+  const maxCount     = Math.max(...stats.flatMap((s) => s.teacherStats.map((t) => t.count)), 1)
 
   return (
-    <div className="flex flex-col min-h-dvh pb-16">
-      <PageHeader title="통합 대시보드" showLogout />
+    <div className="flex flex-col min-h-dvh bg-slate-50 pb-16">
+      {/* 헤더 */}
+      <div className="bg-white border-b border-gray-100 px-5 pt-12 pb-5">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h1 className="text-gray-900 text-2xl font-bold">{user?.name}</h1>
+            <p className="text-gray-400 text-sm mt-1">이달 통합 현황</p>
+          </div>
+          <div className="flex items-center gap-2 mt-1">
+            <div className="flex items-center gap-1.5 bg-[#f0f9e8] border border-[#7db83a]/30 px-2.5 py-1.5 rounded-full">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#7db83a] animate-pulse" />
+              <span className="text-[#7db83a] text-xs font-semibold">실시간</span>
+            </div>
+            <button
+              onClick={async () => { await logout(); navigate('/login') }}
+              className="text-xs text-gray-400 bg-gray-100 px-3 py-1.5 rounded-full active:bg-gray-200 transition-colors"
+            >
+              로그아웃
+            </button>
+          </div>
+        </div>
 
-      <div className="flex-1 px-4 py-4 space-y-4">
+        {/* 전체 요약 수치 */}
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            { label: '총 건수', value: `${totalCount}건`, highlight: false },
+            { label: '자부담 합계', value: formatKRW(totalSelf), highlight: true },
+            { label: '총 청구액', value: formatKRW(totalAmount), highlight: false },
+            { label: '지원금 합계', value: formatKRW(totalSupport), highlight: false },
+          ].map((item) => (
+            <div
+              key={item.label}
+              className={`rounded-2xl px-4 py-3 ${item.highlight ? 'bg-[#e8f7fb]' : 'bg-gray-50'}`}
+            >
+              <p className={`text-base font-bold truncate ${item.highlight ? 'text-[#00b4d8]' : 'text-gray-800'}`}>
+                {item.value}
+              </p>
+              <p className="text-gray-400 text-xs mt-0.5">{item.label}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 지점별 카드 */}
+      <div className="px-4 py-4 space-y-3">
         {stats.map((s) => (
-          <div key={s.branch.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-            <h2 className="text-base font-bold text-gray-900 mb-3">{s.branch.name}</h2>
-
-            {/* 수치 요약 */}
-            <div className="grid grid-cols-3 gap-2 mb-4">
-              {[
-                { label: '이달 총건수', value: `${s.totalCount}건`, color: 'text-gray-900' },
-                { label: '총 청구액', value: formatKRW(s.totalAmount), color: 'text-gray-900' },
-                { label: '자부담 합계', value: formatKRW(s.selfPayment), color: 'text-blue-600' },
-              ].map((item) => (
-                <div key={item.label} className="bg-gray-50 rounded-xl p-3 text-center">
-                  <p className={`text-sm font-bold ${item.color} truncate`}>{item.value}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{item.label}</p>
-                </div>
-              ))}
+          <div key={s.branch.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            {/* 지점 헤더 */}
+            <div className="flex justify-between items-center px-4 py-3 bg-slate-50 border-b border-slate-100">
+              <h2 className="font-bold text-slate-800">{s.branch.name}</h2>
+              <span className="text-xs font-semibold text-slate-500 bg-white border border-slate-200 px-2.5 py-0.5 rounded-full">
+                {s.totalCount}건
+              </span>
             </div>
 
-            {/* 지원금 */}
-            {s.supportAmount > 0 && (
-              <div className="flex justify-between text-sm mb-4 px-1">
-                <span className="text-gray-400">지원금 합계</span>
-                <span className="text-blue-500 font-medium">{formatKRW(s.supportAmount)}</span>
+            <div className="p-4 space-y-4">
+              {/* 지점 수치 */}
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { label: '총 청구액', value: formatKRW(s.totalAmount), highlight: false },
+                  { label: '지원금', value: formatKRW(s.supportAmount), highlight: false },
+                  { label: '자부담', value: formatKRW(s.selfPayment), highlight: true },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    className={`rounded-xl p-3 text-center ${item.highlight ? 'bg-[#e8f7fb]' : 'bg-gray-50'}`}
+                  >
+                    <p className={`text-sm font-bold truncate ${item.highlight ? 'text-[#00b4d8]' : 'text-gray-800'}`}>
+                      {item.value}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-0.5">{item.label}</p>
+                  </div>
+                ))}
               </div>
-            )}
 
-            {/* 선생님별 바 차트 */}
-            <div className="space-y-2">
-              <p className="text-xs text-gray-400 font-medium">선생님별 이달 건수</p>
-              {s.teacherStats.map(({ teacher, count, amount }) => (
-                <div key={teacher.id}>
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-sm text-gray-700">{teacher.name}</span>
-                    <div className="text-right">
-                      <span className="text-sm font-semibold text-gray-900">{count}건</span>
-                      <span className="text-xs text-gray-400 ml-2">{formatKRW(amount)}</span>
+              {/* 선생님별 바 차트 */}
+              {s.teacherStats.length > 0 && (
+                <div className="space-y-3">
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">선생님별 건수</p>
+                  {s.teacherStats.map(({ teacher, count, amount }) => (
+                    <div key={teacher.id}>
+                      <div className="flex justify-between items-center mb-1.5">
+                        <span className="text-sm font-medium text-slate-700">{teacher.name}</span>
+                        <div className="text-right">
+                          <span className="text-sm font-bold text-slate-900">{count}건</span>
+                          <span className="text-xs text-slate-400 ml-1.5">{formatKRW(amount)}</span>
+                        </div>
+                      </div>
+                      <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-[#00b4d8] to-[#0096b8] rounded-full transition-all duration-700"
+                          style={{ width: `${(count / maxCount) * 100}%` }}
+                        />
+                      </div>
                     </div>
-                  </div>
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-blue-500 rounded-full transition-all"
-                      style={{ width: `${maxCount > 0 ? (count / maxCount) * 100 : 0}%` }}
-                    />
-                  </div>
+                  ))}
                 </div>
-              ))}
+              )}
+
               {s.teacherStats.length === 0 && (
-                <p className="text-xs text-gray-300 text-center py-2">등록된 선생님이 없습니다.</p>
+                <p className="text-xs text-slate-300 text-center py-2">등록된 선생님이 없습니다.</p>
               )}
             </div>
           </div>

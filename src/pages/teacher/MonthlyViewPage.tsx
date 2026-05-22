@@ -79,9 +79,9 @@ export default function MonthlyViewPage() {
       <div className="flex-1 px-4 py-4 space-y-4">
         {/* 월 선택 */}
         <div className="flex items-center justify-between bg-white border border-gray-200 rounded-xl px-4 py-3">
-          <button onClick={prevMonth} className="text-blue-600 text-xl px-2">‹</button>
+          <button onClick={prevMonth} className="text-[#00b4d8] text-xl px-2">‹</button>
           <span className="font-semibold text-gray-800">{year}년 {month}월</span>
-          <button onClick={nextMonth} className="text-blue-600 text-xl px-2">›</button>
+          <button onClick={nextMonth} className="text-[#00b4d8] text-xl px-2">›</button>
         </div>
 
         {loading ? (
@@ -94,9 +94,9 @@ export default function MonthlyViewPage() {
               <div className="grid grid-cols-4 gap-2 mb-3">
                 {[
                   { label: '총건수', value: totalCount, color: 'text-gray-900' },
-                  { label: '출석', value: presentCount, color: 'text-blue-600' },
-                  { label: '결석', value: absentCount, color: 'text-red-500' },
-                  { label: '보강', value: makeupCount, color: 'text-green-600' },
+                  { label: '출석', value: presentCount, color: 'text-[#00b4d8]' },
+                  { label: '결석', value: absentCount, color: 'text-[#e85b8a]' },
+                  { label: '보강', value: makeupCount, color: 'text-[#7db83a]' },
                 ].map((item) => (
                   <div key={item.label} className="text-center">
                     <p className={`text-xl font-bold ${item.color}`}>{item.value}</p>
@@ -110,8 +110,8 @@ export default function MonthlyViewPage() {
                   <span className="font-medium">{formatKRW(totalAmount)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-blue-500">지원금</span>
-                  <span className="text-blue-500">{formatKRW(totalSupport)}</span>
+                  <span className="text-[#00b4d8]">지원금</span>
+                  <span className="text-[#00b4d8]">{formatKRW(totalSupport)}</span>
                 </div>
                 <div className="flex justify-between text-sm font-semibold">
                   <span className="text-gray-700">자부담</span>
@@ -130,7 +130,7 @@ export default function MonthlyViewPage() {
                     <div className="text-right">
                       <p className="text-sm font-medium">{formatKRW(data.self)} <span className="text-xs text-gray-400">자부담</span></p>
                       {data.support > 0 && (
-                        <p className="text-xs text-blue-500">지원금 {formatKRW(data.support)}</p>
+                        <p className="text-xs text-[#00b4d8]">지원금 {formatKRW(data.support)}</p>
                       )}
                     </div>
                   </div>
@@ -161,12 +161,12 @@ export default function MonthlyViewPage() {
                               {r.attendance === 'absent' ? '—' : formatKRW(r.self_payment)}
                             </p>
                             {r.support_amount > 0 && (
-                              <p className="text-xs text-blue-400">지원금 {formatKRW(r.support_amount)}</p>
+                              <p className="text-xs text-[#00b4d8]">지원금 {formatKRW(r.support_amount)}</p>
                             )}
                           </div>
                           <button
                             onClick={() => setEditingRecord(r)}
-                            className="text-xs text-blue-500 bg-blue-50 px-2 py-1 rounded-lg active:bg-blue-100 transition-colors"
+                            className="text-xs text-[#00b4d8] bg-[#e8f7fb] px-2 py-1 rounded-lg active:bg-[#d0eff7] transition-colors"
                           >
                             수정
                           </button>

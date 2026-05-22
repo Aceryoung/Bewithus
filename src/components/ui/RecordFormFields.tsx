@@ -32,7 +32,7 @@ export default function RecordFormFields({ state, feeTables, total, support, sel
               onClick={() => onChange({ fee_type: ft.fee_type, unit_price: ft.unit_price })}
               className={`py-2 px-3 rounded-lg text-sm font-medium text-left transition-colors
                 ${state.fee_type === ft.fee_type
-                  ? 'bg-blue-100 text-blue-700 border border-blue-300'
+                  ? 'bg-[#e8f7fb] text-[#007a93] border border-[#00b4d8]'
                   : 'bg-gray-50 text-gray-600 border border-gray-200'}`}
             >
               <span>{ft.fee_type}</span>
@@ -43,7 +43,7 @@ export default function RecordFormFields({ state, feeTables, total, support, sel
             onClick={() => onChange({ fee_type: '직접입력', unit_price: 0 })}
             className={`py-2 px-3 rounded-lg text-sm font-medium text-left transition-colors
               ${state.fee_type === '직접입력'
-                ? 'bg-blue-100 text-blue-700 border border-blue-300'
+                ? 'bg-[#e8f7fb] text-[#007a93] border border-[#00b4d8]'
                 : 'bg-gray-50 text-gray-600 border border-gray-200'}`}
           >
             직접입력
@@ -56,7 +56,7 @@ export default function RecordFormFields({ state, feeTables, total, support, sel
             placeholder="1회 단가 입력 (원)"
             value={state.unit_price || ''}
             onChange={(e) => onChange({ unit_price: Number(e.target.value) })}
-            className="w-full mt-2 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-400"
+            className="w-full mt-2 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#00b4d8]"
           />
         )}
       </div>
@@ -70,7 +70,7 @@ export default function RecordFormFields({ state, feeTables, total, support, sel
               key={n}
               onClick={() => onChange({ session_count: n })}
               className={`w-10 h-10 rounded-lg text-sm font-medium transition-colors
-                ${state.session_count === n ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}
+                ${state.session_count === n ? 'bg-[#00b4d8] text-white' : 'bg-gray-100 text-gray-600'}`}
             >
               {n}
             </button>
@@ -92,7 +92,7 @@ export default function RecordFormFields({ state, feeTables, total, support, sel
                 })
               }
               className={`py-2 rounded-lg text-xs font-medium transition-colors
-                ${state.payment_method === key ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}
+                ${state.payment_method === key ? 'bg-[#00b4d8] text-white' : 'bg-gray-100 text-gray-600'}`}
             >
               {label}
             </button>
@@ -133,8 +133,8 @@ export default function RecordFormFields({ state, feeTables, total, support, sel
           </div>
           {support > 0 && (
             <div className="flex justify-between">
-              <span className="text-blue-500">지원금</span>
-              <span className="text-blue-500">−{formatKRW(support)}</span>
+              <span className="text-[#00b4d8]">지원금</span>
+              <span className="text-[#00b4d8]">−{formatKRW(support)}</span>
             </div>
           )}
           <div className="flex justify-between font-semibold border-t border-gray-200 pt-1.5">

@@ -170,7 +170,7 @@ export default function AccountsPage() {
         {/* 선생님 추가 버튼 */}
         <button
           onClick={() => setShowForm((v) => !v)}
-          className="w-full py-3 bg-blue-600 text-white rounded-xl font-semibold active:bg-blue-700 transition-colors"
+          className="w-full py-3 bg-[#00b4d8] text-white rounded-xl font-semibold active:bg-[#0096b8] transition-colors"
         >
           + 선생님 추가
         </button>
@@ -184,7 +184,7 @@ export default function AccountsPage() {
               placeholder="이름"
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-400"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#00b4d8]"
             />
             <div>
               <p className="text-xs text-gray-400 mb-1.5">호점 배정</p>
@@ -194,7 +194,7 @@ export default function AccountsPage() {
                     key={b.id}
                     onClick={() => setForm((f) => ({ ...f, branch_id: b.id }))}
                     className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors
-                      ${form.branch_id === b.id ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}
+                      ${form.branch_id === b.id ? 'bg-[#00b4d8] text-white' : 'bg-gray-100 text-gray-600'}`}
                   >
                     {b.name}
                   </button>
@@ -208,7 +208,7 @@ export default function AccountsPage() {
               maxLength={4}
               value={form.pin}
               onChange={(e) => setForm((f) => ({ ...f, pin: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-400"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#00b4d8]"
             />
             <div className="flex gap-2">
               <button
@@ -218,7 +218,7 @@ export default function AccountsPage() {
               <button
                 onClick={handleAddTeacher}
                 disabled={saving || !form.name.trim() || !form.branch_id || form.pin.length !== 4}
-                className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold disabled:opacity-40"
+                className="flex-1 py-2 bg-[#00b4d8] text-white rounded-lg text-sm font-semibold disabled:opacity-40"
               >{saving ? '추가 중…' : '추가'}</button>
             </div>
           </div>
@@ -240,7 +240,7 @@ export default function AccountsPage() {
                 maxLength={4}
                 value={pinEdit.currentPin}
                 onChange={(e) => setPinEdit((p) => p && ({ ...p, currentPin: e.target.value.replace(/\D/g,'').slice(0,4) }))}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-400"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#00b4d8]"
               />
               <input
                 type="password"
@@ -249,7 +249,7 @@ export default function AccountsPage() {
                 maxLength={4}
                 value={pinEdit.newPin}
                 onChange={(e) => setPinEdit((p) => p && ({ ...p, newPin: e.target.value.replace(/\D/g,'').slice(0,4) }))}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-400"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#00b4d8]"
               />
               <input
                 type="password"
@@ -258,7 +258,7 @@ export default function AccountsPage() {
                 maxLength={4}
                 value={pinEdit.confirmPin}
                 onChange={(e) => setPinEdit((p) => p && ({ ...p, confirmPin: e.target.value.replace(/\D/g,'').slice(0,4) }))}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-400"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#00b4d8]"
               />
               <p className="text-xs text-gray-400">현재 PIN을 먼저 입력해야 변경할 수 있습니다.</p>
               <div className="flex gap-2">
@@ -269,7 +269,7 @@ export default function AccountsPage() {
                 <button
                   onClick={handlePinChange}
                   disabled={pinChanging || pinEdit.currentPin.length !== 4 || pinEdit.newPin.length !== 4 || pinEdit.confirmPin.length !== 4}
-                  className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold disabled:opacity-40"
+                  className="flex-1 py-2.5 bg-[#00b4d8] text-white rounded-xl text-sm font-semibold disabled:opacity-40"
                 >{pinChanging ? '변경 중…' : 'PIN 변경'}</button>
               </div>
             </div>
@@ -300,7 +300,7 @@ export default function AccountsPage() {
                     <div className="flex gap-1.5">
                       <button
                         onClick={() => setPinEdit({ teacherId: t.id, currentPin: '', newPin: '', confirmPin: '' })}
-                        className="text-xs text-blue-500 px-2 py-1 bg-blue-50 rounded-lg"
+                        className="text-xs text-[#00b4d8] px-2 py-1 bg-[#e8f7fb] rounded-lg"
                       >
                         PIN 변경
                       </button>

@@ -34,7 +34,7 @@ export default function BottomNav() {
           end={nav.to === '/teacher' || nav.to === '/director'}
           className={({ isActive }) =>
             `flex-1 flex flex-col items-center py-2 text-xs gap-1 transition-colors
-             ${isActive ? 'text-blue-600' : 'text-gray-400'}`
+             ${isActive ? 'text-[#00b4d8]' : 'text-gray-400'}`
           }
         >
           <span className="text-xl">{nav.icon}</span>

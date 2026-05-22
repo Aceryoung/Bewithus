@@ -237,10 +237,10 @@ export default function DailyInputPage() {
                   className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors
                     ${row.attendance === a
                       ? a === 'absent'
-                        ? 'bg-red-500 text-white'
+                        ? 'bg-[#e85b8a] text-white'
                         : a === 'makeup'
-                        ? 'bg-green-500 text-white'
-                        : 'bg-blue-600 text-white'
+                        ? 'bg-[#7db83a] text-white'
+                        : 'bg-[#00b4d8] text-white'
                       : 'bg-gray-100 text-gray-500'}`}
                 >
                   {ATTENDANCE_LABELS[a]}
@@ -284,7 +284,7 @@ export default function DailyInputPage() {
           <span className="font-bold text-gray-900">{formatKRW(totalSelfPayment)}</span>
         </div>
         {totalSupport > 0 && (
-          <div className="flex justify-between text-sm text-blue-500 pb-2">
+          <div className="flex justify-between text-sm text-[#00b4d8] pb-2">
             <span>지원금 합계</span>
             <span>{formatKRW(totalSupport)}</span>
           </div>
@@ -292,7 +292,7 @@ export default function DailyInputPage() {
         <button
           onClick={handleSave}
           disabled={saving || rows.every((r) => !r.patient_name.trim())}
-          className="w-full py-4 bg-blue-600 text-white rounded-xl font-bold text-base active:bg-blue-700 disabled:opacity-40 transition-colors"
+          className="w-full py-4 bg-[#00b4d8] text-white rounded-xl font-bold text-base active:bg-[#0096b8] disabled:opacity-40 transition-colors"
         >
           {saving ? '저장 중...' : '저장하기'}
         </button>

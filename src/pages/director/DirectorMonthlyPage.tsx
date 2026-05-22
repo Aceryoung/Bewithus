@@ -94,20 +94,20 @@ export default function DirectorMonthlyPage() {
       <div className="flex-1 px-4 py-4 space-y-4">
         {/* 월 선택 */}
         <div className="flex items-center justify-between bg-white border border-gray-200 rounded-xl px-4 py-3">
-          <button onClick={prevMonth} className="text-blue-600 text-xl px-2">‹</button>
+          <button onClick={prevMonth} className="text-[#00b4d8] text-xl px-2">‹</button>
           <span className="font-semibold text-gray-800">{year}년 {month}월</span>
-          <button onClick={nextMonth} className="text-blue-600 text-xl px-2">›</button>
+          <button onClick={nextMonth} className="text-[#00b4d8] text-xl px-2">›</button>
         </div>
 
         {/* 호점 필터 */}
         <div className="flex gap-2 overflow-x-auto pb-1">
           <button onClick={() => { setSelectedBranch('all'); setSelectedTeacher('all') }}
-            className={`px-4 py-2 rounded-full text-sm font-medium shrink-0 transition-colors ${selectedBranch === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
+            className={`px-4 py-2 rounded-full text-sm font-medium shrink-0 transition-colors ${selectedBranch === 'all' ? 'bg-[#00b4d8] text-white' : 'bg-gray-100 text-gray-600'}`}>
             전체
           </button>
           {branches.map((b) => (
             <button key={b.id} onClick={() => { setSelectedBranch(b.id); setSelectedTeacher('all') }}
-              className={`px-4 py-2 rounded-full text-sm font-medium shrink-0 transition-colors ${selectedBranch === b.id ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
+              className={`px-4 py-2 rounded-full text-sm font-medium shrink-0 transition-colors ${selectedBranch === b.id ? 'bg-[#00b4d8] text-white' : 'bg-gray-100 text-gray-600'}`}>
               {b.name}
             </button>
           ))}
@@ -144,13 +144,13 @@ export default function DirectorMonthlyPage() {
                   </div>
                   <div className="flex gap-4 mt-2 text-sm">
                     <span className="text-gray-500">총 {s.totalCount}건</span>
-                    <span className="text-blue-600">{formatKRW(s.selfPayment)}</span>
+                    <span className="text-[#00b4d8]">{formatKRW(s.selfPayment)}</span>
                   </div>
                   <div className="flex gap-3 mt-1 text-xs text-gray-400">
                     <span>출석 {s.presentCount}</span>
                     <span>결석 {s.absentCount}</span>
                     <span>보강 {s.makeupCount}</span>
-                    {s.supportAmount > 0 && <span className="text-blue-400">지원금 {formatKRW(s.supportAmount)}</span>}
+                    {s.supportAmount > 0 && <span className="text-[#00b4d8]">지원금 {formatKRW(s.supportAmount)}</span>}
                   </div>
                 </button>
 
@@ -171,7 +171,7 @@ export default function DirectorMonthlyPage() {
                           </div>
                           <div className="text-right">
                             <p className="text-sm font-medium">{r.attendance === 'absent' ? '—' : formatKRW(r.self_payment)}</p>
-                            {r.support_amount > 0 && <p className="text-xs text-blue-400">{formatKRW(r.support_amount)}</p>}
+                            {r.support_amount > 0 && <p className="text-xs text-[#00b4d8]">{formatKRW(r.support_amount)}</p>}
                           </div>
                         </div>
                       ))
