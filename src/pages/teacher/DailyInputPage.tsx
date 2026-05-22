@@ -117,7 +117,7 @@ export default function DailyInputPage() {
         for (const r of data) {
           if (!used[r.patient_name]) {
             used[r.patient_name] = {
-              education: 0, sports_voucher: 0, after_school: 0, card: 0, cash: 0,
+              education: 0, sports_voucher: 0, after_school: 0, card: 0, cash: 0, bank_transfer: 0,
             }
           }
           used[r.patient_name][r.payment_method as PaymentMethod] += r.support_amount

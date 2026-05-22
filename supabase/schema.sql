@@ -46,7 +46,7 @@ CREATE TABLE records (
   session_count  INTEGER NOT NULL CHECK (session_count >= 1 AND session_count <= 8),
   unit_price     INTEGER NOT NULL DEFAULT 0,
   total_amount   INTEGER NOT NULL DEFAULT 0,
-  payment_method TEXT NOT NULL CHECK (payment_method IN ('education','sports_voucher','after_school','card','cash')),
+  payment_method TEXT NOT NULL CHECK (payment_method IN ('education','sports_voucher','after_school','card','cash','bank_transfer')),
   support_amount INTEGER NOT NULL DEFAULT 0,
   self_payment   INTEGER NOT NULL DEFAULT 0,
   receipt_url    TEXT,

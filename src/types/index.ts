@@ -1,7 +1,7 @@
 export type Role = 'director' | 'teacher'
 export type BranchId = 'branch1' | 'branch2'
 export type Attendance = 'present' | 'absent' | 'makeup'
-export type PaymentMethod = 'education' | 'sports_voucher' | 'after_school' | 'card' | 'cash'
+export type PaymentMethod = 'education' | 'sports_voucher' | 'after_school' | 'card' | 'cash' | 'bank_transfer'
 export type MakeupStatus = 'pending' | 'completed'
 
 export interface Branch {

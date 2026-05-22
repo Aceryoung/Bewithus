@@ -41,6 +41,7 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
     after_school: 0,
     card: 0,
     cash: 0,
+    bank_transfer: 0,
   })
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -90,6 +91,7 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
           after_school: 0,
           card: 0,
           cash: 0,
+          bank_transfer: 0,
         }
         for (const r of data) {
           used[r.payment_method as PaymentMethod] += r.support_amount

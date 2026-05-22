@@ -17,6 +17,7 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   after_school: '방과후',
   card: '카드',
   cash: '현금',
+  bank_transfer: '계좌이체',
 }
 
 // 월별 지원금 한도 (원)
