@@ -49,6 +49,7 @@ CREATE TABLE records (
   payment_method TEXT NOT NULL CHECK (payment_method IN ('education','sports_voucher','after_school','card','cash')),
   support_amount INTEGER NOT NULL DEFAULT 0,
   self_payment   INTEGER NOT NULL DEFAULT 0,
+  receipt_url    TEXT,
   created_at     TIMESTAMPTZ DEFAULT NOW(),
   updated_at     TIMESTAMPTZ DEFAULT NOW()
 );
@@ -196,10 +197,51 @@ INSERT INTO fee_tables (branch_id, fee_type, unit_price) VALUES
   ('22222222-0000-0000-0000-000000000002', '소아매트',   60000);
 
 -- 대표 계정 (auth_id = NULL → 첫 로그인 시 자동 연결)
--- PIN "0000" SHA-256: cf80cd8aed482d5d1527d7dc72fceff84e6326592848447d2dc0b0e87dfc9a90
+-- PIN "0000" SHA-256: 9af15b336e6a9619928537df30b2e6a2376569fcf9d7e773eccede65606529a0
 INSERT INTO users (id, name, role, branch_id, pin_hash) VALUES
   ('aaaaaaaa-0000-0000-0000-000000000001', '대표', 'director', NULL,
-   'cf80cd8aed482d5d1527d7dc72fceff84e6326592848447d2dc0b0e87dfc9a90');
+   '9af15b336e6a9619928537df30b2e6a2376569fcf9d7e773eccede65606529a0');
+
+-- ── 영수증 이미지 Storage 설정 ──────────────────────────────────
+-- Supabase 대시보드 > Storage > New bucket
+--   Name: receipts
+--   Public: ON (경로가 UUID 기반이므로 보안상 충분)
+--
+-- Storage Policies (SQL Editor에서 실행):
+
+-- 선생님은 자신의 폴더에만 업로드 가능
+CREATE POLICY "receipts_insert" ON storage.objects
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    bucket_id = 'receipts'
+    AND (storage.foldername(name))[1] = get_app_user_id()::text
+  );
+
+-- 선생님은 본인 것, 대표는 전체 조회
+CREATE POLICY "receipts_select" ON storage.objects
+  FOR SELECT TO authenticated
+  USING (
+    bucket_id = 'receipts'
+    AND (
+      (storage.foldername(name))[1] = get_app_user_id()::text
+      OR is_director()
+    )
+  );
+
+-- 선생님은 본인 것, 대표는 전체 삭제
+CREATE POLICY "receipts_delete" ON storage.objects
+  FOR DELETE TO authenticated
+  USING (
+    bucket_id = 'receipts'
+    AND (
+      (storage.foldername(name))[1] = get_app_user_id()::text
+      OR is_director()
+    )
+  );
+
+-- ── 기존 DB에 영수증 컬럼 추가 마이그레이션 ─────────────────────
+-- 이미 운영 중인 DB에 적용 시 아래 실행:
+-- ALTER TABLE records ADD COLUMN IF NOT EXISTS receipt_url TEXT;
 
 -- ── 초기 설정 안내 (SQL 실행 후 Supabase 대시보드에서) ──────────
 -- 1. Authentication > Settings > "Enable email confirmations" 를 OFF

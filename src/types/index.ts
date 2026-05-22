@@ -40,6 +40,7 @@ export interface Record {
   payment_method: PaymentMethod
   support_amount: number
   self_payment: number
+  receipt_url: string | null
   created_at: string
   updated_at: string
   teacher?: User

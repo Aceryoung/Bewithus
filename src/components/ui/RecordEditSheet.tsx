@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { calcSupport } from '@/lib/utils'
 import { ATTENDANCE_LABELS } from '@/constants'
+import { uploadReceipt, deleteReceipt } from '@/lib/storage'
 import RecordFormFields from '@/components/ui/RecordFormFields'
 import type { Record as SessionRecord, Attendance, PaymentMethod, FeeTable } from '@/types'
 
@@ -43,6 +44,14 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
   })
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  // 영수증: 'none'=변경없음 | 'upload'=새 파일 | 'delete'=삭제
+  const [receiptAction, setReceiptAction] = useState<'none' | 'upload' | 'delete'>('none')
+  const [receiptFile, setReceiptFile] = useState<File | null>(null)
+  const receiptPreview = receiptAction === 'upload' && receiptFile
+    ? URL.createObjectURL(receiptFile)
+    : receiptAction === 'delete'
+    ? null
+    : record.receipt_url ?? null
 
   // 호점별 요금표 로드
   useEffect(() => {
@@ -107,23 +116,29 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
 
   const handleSave = async () => {
     setSaving(true)
-    const { error } = await supabase
-      .from('records')
-      .update({
-        attendance: state.attendance,
-        // 결석 시 fee_type은 기존 값 유지 (데이터 정합성)
-        fee_type:
-          state.attendance === 'absent'
-            ? record.fee_type
-            : state.fee_type || '직접입력',
-        unit_price: state.attendance === 'absent' ? 0 : state.unit_price,
-        session_count: state.session_count,
-        total_amount: total,
-        payment_method: state.payment_method,
-        support_amount: support,
-        self_payment: selfPayment,
-      })
-      .eq('id', record.id)
+
+    // 영수증 처리
+    let newReceiptUrl: string | null | undefined = undefined // undefined = 변경 없음
+    if (receiptAction === 'upload' && receiptFile) {
+      newReceiptUrl = await uploadReceipt(receiptFile, record.teacher_id, record.id)
+    } else if (receiptAction === 'delete') {
+      await deleteReceipt(record.teacher_id, record.id)
+      newReceiptUrl = null
+    }
+
+    const updatePayload: Record<string, unknown> = {
+      attendance: state.attendance,
+      fee_type: state.attendance === 'absent' ? record.fee_type : state.fee_type || '직접입력',
+      unit_price: state.attendance === 'absent' ? 0 : state.unit_price,
+      session_count: state.session_count,
+      total_amount: total,
+      payment_method: state.payment_method,
+      support_amount: support,
+      self_payment: selfPayment,
+    }
+    if (newReceiptUrl !== undefined) updatePayload.receipt_url = newReceiptUrl
+
+    const { error } = await supabase.from('records').update(updatePayload).eq('id', record.id)
 
     setSaving(false)
     if (error) {
@@ -206,6 +221,51 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
               onChange={update}
             />
           )}
+
+          {/* 영수증 */}
+          <div>
+            <p className="text-xs text-gray-400 mb-1.5">영수증 사진</p>
+            {receiptPreview ? (
+              <div className="relative">
+                <img
+                  src={receiptPreview}
+                  alt="영수증"
+                  className="w-full rounded-xl object-cover max-h-52 cursor-pointer"
+                  onClick={() => window.open(receiptPreview, '_blank')}
+                />
+                <div className="absolute top-2 right-2 flex gap-1.5">
+                  <label className="w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center text-sm cursor-pointer">
+                    📷
+                    <input type="file" accept="image/*" capture="environment" className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) { setReceiptFile(file); setReceiptAction('upload') }
+                        e.target.value = ''
+                      }}
+                    />
+                  </label>
+                  <button
+                    onClick={() => { setReceiptAction('delete'); setReceiptFile(null) }}
+                    className="w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center text-sm"
+                  >
+                    🗑
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <label className="flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed border-gray-200 rounded-xl text-gray-400 text-sm cursor-pointer active:bg-gray-50 transition-colors">
+                <span>📷</span>
+                <span>영수증 사진 첨부</span>
+                <input type="file" accept="image/*" capture="environment" className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) { setReceiptFile(file); setReceiptAction('upload') }
+                    e.target.value = ''
+                  }}
+                />
+              </label>
+            )}
+          </div>
 
           {/* 액션 버튼 */}
           <div className="flex gap-2 pt-2">

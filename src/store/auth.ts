@@ -137,14 +137,14 @@ export const useAuthStore = create<AuthState>()(
   ),
 )
 
-/** 로그인 성공 후 공통 프로필 로드 */
+/** 로그인 성공 후 공통 프로필 로드 + auth_id 미연결 시 자동 연결 */
 async function finishLogin(
   userId: string,
   set: (partial: Partial<AuthState>) => void,
 ): Promise<{ error: string | null }> {
   const { data: profile, error } = await supabase
     .from('users')
-    .select('id, name, role, branch_id, is_active')
+    .select('id, name, role, branch_id, is_active, auth_id')
     .eq('id', userId)
     .single()
 
@@ -153,6 +153,17 @@ async function finishLogin(
     return { error: '사용할 수 없는 계정입니다.' }
   }
 
-  set({ user: profile as User })
+  // auth_id가 아직 연결되지 않은 경우 현재 세션으로 자동 연결
+  if (!profile.auth_id) {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session?.user.id) {
+      await supabase.from('users')
+        .update({ auth_id: session.user.id, pin_hash: null })
+        .eq('id', userId)
+    }
+  }
+
+  const { id, name, role, branch_id, is_active } = profile
+  set({ user: { id, name, role, branch_id, is_active, created_at: '' } as User })
   return { error: null }
 }

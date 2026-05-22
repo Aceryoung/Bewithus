@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/auth'
 import { todayStr, formatKRW, calcSupport } from '@/lib/utils'
 import { ATTENDANCE_LABELS } from '@/constants'
+import { uploadReceipt } from '@/lib/storage'
 import PageHeader from '@/components/ui/PageHeader'
 import RecordFormFields from '@/components/ui/RecordFormFields'
 import type { Attendance, PaymentMethod, FeeTable } from '@/types'
@@ -18,7 +19,8 @@ interface Row {
   support_amount: number
   self_payment: number
   total_amount: number
-  after_school_support?: number  // 방과후 지원금 직접입력 (undefined = 자동계산)
+  after_school_support?: number
+  receiptFile?: File
 }
 
 function newRow(): Row {
@@ -147,7 +149,7 @@ export default function DailyInputPage() {
     if (validRows.length === 0) return
 
     setSaving(true)
-    const { error } = await supabase.from('records').insert(
+    const { data: inserted, error } = await supabase.from('records').insert(
       validRows.map((r) => ({
         teacher_id: user.id,
         branch_id: user.branch_id,
@@ -162,16 +164,27 @@ export default function DailyInputPage() {
         support_amount: r.support_amount,
         self_payment: r.self_payment,
       })),
-    )
+    ).select('id')
     setSaving(false)
 
-    if (error) {
-      alert(`저장 실패: ${error.message}\n\n입력 내용은 그대로 유지됩니다. 다시 시도해주세요.`)
-    } else {
-      setSavedCount(validRows.length)
-      setRows([newRow()])
-      setTimeout(() => setSavedCount(0), 3000)
+    if (error || !inserted) {
+      alert(`저장 실패: ${error?.message ?? '알 수 없는 오류'}\n\n입력 내용은 그대로 유지됩니다. 다시 시도해주세요.`)
+      return
     }
+
+    // 영수증 이미지 업로드 (첨부된 행만)
+    for (let i = 0; i < inserted.length; i++) {
+      const file = validRows[i].receiptFile
+      if (!file) continue
+      const url = await uploadReceipt(file, user.id, inserted[i].id)
+      if (url) {
+        await supabase.from('records').update({ receipt_url: url }).eq('id', inserted[i].id)
+      }
+    }
+
+    setSavedCount(validRows.length)
+    setRows([newRow()])
+    setTimeout(() => setSavedCount(0), 3000)
   }
 
   const totalSelfPayment = rows.reduce((acc, r) => acc + r.self_payment, 0)
@@ -250,6 +263,7 @@ export default function DailyInputPage() {
 
             {/* 요금 종류 / 횟수 / 결제방식 / 금액 미리보기 (결석이 아닌 경우) */}
             {row.attendance !== 'absent' && (
+              <>
               <RecordFormFields
                 state={{
                   fee_type: row.fee_type,
@@ -264,6 +278,43 @@ export default function DailyInputPage() {
                 selfPayment={row.self_payment}
                 onChange={(updates) => updateRow(row.id, updates)}
               />
+
+              {/* 영수증 첨부 */}
+              <div>
+                <p className="text-xs text-gray-400 mb-1.5">영수증 사진 <span className="text-gray-300">(선택)</span></p>
+                {row.receiptFile ? (
+                  <div className="relative">
+                    <img
+                      src={URL.createObjectURL(row.receiptFile)}
+                      alt="영수증"
+                      className="w-full rounded-xl object-cover max-h-44"
+                    />
+                    <button
+                      onClick={() => updateRow(row.id, { receiptFile: undefined })}
+                      className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 text-white flex items-center justify-center text-sm leading-none"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed border-gray-200 rounded-xl text-gray-400 text-sm cursor-pointer active:bg-gray-50 transition-colors">
+                    <span>📷</span>
+                    <span>영수증 사진 첨부</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) updateRow(row.id, { receiptFile: file })
+                        e.target.value = ''
+                      }}
+                    />
+                  </label>
+                )}
+              </div>
+              </>
             )}
           </div>
         ))}

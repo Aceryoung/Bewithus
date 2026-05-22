@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { formatKRW } from '@/lib/utils'
 import { ATTENDANCE_LABELS, PAYMENT_METHOD_LABELS } from '@/constants'
+import { exportTeacherMonthly, exportAllTeachersMonthly } from '@/lib/excel'
 import PageHeader from '@/components/ui/PageHeader'
 import BottomNav from '@/components/ui/BottomNav'
 import type { Record, User, PaymentMethod } from '@/types'
@@ -92,11 +93,26 @@ export default function DirectorMonthlyPage() {
       <PageHeader title="월건수 확인" />
 
       <div className="flex-1 px-4 py-4 space-y-4">
-        {/* 월 선택 */}
-        <div className="flex items-center justify-between bg-white border border-gray-200 rounded-xl px-4 py-3">
-          <button onClick={prevMonth} className="text-[#00b4d8] text-xl px-2">‹</button>
-          <span className="font-semibold text-gray-800">{year}년 {month}월</span>
-          <button onClick={nextMonth} className="text-[#00b4d8] text-xl px-2">›</button>
+        {/* 월 선택 + 전체 다운로드 */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between bg-white border border-gray-100 rounded-xl px-3 py-3 shadow-sm flex-1">
+            <button onClick={prevMonth} className="text-[#00b4d8] text-xl px-2">‹</button>
+            <span className="font-bold text-gray-800">{year}년 {month}월</span>
+            <button onClick={nextMonth} className="text-[#00b4d8] text-xl px-2">›</button>
+          </div>
+          <button
+            onClick={() =>
+              exportAllTeachersMonthly(
+                summaries.map((s) => ({ teacherName: s.teacher.name, records: s.records as import('@/types').Record[], year, month })),
+                year, month,
+              )
+            }
+            disabled={summaries.length === 0 || loading}
+            className="flex items-center gap-1.5 bg-[#7db83a] text-white text-sm font-semibold px-3 py-3 rounded-xl shadow-sm active:bg-[#5f9428] disabled:opacity-40 transition-colors shrink-0"
+          >
+            <span>⬇</span>
+            <span>전체</span>
+          </button>
         </div>
 
         {/* 호점 필터 */}
@@ -134,25 +150,43 @@ export default function DirectorMonthlyPage() {
             {summaries.map((s) => (
               <div key={s.teacher.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                 {/* 선생님 요약 행 (클릭 시 펼침) */}
-                <button
-                  onClick={() => setExpandedTeacher(expandedTeacher === s.teacher.id ? null : s.teacher.id)}
-                  className="w-full p-4 text-left active:bg-gray-50 transition-colors"
-                >
-                  <div className="flex justify-between items-center">
-                    <span className="font-semibold text-gray-900">{s.teacher.name}</span>
-                    <span className="text-gray-400 text-sm">{expandedTeacher === s.teacher.id ? '▲' : '▼'}</span>
+                <div className="p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <button
+                      onClick={() => setExpandedTeacher(expandedTeacher === s.teacher.id ? null : s.teacher.id)}
+                      className="flex-1 text-left"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-gray-900">{s.teacher.name}</span>
+                        <span className="text-gray-400 text-xs">{expandedTeacher === s.teacher.id ? '▲' : '▼'}</span>
+                      </div>
+                      <div className="flex gap-4 mt-1.5 text-sm">
+                        <span className="text-gray-500">총 {s.totalCount}건</span>
+                        <span className="text-[#00b4d8] font-semibold">{formatKRW(s.selfPayment)}</span>
+                      </div>
+                      <div className="flex gap-3 mt-1 text-xs text-gray-400">
+                        <span>출석 {s.presentCount}</span>
+                        <span>결석 {s.absentCount}</span>
+                        <span>보강 {s.makeupCount}</span>
+                        {s.supportAmount > 0 && <span className="text-[#00b4d8]">지원금 {formatKRW(s.supportAmount)}</span>}
+                      </div>
+                    </button>
+                    <button
+                      onClick={() =>
+                        exportTeacherMonthly({
+                          teacherName: s.teacher.name,
+                          records: s.records as import('@/types').Record[],
+                          year,
+                          month,
+                        })
+                      }
+                      className="flex items-center gap-1 text-xs text-[#00b4d8] bg-[#e8f7fb] px-2.5 py-1.5 rounded-lg active:bg-[#d0eff7] transition-colors shrink-0 mt-0.5"
+                    >
+                      <span>⬇</span>
+                      <span>엑셀</span>
+                    </button>
                   </div>
-                  <div className="flex gap-4 mt-2 text-sm">
-                    <span className="text-gray-500">총 {s.totalCount}건</span>
-                    <span className="text-[#00b4d8]">{formatKRW(s.selfPayment)}</span>
-                  </div>
-                  <div className="flex gap-3 mt-1 text-xs text-gray-400">
-                    <span>출석 {s.presentCount}</span>
-                    <span>결석 {s.absentCount}</span>
-                    <span>보강 {s.makeupCount}</span>
-                    {s.supportAmount > 0 && <span className="text-[#00b4d8]">지원금 {formatKRW(s.supportAmount)}</span>}
-                  </div>
-                </button>
+                </div>
 
                 {/* 상세 펼침 */}
                 {expandedTeacher === s.teacher.id && (
