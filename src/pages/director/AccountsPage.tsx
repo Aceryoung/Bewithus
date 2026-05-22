@@ -102,12 +102,12 @@ export default function AccountsPage() {
     loadData()
   }
 
-  // ── 계정 비활성화 ────────────────────────────────────────────
-  const handleDeactivate = async (id: string) => {
-    if (!confirm('이 선생님 계정을 비활성화하시겠습니까?')) return
-    const { error } = await supabase.from('users').update({ is_active: false }).eq('id', id)
+  // ── 계정 삭제 ────────────────────────────────────────────────
+  const handleDelete = async (id: string, name: string) => {
+    if (!confirm(`"${name}" 선생님 계정을 삭제하시겠습니까?\n\n⚠️ 해당 선생님의 모든 건수 기록도 함께 삭제됩니다.\n이 작업은 되돌릴 수 없습니다.`)) return
+    const { error } = await supabase.from('users').delete().eq('id', id)
     if (error) {
-      alert(`비활성화 실패: ${error.message}`)
+      alert(`삭제 실패: ${error.message}`)
       return
     }
     loadData()
@@ -287,12 +287,7 @@ export default function AccountsPage() {
                 <div key={t.id} className="py-3 border-b border-gray-50 last:border-0">
                   <div className="flex justify-between items-start">
                     <div>
-                      <p className="font-medium text-gray-900">
-                        {t.name}
-                        {!t.is_active && (
-                          <span className="ml-2 text-xs text-red-400 bg-red-50 px-1.5 py-0.5 rounded">비활성</span>
-                        )}
-                      </p>
+                      <p className="font-medium text-gray-900">{t.name}</p>
                       <p className="text-xs text-gray-400 mt-0.5">
                         이달 {t.monthCount}건 · 자부담 {formatKRW(t.monthSelf)}
                       </p>
@@ -304,14 +299,12 @@ export default function AccountsPage() {
                       >
                         PIN 변경
                       </button>
-                      {t.is_active && (
-                        <button
-                          onClick={() => handleDeactivate(t.id)}
-                          className="text-xs text-red-400 px-2 py-1 rounded-lg"
-                        >
-                          비활성화
-                        </button>
-                      )}
+                      <button
+                        onClick={() => handleDelete(t.id, t.name)}
+                        className="text-xs text-red-400 px-2 py-1 bg-red-50 rounded-lg active:bg-red-100 transition-colors"
+                      >
+                        삭제
+                      </button>
                     </div>
                   </div>
                 </div>
