@@ -240,6 +240,14 @@ export default function LoginPage() {
                   className="h-14 rounded-2xl bg-gray-50 border border-gray-100 text-gray-400 text-lg active:bg-gray-100 active:scale-95 disabled:opacity-30 transition-all duration-100"
                 >⌫</button>
               </div>
+
+              {/* 뒤로가기 */}
+              <button
+                onClick={() => { setStep('branch'); setSelectedBranch(null); setSelectedUser(null); setPin(''); setError('') }}
+                className="w-full mt-4 py-3 rounded-2xl border border-gray-200 text-gray-400 text-sm font-medium active:bg-gray-50 transition-colors"
+              >
+                ← 호점 선택으로 돌아가기
+              </button>
             </div>
           </>
         )}
