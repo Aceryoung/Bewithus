@@ -23,6 +23,7 @@ interface Row {
   after_school_support?: number
   payment_note?: string
   receiptFile?: File
+  skip_amount: boolean
 }
 
 function newRow(): Row {
@@ -37,21 +38,14 @@ function newRow(): Row {
     support_amount: 0,
     self_payment: 0,
     total_amount: 0,
+    skip_amount: false,
   }
 }
 
-/**
- * 폼 내 모든 행을 위에서 아래 순서로 순차 재계산.
- * 같은 환자·결제방식의 앞 행이 먼저 지원금 한도를 소진하고,
- * 뒤 행은 남은 한도 안에서만 지원금을 받음.
- *
- * monthlyUsed: DB에서 가져온 이달 기저 사용량 (이미 저장된 기록)
- */
 function recalculateRows(
   rows: Row[],
   monthlyUsed: Record<string, Record<PaymentMethod, number>>,
 ): Row[] {
-  // 폼 내 누적 지원금 (환자명 → 결제방식 → 누적액)
   const inFormAccum: Record<string, Partial<Record<PaymentMethod, number>>> = {}
 
   return rows.map((row) => {
@@ -59,19 +53,17 @@ function recalculateRows(
 
     if (name && !inFormAccum[name]) inFormAccum[name] = {}
 
-    const dbUsed    = name ? (monthlyUsed[name]?.[row.payment_method] ?? 0) : 0
+    if (row.attendance === 'absent' || row.skip_amount) {
+      return { ...row, total_amount: 0, support_amount: 0, self_payment: 0 }
+    }
+
+    const dbUsed     = name ? (monthlyUsed[name]?.[row.payment_method] ?? 0) : 0
     const inFormUsed = name ? (inFormAccum[name][row.payment_method] ?? 0) : 0
-    const totalUsed = dbUsed + inFormUsed
+    const totalUsed  = dbUsed + inFormUsed
 
-    const total =
-      row.attendance === 'absent' ? 0 : row.unit_price * row.session_count
+    const total = row.unit_price * row.session_count
+    const { support, selfPayment } = calcSupport(total, row.payment_method, totalUsed, row.after_school_support)
 
-    const { support, selfPayment } =
-      row.attendance === 'absent'
-        ? { support: 0, selfPayment: 0 }
-        : calcSupport(total, row.payment_method, totalUsed, row.after_school_support)
-
-    // 이 행의 지원금을 다음 행 계산에 반영
     if (name) {
       inFormAccum[name][row.payment_method] = (inFormAccum[name][row.payment_method] ?? 0) + support
     }
@@ -97,12 +89,11 @@ export default function DailyInputPage() {
       .select('*')
       .eq('branch_id', user.branch_id)
       .eq('is_active', true)
-      .then(({ data }) => {
-        if (data) setFeeTables(data as FeeTable[])
+      .then(({ data }: { data: FeeTable[] | null }) => {
+        if (data) setFeeTables(data)
       })
   }, [user])
 
-  // 이달 지원금 사용량 불러오기 (환자별)
   useEffect(() => {
     if (!user) return
     const now = new Date(date)
@@ -113,7 +104,7 @@ export default function DailyInputPage() {
       .eq('teacher_id', user.id)
       .gte('date', monthStart)
       .lte('date', date)
-      .then(({ data }) => {
+      .then(({ data }: { data: { patient_name: string; payment_method: string; support_amount: number }[] | null }) => {
         if (!data) return
         const used: Record<string, Record<PaymentMethod, number>> = {}
         for (const r of data) {
@@ -128,14 +119,12 @@ export default function DailyInputPage() {
       })
   }, [date, user])
 
-  // monthlyUsed가 갱신되면 폼 내 모든 행 재계산 (날짜 변경 시 포함)
   useEffect(() => {
-    setRows((prev) => recalculateRows(prev, monthlyUsed))
+    setRows((prev: Row[]) => recalculateRows(prev, monthlyUsed))
   }, [monthlyUsed])
 
-  // 특정 행 업데이트 후 전체 행 순차 재계산
   const updateRow = (id: string, updates: Partial<Row>) => {
-    setRows((prev) => {
+    setRows((prev: Row[]) => {
       const patched = prev.map((row) => (row.id === id ? { ...row, ...updates } : row))
       return recalculateRows(patched, monthlyUsed)
     })
@@ -158,9 +147,9 @@ export default function DailyInputPage() {
         date,
         patient_name: r.patient_name.trim(),
         attendance: r.attendance,
-        fee_type: r.fee_type || '직접입력',
+        fee_type: r.skip_amount ? '금액없음' : (r.fee_type || '직접입력'),
         session_count: r.session_count,
-        unit_price: r.unit_price,
+        unit_price: r.skip_amount ? 0 : r.unit_price,
         total_amount: r.total_amount,
         payment_method: r.payment_method,
         payment_note: r.payment_note || null,
@@ -224,7 +213,7 @@ export default function DailyInputPage() {
               {rows.length > 1 && (
                 <button
                   onClick={() =>
-                    setRows((prev) =>
+                    setRows((prev: Row[]) =>
                       recalculateRows(prev.filter((r) => r.id !== row.id), monthlyUsed),
                     )
                   }
@@ -264,60 +253,73 @@ export default function DailyInputPage() {
               ))}
             </div>
 
-            {/* 요금 종류 / 횟수 / 결제방식 / 금액 미리보기 (결석이 아닌 경우) */}
+            {/* 금액 없음 토글 (결석 제외) */}
             {row.attendance !== 'absent' && (
-              <>
-              <RecordFormFields
-                state={{
-                  fee_type: row.fee_type,
-                  unit_price: row.unit_price,
-                  session_count: row.session_count,
-                  payment_method: row.payment_method,
-                  after_school_support: row.after_school_support,
-                  payment_note: row.payment_note,
-                }}
-                feeTables={feeTables}
-                total={row.total_amount}
-                support={row.support_amount}
-                selfPayment={row.self_payment}
-                onChange={(updates) => updateRow(row.id, updates)}
-              />
+              <button
+                onClick={() => updateRow(row.id, { skip_amount: !row.skip_amount })}
+                className={`w-full py-2 rounded-lg text-sm font-medium border transition-colors
+                  ${row.skip_amount
+                    ? 'bg-gray-100 border-gray-300 text-gray-500'
+                    : 'bg-white border-gray-200 text-gray-400'}`}
+              >
+                {row.skip_amount ? '✓ 금액 없음 (건수만 기록)' : '금액 없음으로 저장'}
+              </button>
+            )}
 
-              {/* 영수증 첨부 */}
-              <div>
-                <p className="text-xs text-gray-400 mb-1.5">영수증 사진 <span className="text-gray-300">(선택)</span></p>
-                {row.receiptFile ? (
-                  <div className="relative">
-                    <img
-                      src={URL.createObjectURL(row.receiptFile)}
-                      alt="영수증"
-                      className="w-full rounded-xl object-cover max-h-44"
-                    />
-                    <button
-                      onClick={() => updateRow(row.id, { receiptFile: undefined })}
-                      className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 text-white flex items-center justify-center text-sm leading-none"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ) : (
-                  <label className="flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed border-gray-200 rounded-xl text-gray-400 text-sm cursor-pointer active:bg-gray-50 transition-colors">
-                    <span>📷</span>
-                    <span>영수증 사진 첨부</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0]
-                        if (file) updateRow(row.id, { receiptFile: file })
-                        e.target.value = ''
-                      }}
-                    />
-                  </label>
-                )}
-              </div>
+            {/* 요금 종류 / 횟수 / 결제방식 / 금액 미리보기 / 영수증 (결석·금액없음 제외) */}
+            {row.attendance !== 'absent' && !row.skip_amount && (
+              <>
+                <RecordFormFields
+                  state={{
+                    fee_type: row.fee_type,
+                    unit_price: row.unit_price,
+                    session_count: row.session_count,
+                    payment_method: row.payment_method,
+                    after_school_support: row.after_school_support,
+                    payment_note: row.payment_note,
+                  }}
+                  feeTables={feeTables}
+                  total={row.total_amount}
+                  support={row.support_amount}
+                  selfPayment={row.self_payment}
+                  onChange={(updates) => updateRow(row.id, updates)}
+                />
+
+                {/* 영수증 첨부 */}
+                <div>
+                  <p className="text-xs text-gray-400 mb-1.5">영수증 사진 <span className="text-gray-300">(선택)</span></p>
+                  {row.receiptFile ? (
+                    <div className="relative">
+                      <img
+                        src={URL.createObjectURL(row.receiptFile)}
+                        alt="영수증"
+                        className="w-full rounded-xl object-cover max-h-44"
+                      />
+                      <button
+                        onClick={() => updateRow(row.id, { receiptFile: undefined })}
+                        className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 text-white flex items-center justify-center text-sm leading-none"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed border-gray-200 rounded-xl text-gray-400 text-sm cursor-pointer active:bg-gray-50 transition-colors">
+                      <span>📷</span>
+                      <span>영수증 사진 첨부</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file) updateRow(row.id, { receiptFile: file })
+                          e.target.value = ''
+                        }}
+                      />
+                    </label>
+                  )}
+                </div>
               </>
             )}
           </div>
@@ -325,7 +327,7 @@ export default function DailyInputPage() {
 
         {/* 행 추가 버튼 */}
         <button
-          onClick={() => setRows((prev) => [...prev, newRow()])}
+          onClick={() => setRows((prev: Row[]) => [...prev, newRow()])}
           className="w-full py-3 border-2 border-dashed border-gray-200 rounded-2xl text-gray-400 text-sm font-medium active:bg-gray-50 transition-colors"
         >
           + 환자 추가
