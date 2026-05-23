@@ -56,6 +56,7 @@ export default function RecordFormFields({ state, feeTables, total, support, sel
             inputMode="numeric"
             placeholder="1회 단가 입력 (원)"
             value={state.unit_price || ''}
+            onKeyDown={(e) => { if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault() }}
             onChange={(e) => onChange({ unit_price: Number(e.target.value) })}
             className="w-full mt-2 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#00b4d8]"
           />
@@ -126,6 +127,7 @@ export default function RecordFormFields({ state, feeTables, total, support, sel
             inputMode="numeric"
             placeholder={`0 ~ ${(MONTHLY_SUPPORT_LIMITS.after_school! / 10000).toFixed(0)}만원`}
             value={state.after_school_support ?? ''}
+            onKeyDown={(e) => { if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault() }}
             onChange={(e) =>
               onChange({
                 after_school_support: e.target.value === '' ? undefined : Number(e.target.value),

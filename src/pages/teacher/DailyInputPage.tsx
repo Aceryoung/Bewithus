@@ -229,7 +229,7 @@ export default function DailyInputPage() {
               type="text"
               placeholder="환자명 입력"
               value={row.patient_name}
-              onChange={(e) => updateRow(row.id, { patient_name: e.target.value })}
+              onChange={(e) => updateRow(row.id, { patient_name: e.target.value.replace(/[0-9]/g, '') })}
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-400"
             />
 
