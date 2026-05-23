@@ -8,7 +8,7 @@ import { supabase } from './supabase'
 async function compressImage(file: File): Promise<Blob> {
   const MAX_WIDTH = 900
   const QUALITY   = 0.72
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const img = new Image()
     const url = URL.createObjectURL(file)
     img.onload = () => {
@@ -18,8 +18,9 @@ async function compressImage(file: File): Promise<Blob> {
       canvas.height = Math.round(img.height * scale)
       canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height)
       URL.revokeObjectURL(url)
-      canvas.toBlob((b) => resolve(b!), 'image/jpeg', QUALITY)
+      canvas.toBlob((b) => b ? resolve(b) : reject(new Error('canvas.toBlob failed')), 'image/jpeg', QUALITY)
     }
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Image load failed')) }
     img.src = url
   })
 }
@@ -34,7 +35,12 @@ export async function uploadReceipt(
   teacherId: string,
   recordId: string,
 ): Promise<string | null> {
-  const blob = await compressImage(file)
+  let blob: Blob
+  try {
+    blob = await compressImage(file)
+  } catch {
+    return null
+  }
   const path = `${teacherId}/${recordId}.jpg`
 
   const { error } = await supabase.storage
