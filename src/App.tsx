@@ -8,8 +8,7 @@ import DailyInputPage from '@/pages/teacher/DailyInputPage'
 import MonthlyViewPage from '@/pages/teacher/MonthlyViewPage'
 import PaymentPage from '@/pages/teacher/PaymentPage'
 import DirectorDashboard from '@/pages/director/DirectorDashboard'
-import DirectorDailyPage from '@/pages/director/DirectorDailyPage'
-import DirectorMonthlyPage from '@/pages/director/DirectorMonthlyPage'
+import DirectorRecordsPage from '@/pages/director/DirectorRecordsPage'
 import AccountsPage from '@/pages/director/AccountsPage'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -68,11 +67,13 @@ export default function App() {
         <Route path="/teacher/payment"  element={<RequireAuth><PaymentPage /></RequireAuth>} />
 
         {/* 대표 라우트 */}
-        <Route path="/director"           element={<RequireDirector><DirectorDashboard /></RequireDirector>} />
-        <Route path="/director/payment"   element={<RequireDirector><PaymentPage /></RequireDirector>} />
-        <Route path="/director/daily"     element={<RequireDirector><DirectorDailyPage /></RequireDirector>} />
-        <Route path="/director/monthly"   element={<RequireDirector><DirectorMonthlyPage /></RequireDirector>} />
-        <Route path="/director/accounts"  element={<RequireDirector><AccountsPage /></RequireDirector>} />
+        <Route path="/director"            element={<RequireDirector><DirectorDashboard /></RequireDirector>} />
+        <Route path="/director/payment"    element={<RequireDirector><PaymentPage /></RequireDirector>} />
+        <Route path="/director/records"    element={<RequireDirector><DirectorRecordsPage /></RequireDirector>} />
+        <Route path="/director/accounts"   element={<RequireDirector><AccountsPage /></RequireDirector>} />
+        {/* 구 라우트 호환 */}
+        <Route path="/director/daily"      element={<Navigate to="/director/records" replace />} />
+        <Route path="/director/monthly"    element={<Navigate to="/director/records" replace />} />
 
         <Route
           path="*"

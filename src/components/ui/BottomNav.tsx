@@ -16,8 +16,7 @@ const TEACHER_NAVS: NavItem[] = [
 const DIRECTOR_NAVS: NavItem[] = [
   { to: '/director', label: '대시보드', icon: '📊' },
   { to: '/director/payment', label: '결제/건수', icon: '💳' },
-  { to: '/director/daily', label: '일건수', icon: '📋' },
-  { to: '/director/monthly', label: '월건수', icon: '📅' },
+  { to: '/director/records', label: '건수현황', icon: '📋' },
   { to: '/director/accounts', label: '직원관리', icon: '👤' },
 ]
 
