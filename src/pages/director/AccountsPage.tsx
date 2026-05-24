@@ -31,7 +31,7 @@ export default function AccountsPage() {
 
     const [branchRes, userRes, recordRes, feeRes] = await Promise.all([
       supabase.from('branches').select('id, name'),
-      supabase.from('users').select('*').in('role', ['teacher', 'admin']).order('name'),
+      supabase.from('users').select('*').in('role', ['teacher', 'admin', 'director']).order('name'),
       supabase.from('records').select('teacher_id, self_payment')
         .gte('date', monthStart).lte('date', todayStr()),
       supabase.from('fee_tables').select('*').eq('is_active', true).order('fee_type'),
@@ -230,6 +230,9 @@ export default function AccountsPage() {
                       <div>
                         <div className="flex items-center gap-2">
                           <p className="font-medium text-gray-900">{t.name}</p>
+                          {t.role === 'director' && (
+                            <span className="text-xs bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded font-medium">대표</span>
+                          )}
                           {t.role === 'admin' && (
                             <span className="text-xs bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded font-medium">관리자</span>
                           )}
@@ -245,12 +248,14 @@ export default function AccountsPage() {
                         >
                           PIN 초기화
                         </button>
-                        <button
-                          onClick={() => handleDelete(t.id, t.name)}
-                          className="text-xs text-red-400 px-2 py-1 bg-red-50 rounded-lg active:bg-red-100 transition-colors"
-                        >
-                          삭제
-                        </button>
+                        {t.role !== 'director' && (
+                          <button
+                            onClick={() => handleDelete(t.id, t.name)}
+                            className="text-xs text-red-400 px-2 py-1 bg-red-50 rounded-lg active:bg-red-100 transition-colors"
+                          >
+                            삭제
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
