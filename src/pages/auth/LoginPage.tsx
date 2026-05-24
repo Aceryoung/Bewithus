@@ -96,7 +96,7 @@ export default function LoginPage() {
         setError(`PIN이 올바르지 않습니다. (${newAttempts}/${PIN_MAX_ATTEMPTS})`)
       }
     } else {
-      navigate(selectedUser.role === 'director' ? '/director' : '/teacher')
+      navigate(selectedUser.role === 'director' || selectedUser.role === 'admin' ? '/director' : '/teacher')
     }
   }, [pin, selectedUser, lockedUntil, attempts, login, navigate, loginLoading])
 
