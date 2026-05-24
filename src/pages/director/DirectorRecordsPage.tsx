@@ -47,7 +47,7 @@ export default function DirectorRecordsPage() {
   useEffect(() => {
     Promise.all([
       supabase.from('branches').select('id, name'),
-      supabase.from('users').select('*').eq('role', 'teacher').eq('is_active', true),
+      supabase.from('users').select('*').in('role', ['teacher', 'director', 'admin']).eq('is_active', true),
     ]).then(([b, u]) => {
       if (b.data) setBranches(b.data)
       if (u.data) setTeachers(u.data as User[])
