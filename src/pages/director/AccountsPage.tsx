@@ -15,7 +15,7 @@ export default function AccountsPage() {
   const [teachers, setTeachers] = useState<TeacherWithStats[]>([])
   const [feeTables, setFeeTables] = useState<FeeTable[]>([])
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ name: '', branch_id: '', pin: '', role: 'teacher' })
+  const [form, setForm] = useState({ name: '', branch_id: '', pin: '' })
   const [saving, setSaving] = useState(false)
 
   /* 요금 관리 상태 */
@@ -79,7 +79,7 @@ export default function AccountsPage() {
 
   // ── 선생님 추가 ──────────────────────────────────────────────
   const handleAddTeacher = async () => {
-    if (!form.name.trim() || !form.branch_id || form.pin.length !== 4 || !form.role) return
+    if (!form.name.trim() || !form.branch_id || form.pin.length !== 4) return
     setSaving(true)
 
     // 1) 안정적 users.id 미리 생성
@@ -106,7 +106,7 @@ export default function AccountsPage() {
       id: userId,
       auth_id: signUpData.user.id,
       name: form.name.trim(),
-      role: form.role,
+      role: 'teacher',
       branch_id: form.branch_id,
       is_active: true,
     })
@@ -118,7 +118,7 @@ export default function AccountsPage() {
     }
 
     setShowForm(false)
-    setForm({ name: '', branch_id: '', pin: '', role: 'teacher' })
+    setForm({ name: '', branch_id: '', pin: '' })
     loadData()
   }
 
@@ -175,24 +175,6 @@ export default function AccountsPage() {
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#00b4d8]"
             />
             <div>
-              <p className="text-xs text-gray-400 mb-1.5">역할</p>
-              <div className="flex gap-2">
-                {[
-                  { value: 'teacher', label: '선생님' },
-                  { value: 'admin',   label: '관리자' },
-                ].map((r) => (
-                  <button
-                    key={r.value}
-                    onClick={() => setForm((f) => ({ ...f, role: r.value }))}
-                    className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors
-                      ${form.role === r.value ? 'bg-[#00b4d8] text-white' : 'bg-gray-100 text-gray-600'}`}
-                  >
-                    {r.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
               <p className="text-xs text-gray-400 mb-1.5">호점 배정</p>
               <div className="flex gap-2">
                 {branches.map((b) => (
@@ -218,7 +200,7 @@ export default function AccountsPage() {
             />
             <div className="flex gap-2">
               <button
-                onClick={() => { setShowForm(false); setForm({ name: '', branch_id: '', pin: '', role: 'teacher' }) }}
+                onClick={() => { setShowForm(false); setForm({ name: '', branch_id: '', pin: '' }) }}
                 className="flex-1 py-2 border border-gray-200 rounded-lg text-gray-500 text-sm"
               >취소</button>
               <button
