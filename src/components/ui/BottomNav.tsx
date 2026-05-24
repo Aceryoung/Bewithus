@@ -20,9 +20,18 @@ const DIRECTOR_NAVS: NavItem[] = [
   { to: '/director/accounts', label: '직원관리', icon: '👤' },
 ]
 
+const ADMIN_NAVS: NavItem[] = [
+  { to: '/director', label: '대시보드', icon: '📊' },
+  { to: '/director/records', label: '건수현황', icon: '📋' },
+  { to: '/director/accounts', label: '직원관리', icon: '👤' },
+]
+
 export default function BottomNav() {
   const user = useAuthStore((s) => s.user)
-  const navs = user?.role === 'director' ? DIRECTOR_NAVS : TEACHER_NAVS
+  const navs =
+    user?.role === 'director' ? DIRECTOR_NAVS :
+    user?.role === 'admin'    ? ADMIN_NAVS    :
+    TEACHER_NAVS
 
   return (
     <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-white border-t border-gray-200 flex z-50">

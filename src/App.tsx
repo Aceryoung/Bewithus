@@ -17,10 +17,17 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
+function RequireRole({ children, role }: { children: React.ReactNode; role: string }) {
+  const user = useAuthStore((s) => s.user)
+  if (!user) return <Navigate to="/login" replace />
+  if (user.role !== role) return <Navigate to="/director" replace />
+  return <>{children}</>
+}
+
 function RequireDirector({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user)
   if (!user) return <Navigate to="/login" replace />
-  if (user.role !== 'director') return <Navigate to="/teacher" replace />
+  if (user.role !== 'director' && user.role !== 'admin') return <Navigate to="/teacher" replace />
   return <>{children}</>
 }
 
@@ -53,7 +60,7 @@ export default function App() {
           path="/login"
           element={
             user ? (
-              <Navigate to={user.role === 'director' ? '/director' : '/teacher'} replace />
+              <Navigate to={user.role === 'director' || user.role === 'admin' ? '/director' : '/teacher'} replace />
             ) : (
               <LoginPage />
             )
@@ -66,11 +73,12 @@ export default function App() {
         <Route path="/teacher/monthly"  element={<RequireAuth><MonthlyViewPage /></RequireAuth>} />
         <Route path="/teacher/payment"  element={<RequireAuth><PaymentPage /></RequireAuth>} />
 
-        {/* 대표 라우트 */}
+        {/* 대표/관리자 공통 라우트 */}
         <Route path="/director"            element={<RequireDirector><DirectorDashboard /></RequireDirector>} />
-        <Route path="/director/payment"    element={<RequireDirector><PaymentPage /></RequireDirector>} />
         <Route path="/director/records"    element={<RequireDirector><DirectorRecordsPage /></RequireDirector>} />
         <Route path="/director/accounts"   element={<RequireDirector><AccountsPage /></RequireDirector>} />
+        {/* 대표 전용 (결제/건수 입력) */}
+        <Route path="/director/payment"    element={<RequireRole role="director"><PaymentPage /></RequireRole>} />
         {/* 구 라우트 호환 */}
         <Route path="/director/daily"      element={<Navigate to="/director/records" replace />} />
         <Route path="/director/monthly"    element={<Navigate to="/director/records" replace />} />
@@ -79,7 +87,7 @@ export default function App() {
           path="*"
           element={
             <Navigate
-              to={user ? (user.role === 'director' ? '/director' : '/teacher') : '/login'}
+              to={user ? (user.role === 'director' || user.role === 'admin' ? '/director' : '/teacher') : '/login'}
               replace
             />
           }
