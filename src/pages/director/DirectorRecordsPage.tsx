@@ -41,6 +41,8 @@ export default function DirectorRecordsPage() {
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [monthlyRecords, setMonthlyRecords] = useState<Record[]>([])
   const [expandedTeacher, setExpandedTeacher] = useState<string | null>(null)
+  /* 남은보강: teacher_id → { patient_name → pending count } */
+  const [pendingMakeups, setPendingMakeups] = useState<{ [tid: string]: { [name: string]: number } }>({})
 
   useEffect(() => {
     Promise.all([
@@ -73,6 +75,20 @@ export default function DirectorRecordsPage() {
     if (selectedBranch !== 'all') q = q.eq('branch_id', selectedBranch)
     if (selectedTeacher !== 'all') q = q.eq('teacher_id', selectedTeacher)
     const { data } = await q.order('date', { ascending: false })
+
+    /* 남은보강 집계 (pending makeup_sessions) */
+    const { data: makeupData } = await supabase
+      .from('makeup_sessions')
+      .select('teacher_id, patient_name')
+      .eq('status', 'pending')
+    if (makeupData) {
+      const map: { [tid: string]: { [name: string]: number } } = {}
+      for (const m of makeupData as { teacher_id: string; patient_name: string }[]) {
+        if (!map[m.teacher_id]) map[m.teacher_id] = {}
+        map[m.teacher_id][m.patient_name] = (map[m.teacher_id][m.patient_name] ?? 0) + 1
+      }
+      setPendingMakeups(map)
+    }
     if (data) setMonthlyRecords(data as Record[])
     setLoading(false)
   }
@@ -153,7 +169,11 @@ export default function DirectorRecordsPage() {
             </div>
             <button
               onClick={() => void exportAllTeachersMonthly(
-                summaries.map((s) => ({ teacherName: s.teacher.name, records: s.records as import('@/types').Record[], year, month })),
+                summaries.map((s) => ({
+                  teacherName: s.teacher.name,
+                  records: s.records as import('@/types').Record[],
+                  pendingMakeups: pendingMakeups[s.teacher.id] ?? {},
+                })),
                 year, month,
               )}
               disabled={summaries.length === 0 || loading}
@@ -299,7 +319,7 @@ export default function DirectorRecordsPage() {
                             </div>
                           </button>
                           <button
-                            onClick={() => void exportTeacherMonthly({ teacherName: s.teacher.name, records: s.records as import('@/types').Record[], year, month })}
+                            onClick={() => void exportTeacherMonthly({ teacherName: s.teacher.name, records: s.records as import('@/types').Record[], year, month, pendingMakeups: pendingMakeups[s.teacher.id] ?? {} })}
                             className="flex items-center gap-1 text-xs text-[#00b4d8] bg-[#e8f7fb] px-2.5 py-1.5 rounded-lg active:bg-[#d0eff7] transition-colors shrink-0 mt-0.5"
                           >
                             <span>⬇</span><span>엑셀</span>
