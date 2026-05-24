@@ -141,7 +141,7 @@ export default function TeacherDashboard() {
       <div className="flex-1 px-4 space-y-3 pb-24 pt-3">
         {/* 건수 입력 CTA */}
         <button
-          onClick={() => navigate('/teacher/input')}
+          onClick={() => navigate('/teacher/payment')}
           className="w-full py-5 bg-[#00b4d8] text-white rounded-2xl text-lg font-bold shadow-md shadow-[#00b4d8]/30 active:bg-[#0096b8] active:scale-[0.99] transition-all"
         >
           + 오늘 건수 입력하기

@@ -69,7 +69,6 @@ export default function App() {
 
         {/* 대표 라우트 */}
         <Route path="/director"           element={<RequireDirector><DirectorDashboard /></RequireDirector>} />
-        <Route path="/director/input"     element={<RequireDirector><DailyInputPage /></RequireDirector>} />
         <Route path="/director/payment"   element={<RequireDirector><PaymentPage /></RequireDirector>} />
         <Route path="/director/daily"     element={<RequireDirector><DirectorDailyPage /></RequireDirector>} />
         <Route path="/director/monthly"   element={<RequireDirector><DirectorMonthlyPage /></RequireDirector>} />
