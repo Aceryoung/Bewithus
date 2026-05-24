@@ -7,6 +7,7 @@ import { uploadReceipt } from '@/lib/storage'
 import PageHeader from '@/components/ui/PageHeader'
 import BottomNav from '@/components/ui/BottomNav'
 import RecordFormFields from '@/components/ui/RecordFormFields'
+import SavedToast from '@/components/ui/SavedToast'
 import type { Attendance, PaymentMethod, FeeTable } from '@/types'
 
 interface Row {
@@ -184,6 +185,7 @@ export default function DailyInputPage() {
 
   return (
     <div className="flex flex-col min-h-dvh bg-[#f7f8fc]">
+      <SavedToast count={savedCount} />
       <PageHeader title="일 건수 입력" showBack />
 
       <div className="flex-1 px-4 py-4 space-y-4 pb-52">
@@ -197,13 +199,6 @@ export default function DailyInputPage() {
             className="flex-1 text-sm font-medium text-gray-900 outline-none bg-transparent"
           />
         </div>
-
-        {/* 저장 완료 메시지 */}
-        {savedCount > 0 && (
-          <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-green-700 text-sm text-center font-medium">
-            {savedCount}건 저장 완료!
-          </div>
-        )}
 
         {/* 환자 행 목록 */}
         {rows.map((row, idx) => (

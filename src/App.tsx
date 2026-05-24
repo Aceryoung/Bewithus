@@ -6,7 +6,7 @@ import LoginPage from '@/pages/auth/LoginPage'
 import TeacherDashboard from '@/pages/teacher/TeacherDashboard'
 import DailyInputPage from '@/pages/teacher/DailyInputPage'
 import MonthlyViewPage from '@/pages/teacher/MonthlyViewPage'
-import MakeupPage from '@/pages/teacher/MakeupPage'
+import PaymentPage from '@/pages/teacher/PaymentPage'
 import DirectorDashboard from '@/pages/director/DirectorDashboard'
 import DirectorDailyPage from '@/pages/director/DirectorDailyPage'
 import DirectorMonthlyPage from '@/pages/director/DirectorMonthlyPage'
@@ -62,16 +62,18 @@ export default function App() {
         />
 
         {/* 선생님 라우트 */}
-        <Route path="/teacher"         element={<RequireAuth><TeacherDashboard /></RequireAuth>} />
-        <Route path="/teacher/input"   element={<RequireAuth><DailyInputPage /></RequireAuth>} />
-        <Route path="/teacher/monthly" element={<RequireAuth><MonthlyViewPage /></RequireAuth>} />
-        <Route path="/teacher/makeup"  element={<RequireAuth><MakeupPage /></RequireAuth>} />
+        <Route path="/teacher"          element={<RequireAuth><TeacherDashboard /></RequireAuth>} />
+        <Route path="/teacher/input"    element={<RequireAuth><DailyInputPage /></RequireAuth>} />
+        <Route path="/teacher/monthly"  element={<RequireAuth><MonthlyViewPage /></RequireAuth>} />
+        <Route path="/teacher/payment"  element={<RequireAuth><PaymentPage /></RequireAuth>} />
 
         {/* 대표 라우트 */}
-        <Route path="/director"          element={<RequireDirector><DirectorDashboard /></RequireDirector>} />
-        <Route path="/director/daily"    element={<RequireDirector><DirectorDailyPage /></RequireDirector>} />
-        <Route path="/director/monthly"  element={<RequireDirector><DirectorMonthlyPage /></RequireDirector>} />
-        <Route path="/director/accounts" element={<RequireDirector><AccountsPage /></RequireDirector>} />
+        <Route path="/director"           element={<RequireDirector><DirectorDashboard /></RequireDirector>} />
+        <Route path="/director/input"     element={<RequireDirector><DailyInputPage /></RequireDirector>} />
+        <Route path="/director/payment"   element={<RequireDirector><PaymentPage /></RequireDirector>} />
+        <Route path="/director/daily"     element={<RequireDirector><DirectorDailyPage /></RequireDirector>} />
+        <Route path="/director/monthly"   element={<RequireDirector><DirectorMonthlyPage /></RequireDirector>} />
+        <Route path="/director/accounts"  element={<RequireDirector><AccountsPage /></RequireDirector>} />
 
         <Route
           path="*"

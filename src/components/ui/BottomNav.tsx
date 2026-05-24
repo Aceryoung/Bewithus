@@ -11,13 +11,14 @@ const TEACHER_NAVS: NavItem[] = [
   { to: '/teacher', label: '홈', icon: '🏠' },
   { to: '/teacher/input', label: '건수입력', icon: '✏️' },
   { to: '/teacher/monthly', label: '월별건수', icon: '📅' },
-  { to: '/teacher/makeup', label: '보강', icon: '🔄' },
+  { to: '/teacher/payment', label: '결제', icon: '💳' },
 ]
 
 const DIRECTOR_NAVS: NavItem[] = [
   { to: '/director', label: '대시보드', icon: '📊' },
+  { to: '/director/input', label: '건수입력', icon: '✏️' },
+  { to: '/director/payment', label: '결제', icon: '💳' },
   { to: '/director/daily', label: '일건수', icon: '📋' },
-  { to: '/director/monthly', label: '월건수', icon: '📅' },
   { to: '/director/accounts', label: '직원관리', icon: '👤' },
 ]
 
