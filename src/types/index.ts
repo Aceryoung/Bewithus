@@ -44,6 +44,8 @@ export interface Record {
   payment_note: string | null
   secondary_method: string | null
   secondary_support: number
+  tertiary_method: string | null
+  tertiary_support: number
   remaining_support: number
   created_at: string
   updated_at: string

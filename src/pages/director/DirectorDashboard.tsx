@@ -115,12 +115,12 @@ export default function DirectorDashboard() {
   const totalAmount  = stats.reduce((a, s) => a + s.totalAmount, 0)
   const totalSelf    = stats.reduce((a, s) => a + s.selfPayment, 0)
   const totalSupport = stats.reduce((a, s) => a + s.supportAmount, 0)
-  const maxCount     = Math.max(...stats.flatMap((s) => s.teacherStats.map((t) => t.count)), 1)
 
   return (
     <div className="flex flex-col min-h-dvh bg-slate-50 pb-16">
       {/* 헤더 */}
-      <div className="bg-white border-b border-gray-100 px-5 pt-12 pb-5">
+      <div className="bg-white border-b border-gray-100 px-5 pt-12 pb-5 md:pt-6">
+        <div className="md:max-w-3xl md:mx-auto md:w-full">
         <div className="flex items-start justify-between mb-4">
           <div>
             <h1 className="text-gray-900 text-2xl font-bold">{user?.name}</h1>
@@ -163,10 +163,11 @@ export default function DirectorDashboard() {
             </div>
           ))}
         </div>
+        </div>
       </div>
 
       {/* 지점별 카드 */}
-      <div className="px-4 py-4 space-y-3">
+      <div className="px-4 py-4 space-y-3 md:max-w-3xl md:mx-auto md:w-full">
         {stats.map((s) => (
           <div key={s.branch.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
             <div className="flex justify-between items-center px-4 py-3 bg-slate-50 border-b border-slate-100">
@@ -191,22 +192,14 @@ export default function DirectorDashboard() {
                 ))}
               </div>
               {s.teacherStats.length > 0 ? (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">선생님별 건수</p>
                   {s.teacherStats.map(({ teacher, count, amount }) => (
-                    <div key={teacher.id}>
-                      <div className="flex justify-between items-center mb-1.5">
-                        <span className="text-sm font-medium text-slate-700">{teacher.name}</span>
-                        <div className="text-right">
-                          <span className="text-sm font-bold text-slate-900">{count}건</span>
-                          <span className="text-xs text-slate-400 ml-1.5">{formatKRW(amount)}</span>
-                        </div>
-                      </div>
-                      <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-gradient-to-r from-[#00b4d8] to-[#0096b8] rounded-full transition-all duration-700"
-                          style={{ width: `${(count / maxCount) * 100}%` }}
-                        />
+                    <div key={teacher.id} className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-slate-700">{teacher.name}</span>
+                      <div className="text-right">
+                        <span className="text-sm font-bold text-slate-900">{count}건</span>
+                        <span className="text-xs text-slate-400 ml-1.5">{formatKRW(amount)}</span>
                       </div>
                     </div>
                   ))}

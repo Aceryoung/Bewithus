@@ -4,26 +4,25 @@ import { useAuthStore } from '@/store/auth'
 interface NavItem {
   to: string
   label: string
-  icon: string
 }
 
 const TEACHER_NAVS: NavItem[] = [
-  { to: '/teacher', label: '홈', icon: '🏠' },
-  { to: '/teacher/payment', label: '결제/건수', icon: '💳' },
-  { to: '/teacher/monthly', label: '월별건수', icon: '📅' },
+  { to: '/teacher', label: '홈' },
+  { to: '/teacher/payment', label: '결제/건수' },
+  { to: '/teacher/monthly', label: '월별건수' },
 ]
 
 const DIRECTOR_NAVS: NavItem[] = [
-  { to: '/director', label: '대시보드', icon: '📊' },
-  { to: '/director/payment', label: '결제/건수', icon: '💳' },
-  { to: '/director/records', label: '건수현황', icon: '📋' },
-  { to: '/director/accounts', label: '직원관리', icon: '👤' },
+  { to: '/director', label: '대시보드' },
+  { to: '/director/payment', label: '결제/건수' },
+  { to: '/director/records', label: '건수현황' },
+  { to: '/director/accounts', label: '직원관리' },
 ]
 
 const ADMIN_NAVS: NavItem[] = [
-  { to: '/director', label: '대시보드', icon: '📊' },
-  { to: '/director/records', label: '건수현황', icon: '📋' },
-  { to: '/director/accounts', label: '직원관리', icon: '👤' },
+  { to: '/director', label: '대시보드' },
+  { to: '/director/records', label: '건수현황' },
+  { to: '/director/accounts', label: '직원관리' },
 ]
 
 export default function BottomNav() {
@@ -41,12 +40,11 @@ export default function BottomNav() {
           to={nav.to}
           end={nav.to === '/teacher' || nav.to === '/director'}
           className={({ isActive }) =>
-            `flex-1 flex flex-col items-center py-2 text-xs gap-1 transition-colors
+            `flex-1 flex items-center justify-center py-4 text-sm font-medium transition-colors
              ${isActive ? 'text-[#00b4d8]' : 'text-gray-400'}`
           }
         >
-          <span className="text-xl">{nav.icon}</span>
-          <span>{nav.label}</span>
+          <span className="text-xs font-medium">{nav.label}</span>
         </NavLink>
       ))}
     </nav>

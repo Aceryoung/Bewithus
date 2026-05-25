@@ -24,6 +24,7 @@ interface PatientRow {
   education: number
   afterSchool: number
   sportsVoucher: number
+  remainingSupport: number
   primaryMethod: string
 }
 
@@ -47,12 +48,30 @@ function buildPatientRows(
     for (const r of rows) methodCount[r.payment_method] = (methodCount[r.payment_method] ?? 0) + 1
     const primaryMethod = Object.entries(methodCount).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'other'
 
-    /* 지원금 방식별 합산 */
-    const education    = rows.filter((r) => r.payment_method === 'education').reduce((a, r) => a + r.support_amount, 0)
-    const afterSchool  = rows.filter((r) => r.payment_method === 'after_school').reduce((a, r) => a + r.support_amount, 0)
-    const sportsVoucher= rows.filter((r) => r.payment_method === 'sports_voucher').reduce((a, r) => a + r.support_amount, 0)
+    /* 바우처별 지원금 합산 (구형: payment_method=바우처, 신형: secondary/tertiary_method) */
+    let education = 0
+    let afterSchool = 0
+    let sportsVoucher = 0
+    for (const r of rows) {
+      // 구형 기록: payment_method가 바우처 타입
+      if (r.payment_method === 'education')     education    += r.support_amount - (r.secondary_support ?? 0)
+      if (r.payment_method === 'after_school')  afterSchool  += r.support_amount - (r.secondary_support ?? 0)
+      if (r.payment_method === 'sports_voucher') sportsVoucher += r.support_amount - (r.secondary_support ?? 0)
+      // secondary 바우처
+      if (r.secondary_method === 'education')     education    += r.secondary_support ?? 0
+      if (r.secondary_method === 'after_school')  afterSchool  += r.secondary_support ?? 0
+      if (r.secondary_method === 'sports_voucher') sportsVoucher += r.secondary_support ?? 0
+      // tertiary 바우처 (신형)
+      if (r.tertiary_method === 'education')     education    += r.tertiary_support ?? 0
+      if (r.tertiary_method === 'after_school')  afterSchool  += r.tertiary_support ?? 0
+      if (r.tertiary_method === 'sports_voucher') sportsVoucher += r.tertiary_support ?? 0
+    }
 
-    const lastDate = [...rows].sort((a, b) => b.date.localeCompare(a.date))[0]?.date ?? ''
+    /* 남은지원금: 이달 마지막 기록의 remaining_support */
+    const sorted = [...rows].sort((a, b) => b.date.localeCompare(a.date))
+    const remainingSupport = sorted[0]?.remaining_support ?? 0
+
+    const lastDate = sorted[0]?.date ?? ''
     const [, m, d] = lastDate.split('-')
     const dateLabel = lastDate ? `${parseInt(m)}월 ${parseInt(d)}일` : ''
 
@@ -67,6 +86,7 @@ function buildPatientRows(
       education,
       afterSchool,
       sportsVoucher,
+      remainingSupport,
       primaryMethod,
     }
   })
@@ -83,6 +103,7 @@ function applyRowColor(row: ExcelJS.Row, method: string) {
 function buildSummarySheet(
   wb: ExcelJS.Workbook,
   sheetName: string,
+  teacherName: string,
   records: SessionRecord[],
   _year: number,
   month: number,
@@ -139,15 +160,15 @@ function buildSummarySheet(
       p.totalAmount || '',
       p.selfPayment === 0 ? '₩0' : p.selfPayment,
       p.lastDate,
-      p.education    || '',
-      p.afterSchool  || '',
-      p.sportsVoucher|| '',
-      '',
+      p.education      || '',
+      p.afterSchool    || '',
+      p.sportsVoucher  || '',
+      p.remainingSupport || '',
       '',
     ])
 
     /* 금액 셀 포맷 */
-    ;[5, 6, 8, 9, 10].forEach((col) => {
+    ;[5, 6, 8, 9, 10, 11].forEach((col) => {
       const cell = row.getCell(col)
       if (typeof cell.value === 'number' && cell.value !== 0) {
         cell.numFmt = '₩#,##0'
@@ -179,7 +200,7 @@ function buildSummarySheet(
   totalRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD5F0F5' } }
 
   const grandRow = ws.addRow([
-    `예나연 총실적`,
+    `${teacherName} 총실적`,
     makeupTotal + countTotal,
     '', '', '', '', '', '', '', '', '', '',
   ])
@@ -237,7 +258,7 @@ export async function exportTeacherMonthly({
 }) {
   const wb = new ExcelJS.Workbook()
   wb.creator = '비위더스 EMR'
-  buildSummarySheet(wb, `${month}월 건수`, records, year, month, pendingMakeups)
+  buildSummarySheet(wb, `${month}월 건수`, teacherName, records, year, month, pendingMakeups)
   addLegendSheet(wb)
   await download(wb, `${teacherName}_${year}년${month}월_건수.xlsx`)
 }
@@ -281,7 +302,7 @@ export async function exportAllTeachersMonthly(
     ;[5, 6, 7].forEach((c) => { row.getCell(c).numFmt = '₩#,##0' })
 
     /* 선생님별 시트 */
-    buildSummarySheet(wb, teacherName, records, year, month, teachers.find((t) => t.teacherName === teacherName)?.pendingMakeups ?? {})
+    buildSummarySheet(wb, teacherName, teacherName, records, year, month, teachers.find((t) => t.teacherName === teacherName)?.pendingMakeups ?? {})
   }
 
   addLegendSheet(wb)

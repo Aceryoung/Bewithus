@@ -114,7 +114,7 @@ export default function AccountsPage() {
     <div className="flex flex-col min-h-dvh pb-16">
       <PageHeader title="직원 관리" />
 
-      <div className="flex-1 px-4 py-4 space-y-4">
+      <div className="flex-1 px-4 py-4 space-y-4 md:max-w-3xl md:mx-auto md:w-full">
         <button
           onClick={() => setShowForm((v) => !v)}
           className="w-full py-3 bg-[#00b4d8] text-white rounded-xl font-semibold active:bg-[#0096b8] transition-colors"
@@ -220,7 +220,6 @@ export default function AccountsPage() {
                   onClick={() => { setFeeOpenBranch(feeOpen ? null : branch.id); setFeeForm({ fee_type: '', unit_price: '' }) }}
                   className="flex items-center gap-1.5 text-xs font-semibold text-gray-500"
                 >
-                  <span>💰</span>
                   <span>요금 관리</span>
                   <span className="text-gray-300 ml-1">{branchFees.length}개</span>
                   <span className="ml-auto text-gray-300">{feeOpen ? '▲' : '▼'}</span>

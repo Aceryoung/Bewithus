@@ -44,7 +44,7 @@ export function useFeeTables(branchId: string | null) {
   })
 }
 
-// ── 이달 지원금 사용량 (DailyInputPage 금액 계산용) ───────────
+// ── 이달 지원금 사용량 (PaymentPage 금액 계산용) ────────────
 export function useMonthlyUsed(teacherId: string | null, date: string) {
   return useQuery({
     queryKey: qk.monthlyUsed(teacherId ?? '', date),
@@ -54,21 +54,36 @@ export function useMonthlyUsed(teacherId: string | null, date: string) {
 
       const { data, error } = await supabase
         .from('records')
-        .select('patient_name, payment_method, support_amount')
+        .select('patient_name, payment_method, support_amount, secondary_method, secondary_support, tertiary_method, tertiary_support')
         .eq('teacher_id', teacherId!)
         .gte('date', monthStart)
         .lte('date', date)
       if (error) throw error
 
+      const voucherTypes = new Set(['education', 'sports_voucher', 'after_school'])
       const used: Record<string, Record<PaymentMethod, number>> = {}
       for (const r of data ?? []) {
-        if (!used[r.patient_name]) {
-          used[r.patient_name] = {
+        const name = r.patient_name
+        if (!used[name]) {
+          used[name] = {
             education: 0, sports_voucher: 0, after_school: 0,
             card: 0, cash: 0, bank_transfer: 0, other: 0,
           }
         }
-        used[r.patient_name][r.payment_method as PaymentMethod] += r.support_amount
+        const secSupport = r.secondary_support ?? 0
+        const terSupport = r.tertiary_support ?? 0
+        // 구형 기록: payment_method가 바우처 → primary 지원금만 누적
+        if (voucherTypes.has(r.payment_method)) {
+          used[name][r.payment_method as PaymentMethod] += Math.max(0, r.support_amount - secSupport)
+        }
+        // secondary 바우처
+        if (r.secondary_method && voucherTypes.has(r.secondary_method)) {
+          used[name][r.secondary_method as PaymentMethod] += secSupport
+        }
+        // tertiary 바우처 (신형)
+        if (r.tertiary_method && voucherTypes.has(r.tertiary_method)) {
+          used[name][r.tertiary_method as PaymentMethod] += terSupport
+        }
       }
       return used
     },

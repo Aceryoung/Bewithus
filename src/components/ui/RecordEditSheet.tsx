@@ -7,17 +7,16 @@ import RecordFormFields from '@/components/ui/RecordFormFields'
 import { useFeeTables, useMonthlyUsed } from '@/hooks/queries'
 import type { Record as SessionRecord, Attendance, PaymentMethod } from '@/types'
 
+const VOUCHER_METHODS: PaymentMethod[] = ['education', 'sports_voucher', 'after_school']
+
 interface EditState {
   attendance: Attendance
   fee_type: string
   unit_price: number
   session_count: number
   payment_method: PaymentMethod
-  after_school_support?: number
-  sports_voucher_support?: number
-  secondary_method?: PaymentMethod
-  secondary_override?: number
-  remaining_support: number
+  secondary_methods: PaymentMethod[]
+  secondary_overrides: Partial<Record<PaymentMethod, number>>
   payment_note?: string
 }
 
@@ -28,22 +27,40 @@ interface Props {
   onClose: () => void
 }
 
-export default function RecordEditSheet({ record, onSave, onDelete, onClose }: Props) {
-  const primarySupportInit = record.support_amount
-  const [state, setState] = useState<EditState>({
+function initFromRecord(record: SessionRecord): EditState {
+  // 구형 기록 호환: payment_method가 바우처 타입이면 secondary_methods로 이동
+  const isLegacyVoucher = (VOUCHER_METHODS as string[]).includes(record.payment_method)
+  const primaryMethod: PaymentMethod = isLegacyVoucher ? 'card' : record.payment_method
+
+  const secondaryMethods: PaymentMethod[] = []
+  if (isLegacyVoucher) {
+    secondaryMethods.push(record.payment_method)
+  }
+  if (record.secondary_method && (VOUCHER_METHODS as string[]).includes(record.secondary_method)) {
+    if (!secondaryMethods.includes(record.secondary_method as PaymentMethod)) {
+      secondaryMethods.push(record.secondary_method as PaymentMethod)
+    }
+  }
+  if (record.tertiary_method && (VOUCHER_METHODS as string[]).includes(record.tertiary_method)) {
+    if (!secondaryMethods.includes(record.tertiary_method as PaymentMethod)) {
+      secondaryMethods.push(record.tertiary_method as PaymentMethod)
+    }
+  }
+
+  return {
     attendance: record.attendance,
     fee_type: record.fee_type,
     unit_price: record.unit_price,
     session_count: record.session_count,
-    payment_method: record.payment_method,
-    after_school_support:
-      record.payment_method === 'after_school' ? primarySupportInit : undefined,
-    sports_voucher_support:
-      record.payment_method === 'sports_voucher' ? primarySupportInit : undefined,
-    secondary_method: (record.secondary_method as PaymentMethod | null) ?? undefined,
-    remaining_support: record.remaining_support ?? 0,
+    payment_method: primaryMethod,
+    secondary_methods: secondaryMethods,
+    secondary_overrides: {},
     payment_note: record.payment_note ?? undefined,
-  })
+  }
+}
+
+export default function RecordEditSheet({ record, onSave, onDelete, onClose }: Props) {
+  const [state, setState] = useState<EditState>(() => initFromRecord(record))
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [receiptAction, setReceiptAction] = useState<'none' | 'upload' | 'delete'>('none')
@@ -55,7 +72,11 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
     : record.receipt_url ?? null
 
   const { data: feeTables = [] } = useFeeTables(record.branch_id)
-  const { data: allMonthlyUsed = {} } = useMonthlyUsed(record.teacher_id, record.date)
+  // record.date가 아닌 해당 월 말일로 조회해야 이후 기록까지 반영됨
+  const recordYM = record.date.slice(0, 7)
+  const [ry, rm] = recordYM.split('-').map(Number)
+  const endOfRecordMonth = new Date(ry, rm, 0).toISOString().slice(0, 10)
+  const { data: allMonthlyUsed = {} } = useMonthlyUsed(record.teacher_id, endOfRecordMonth)
 
   // 현재 레코드를 제외한 이달 지원금 사용량
   const monthlyUsed: Record<PaymentMethod, number> = {
@@ -64,48 +85,51 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
       card: 0, cash: 0, bank_transfer: 0, other: 0,
     }),
   }
-  monthlyUsed[record.payment_method] = Math.max(
-    0,
-    (monthlyUsed[record.payment_method] ?? 0) - record.support_amount,
-  )
-  if (record.secondary_method) {
-    const secMethod = record.secondary_method as PaymentMethod
-    monthlyUsed[secMethod] = Math.max(
-      0,
-      (monthlyUsed[secMethod] ?? 0) - (record.secondary_support ?? 0),
+  // 구형: payment_method가 바우처면 primary support 빼기
+  if ((VOUCHER_METHODS as string[]).includes(record.payment_method)) {
+    const primarySupport = record.support_amount - (record.secondary_support ?? 0)
+    monthlyUsed[record.payment_method as PaymentMethod] = Math.max(
+      0, (monthlyUsed[record.payment_method as PaymentMethod] ?? 0) - primarySupport,
     )
+  }
+  // secondary 빼기
+  if (record.secondary_method && (VOUCHER_METHODS as string[]).includes(record.secondary_method)) {
+    const sm = record.secondary_method as PaymentMethod
+    monthlyUsed[sm] = Math.max(0, (monthlyUsed[sm] ?? 0) - record.secondary_support)
+  }
+  // tertiary 빼기
+  if (record.tertiary_method && (VOUCHER_METHODS as string[]).includes(record.tertiary_method)) {
+    const tm = record.tertiary_method as PaymentMethod
+    monthlyUsed[tm] = Math.max(0, (monthlyUsed[tm] ?? 0) - (record.tertiary_support ?? 0))
   }
 
   const update = (patch: Partial<EditState>) => setState((prev) => ({ ...prev, ...patch }))
 
-  // 실시간 금액 계산
   const total = state.attendance === 'absent' ? 0 : state.unit_price * state.session_count
 
-  let primaryCapacity = 0
-  let secondaryCapacity = 0
-  let secondarySupport = 0
-  let selfPayment = total
-
+  // 각 바우처 독립 용량 계산
+  const capacities: Partial<Record<PaymentMethod, number>> = {}
   if (state.attendance !== 'absent') {
-    const primaryOverride =
-      state.payment_method === 'after_school' ? state.after_school_support :
-      state.payment_method === 'sports_voucher' ? state.sports_voucher_support :
-      undefined
-    primaryCapacity = calcSupport(total, state.payment_method, monthlyUsed[state.payment_method] ?? 0, primaryOverride).support
-
-    if (state.secondary_method) {
-      const secOverride =
-        (state.secondary_method === 'after_school' || state.secondary_method === 'sports_voucher')
-          ? state.secondary_override : undefined
-      secondaryCapacity = calcSupport(total, state.secondary_method, monthlyUsed[state.secondary_method] ?? 0, secOverride).support
-      secondarySupport = Math.min(secondaryCapacity, Math.max(0, total - primaryCapacity))
+    for (const method of state.secondary_methods) {
+      const override = state.secondary_overrides[method]
+      capacities[method] = calcSupport(total, method, monthlyUsed[method] ?? 0, override).support
     }
-
-    selfPayment = Math.max(0, total - primaryCapacity - secondarySupport)
   }
 
-  const totalSupportUsed = primaryCapacity + secondarySupport
-  const autoRemainingSupport = Math.max(0, primaryCapacity + secondaryCapacity - total)
+  // cascade: 순서대로 남은 금액 충당
+  const voucherSupports: Partial<Record<PaymentMethod, number>> = {}
+  let remaining = total
+  for (const method of state.secondary_methods) {
+    const capacity = capacities[method] ?? 0
+    const actual = Math.min(capacity, remaining)
+    voucherSupports[method] = actual
+    remaining -= actual
+  }
+
+  const totalSupportUsed = Object.values(voucherSupports).reduce((a, b) => a + (b ?? 0), 0)
+  const totalCapacity = Object.values(capacities).reduce((a, b) => a + (b ?? 0), 0)
+  const autoRemainingSupport = Math.max(0, totalCapacity - total)
+  const selfPayment = Math.max(0, total - totalSupportUsed)
 
   const handleSave = async () => {
     setSaving(true)
@@ -118,6 +142,9 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
       newReceiptUrl = null
     }
 
+    const secondarySupport = voucherSupports[state.secondary_methods[0]] ?? 0
+    const tertiarySupport = voucherSupports[state.secondary_methods[1]] ?? 0
+
     const updatePayload: Record<string, unknown> = {
       attendance: state.attendance,
       fee_type: state.attendance === 'absent' ? record.fee_type : state.fee_type || '직접입력',
@@ -127,8 +154,10 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
       payment_method: state.payment_method,
       payment_note: state.payment_method === 'other' ? (state.payment_note || null) : null,
       support_amount: totalSupportUsed,
-      secondary_method: state.secondary_method ?? null,
+      secondary_method: state.secondary_methods[0] ?? null,
       secondary_support: secondarySupport,
+      tertiary_method: state.secondary_methods[1] ?? null,
+      tertiary_support: tertiarySupport,
       remaining_support: autoRemainingSupport,
       self_payment: selfPayment,
     }
@@ -212,8 +241,7 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
               state={state}
               feeTables={feeTables}
               total={total}
-              support={primaryCapacity}
-              secondarySupport={secondarySupport}
+              voucherSupports={voucherSupports}
               remainingSupport={autoRemainingSupport}
               selfPayment={selfPayment}
               onChange={update}

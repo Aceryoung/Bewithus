@@ -55,3 +55,19 @@ export function getWeekOfMonth(dateStr: string): number {
 export function cn(...classes: (string | undefined | null | false)[]): string {
   return classes.filter(Boolean).join(' ')
 }
+
+// 기록 한 줄에 표시할 결제 방식 레이블 (신형: 바우처명 포함)
+export function paymentLabel(
+  paymentMethod: string,
+  paymentNote: string | null,
+  secondaryMethod: string | null,
+  tertiaryMethod: string | null,
+  labels: Record<string, string>,
+): string {
+  const primary = paymentMethod === 'other' && paymentNote ? paymentNote : (labels[paymentMethod] ?? paymentMethod)
+  const vouchers = [secondaryMethod, tertiaryMethod]
+    .filter((m): m is string => !!m && m in labels)
+    .map((m) => labels[m])
+    .join('+')
+  return vouchers ? `${primary} (${vouchers})` : primary
+}

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { todayStr, formatKRW } from '@/lib/utils'
+import { todayStr, formatKRW, paymentLabel } from '@/lib/utils'
 import { ATTENDANCE_LABELS, PAYMENT_METHOD_LABELS } from '@/constants'
 import PageHeader from '@/components/ui/PageHeader'
 import BottomNav from '@/components/ui/BottomNav'
@@ -9,7 +9,7 @@ import {
   useBranches, useDirectorUsers,
   useDirectorDailyRecords, useDirectorMonthlyRecords, usePendingMakeups,
 } from '@/hooks/queries'
-import type { Record, User, PaymentMethod } from '@/types'
+import type { Record, User } from '@/types'
 
 type ViewTab = 'daily' | 'monthly'
 
@@ -100,7 +100,7 @@ export default function DirectorRecordsPage() {
         ))}
       </div>
 
-      <div className="flex-1 px-4 py-4 space-y-4 pb-20">
+      <div className="flex-1 px-4 py-4 space-y-4 pb-20 md:max-w-3xl md:mx-auto md:w-full">
         {/* 날짜 / 월 선택 */}
         {tab === 'daily' ? (
           <div className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex items-center gap-3">
@@ -225,7 +225,7 @@ export default function DirectorRecordsPage() {
                             <p className="text-xs text-gray-400 mt-0.5">
                               {(r.teacher as unknown as User)?.name ?? '—'} · {ATTENDANCE_LABELS[r.attendance]}
                               {' · '}{r.fee_type} {r.session_count}회
-                              {' · '}{r.payment_method === 'other' && r.payment_note ? r.payment_note : PAYMENT_METHOD_LABELS[r.payment_method as PaymentMethod]}
+                              {' · '}{paymentLabel(r.payment_method, r.payment_note, r.secondary_method, r.tertiary_method, PAYMENT_METHOD_LABELS)}
                             </p>
                           </div>
                           <div className="text-right">
@@ -300,7 +300,7 @@ export default function DirectorRecordsPage() {
                                   <p className="text-sm text-gray-800">{r.patient_name}</p>
                                   <p className="text-xs text-gray-400">
                                     {r.date.slice(5)} · {ATTENDANCE_LABELS[r.attendance]} · {r.fee_type} {r.session_count}회
-                                    {' · '}{r.payment_method === 'other' && r.payment_note ? r.payment_note : PAYMENT_METHOD_LABELS[r.payment_method as PaymentMethod]}
+                                    {' · '}{paymentLabel(r.payment_method, r.payment_note, r.secondary_method, r.tertiary_method, PAYMENT_METHOD_LABELS)}
                                   </p>
                                 </div>
                                 <div className="text-right">

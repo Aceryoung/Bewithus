@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { createTempClient, userEmail, pinToPassword } from '@/lib/supabase'
 import { useAuthStore } from '@/store/auth'
-import { todayStr, formatKRW, formatDate } from '@/lib/utils'
+import { todayStr, formatKRW, formatDate, paymentLabel } from '@/lib/utils'
 import { ATTENDANCE_LABELS, PAYMENT_METHOD_LABELS } from '@/constants'
 import BottomNav from '@/components/ui/BottomNav'
 import RecordEditSheet from '@/components/ui/RecordEditSheet'
@@ -114,7 +114,8 @@ export default function TeacherDashboard() {
   return (
     <div className="flex flex-col min-h-dvh bg-slate-50">
       {/* 헤더 */}
-      <div className="bg-white border-b border-gray-100 px-5 pt-12 pb-5">
+      <div className="bg-white border-b border-gray-100 px-5 pt-12 pb-5 md:pt-6">
+        <div className="md:max-w-3xl md:mx-auto md:w-full">
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-gray-900 text-2xl font-bold">{user?.name} 선생님</h1>
@@ -135,9 +136,10 @@ export default function TeacherDashboard() {
             </button>
           </div>
         </div>
+        </div>
       </div>
 
-      <div className="flex-1 px-4 space-y-3 pb-24 pt-3">
+      <div className="flex-1 px-4 space-y-3 pb-24 pt-3 md:max-w-3xl md:mx-auto md:w-full">
         {/* 건수 입력 CTA */}
         <button
           onClick={() => navigate('/teacher/payment')}
@@ -190,7 +192,7 @@ export default function TeacherDashboard() {
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-slate-900 truncate">{r.patient_name}</p>
                       <p className="text-xs text-slate-400 mt-0.5">
-                        {ATTENDANCE_LABELS[r.attendance]} · {r.fee_type} {r.session_count}회 · {r.payment_method === 'other' && r.payment_note ? r.payment_note : PAYMENT_METHOD_LABELS[r.payment_method]}
+                        {ATTENDANCE_LABELS[r.attendance]} · {r.fee_type} {r.session_count}회 · {paymentLabel(r.payment_method, r.payment_note, r.secondary_method, r.tertiary_method, PAYMENT_METHOD_LABELS)}
                       </p>
                     </div>
                   </div>

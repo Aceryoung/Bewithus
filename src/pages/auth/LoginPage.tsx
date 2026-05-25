@@ -116,14 +116,15 @@ export default function LoginPage() {
   const pinReady = !!selectedUser && !lockedUntil
 
   return (
-    <div className="flex flex-col min-h-dvh bg-[#f7f8fc]">
+    <div className="flex flex-col min-h-dvh bg-[#f7f8fc] md:items-center md:justify-center">
+      <div className="md:w-full md:max-w-sm md:mx-auto md:bg-white md:rounded-2xl md:shadow-lg md:p-8">
       {/* 브랜드 */}
-      <div className="flex flex-col items-center pt-10 pb-5 px-6">
+      <div className="flex flex-col items-center pt-10 pb-5 px-6 md:pt-0">
         <img src={logo} alt="비위더스 로고" className="w-20 h-20 object-contain mb-2" />
         <p className="text-gray-500 text-sm font-semibold transition-all duration-300">{subtitle}</p>
       </div>
 
-      <div className="flex-1 px-4 pb-8 flex flex-col gap-3">
+      <div className="flex-1 px-4 pb-8 flex flex-col gap-3 md:flex-none md:px-0 md:pb-0">
 
         {/* Step 1: 호점 선택 */}
         {step === 'branch' && (
@@ -252,6 +253,7 @@ export default function LoginPage() {
             </div>
           </>
         )}
+      </div>
       </div>
     </div>
   )

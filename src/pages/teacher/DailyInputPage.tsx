@@ -251,14 +251,16 @@ export default function DailyInputPage() {
                     unit_price: row.unit_price,
                     session_count: row.session_count,
                     payment_method: row.payment_method,
-                    after_school_support: row.after_school_support,
+                    secondary_methods: [],
+                    secondary_overrides: {},
                     payment_note: row.payment_note,
                   }}
                   feeTables={feeTables}
                   total={row.total_amount}
-                  support={row.support_amount}
+                  voucherSupports={{}}
+                  remainingSupport={0}
                   selfPayment={row.self_payment}
-                  onChange={(updates) => updateRow(row.id, updates)}
+                  onChange={(updates) => updateRow(row.id, updates as Partial<Row>)}
                 />
 
                 {/* 영수증 첨부 */}
@@ -280,8 +282,7 @@ export default function DailyInputPage() {
                     </div>
                   ) : (
                     <label className="flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed border-gray-200 rounded-xl text-gray-400 text-sm cursor-pointer active:bg-gray-50 transition-colors">
-                      <span>📷</span>
-                      <span>영수증 사진 첨부</span>
+                      <span>사진 첨부</span>
                       <input
                         type="file"
                         accept="image/*"

@@ -34,12 +34,12 @@ interface PayRow {
   unit_price: number
   session_count: number
   payment_method: PaymentMethod
-  after_school_support?: number
-  sports_voucher_support?: number
-  secondary_method?: PaymentMethod
-  secondary_override?: number
+  secondary_methods: PaymentMethod[]
+  secondary_overrides: Partial<Record<PaymentMethod, number>>
+  voucherSupports: Partial<Record<PaymentMethod, number>>
   support_amount: number
   secondary_support: number
+  tertiary_support: number
   remaining_support: number
   self_payment: number
   total_amount: number
@@ -55,8 +55,12 @@ function newPayRow(): PayRow {
     unit_price: 0,
     session_count: 1,
     payment_method: 'card',
+    secondary_methods: [],
+    secondary_overrides: {},
+    voucherSupports: {},
     support_amount: 0,
     secondary_support: 0,
+    tertiary_support: 0,
     remaining_support: 0,
     self_payment: 0,
     total_amount: 0,
@@ -74,49 +78,45 @@ function recalcPayRows(
 
     const total = row.unit_price * row.session_count
 
-    const primaryOverride =
-      row.payment_method === 'after_school' ? row.after_school_support :
-      row.payment_method === 'sports_voucher' ? row.sports_voucher_support :
-      undefined
-    const primaryDbUsed   = name ? (monthlyUsed[name]?.[row.payment_method] ?? 0) : 0
-    const primaryFormUsed = name ? (inFormAccum[name]?.[row.payment_method] ?? 0) : 0
-
-    // 주 결제방식: 독립 용량 (full total 기준)
-    const primaryCapacity = calcSupport(total, row.payment_method, primaryDbUsed + primaryFormUsed, primaryOverride).support
-
-    // 보조 결제방식: 독립 용량 계산 후 cascade로 실제 사용량 결정
-    let secondaryCapacity = 0
-    let secondarySupport = 0
-    if (row.secondary_method) {
-      const secOverride =
-        (row.secondary_method === 'after_school' || row.secondary_method === 'sports_voucher')
-          ? row.secondary_override : undefined
-      const secDbUsed   = name ? (monthlyUsed[name]?.[row.secondary_method] ?? 0) : 0
-      const secFormUsed = name ? (inFormAccum[name]?.[row.secondary_method] ?? 0) : 0
-      secondaryCapacity = calcSupport(total, row.secondary_method, secDbUsed + secFormUsed, secOverride).support
-      // cascade: 주 결제 이후 남은 금액에서만 사용
-      secondarySupport = Math.min(secondaryCapacity, Math.max(0, total - primaryCapacity))
+    // 각 바우처의 독립 용량 계산
+    const capacities: Partial<Record<PaymentMethod, number>> = {}
+    for (const method of row.secondary_methods) {
+      const override = row.secondary_overrides[method]
+      const dbUsed = name ? (monthlyUsed[name]?.[method] ?? 0) : 0
+      const formUsed = name ? (inFormAccum[name]?.[method] ?? 0) : 0
+      capacities[method] = calcSupport(total, method, dbUsed + formUsed, override).support
     }
 
-    const totalSupportUsed = primaryCapacity + secondarySupport
-    const finalSelf = Math.max(0, total - totalSupportUsed)
-    // 두 방식의 독립 용량 합이 결제금액 초과 → 남은지원금 자동 계산
-    const autoRemaining = Math.max(0, primaryCapacity + secondaryCapacity - total)
+    // cascade: 각 바우처가 순서대로 남은 금액 충당
+    const actualSupports: Partial<Record<PaymentMethod, number>> = {}
+    let remaining = total
+    for (const method of row.secondary_methods) {
+      const capacity = capacities[method] ?? 0
+      const actual = Math.min(capacity, remaining)
+      actualSupports[method] = actual
+      remaining -= actual
+    }
 
+    const totalSupportUsed = Object.values(actualSupports).reduce((a, b) => a + (b ?? 0), 0)
+    const totalCapacity = Object.values(capacities).reduce((a, b) => a + (b ?? 0), 0)
+    const autoRemaining = Math.max(0, totalCapacity - total)
+
+    // 동일 환자 이후 행을 위한 누적
     if (name) {
-      inFormAccum[name][row.payment_method] = (inFormAccum[name][row.payment_method] ?? 0) + primaryCapacity
-      if (row.secondary_method) {
-        inFormAccum[name][row.secondary_method] = (inFormAccum[name][row.secondary_method] ?? 0) + secondarySupport
+      for (const method of row.secondary_methods) {
+        inFormAccum[name][method] = (inFormAccum[name][method] ?? 0) + (actualSupports[method] ?? 0)
       }
     }
 
     return {
       ...row,
       total_amount: total,
-      support_amount: totalSupportUsed,   // DB: 총 지원금 (기존 코드 호환)
-      secondary_support: secondarySupport, // DB: 보조 지원금 (내역용)
-      remaining_support: autoRemaining,    // DB: 자동 계산된 남은지원금
-      self_payment: finalSelf,
+      voucherSupports: actualSupports,
+      support_amount: totalSupportUsed,
+      secondary_support: actualSupports[row.secondary_methods[0]] ?? 0,
+      tertiary_support: actualSupports[row.secondary_methods[1]] ?? 0,
+      remaining_support: autoRemaining,
+      self_payment: Math.max(0, total - totalSupportUsed),
     }
   })
 }
@@ -172,6 +172,7 @@ export default function PaymentPage() {
         payment_method: 'card',
         support_amount: 0,
         secondary_support: 0,
+        tertiary_support: 0,
         remaining_support: 0,
         self_payment: 0,
       })),
@@ -206,8 +207,10 @@ export default function PaymentPage() {
         payment_method: r.payment_method,
         payment_note: r.payment_note || null,
         support_amount: r.support_amount,
-        secondary_method: r.secondary_method || null,
+        secondary_method: r.secondary_methods[0] ?? null,
         secondary_support: r.secondary_support,
+        tertiary_method: r.secondary_methods[1] ?? null,
+        tertiary_support: r.tertiary_support,
         remaining_support: r.remaining_support,
         self_payment: r.self_payment,
       })),
@@ -251,7 +254,7 @@ export default function PaymentPage() {
       </div>
 
       {/* 날짜 공통 */}
-      <div className="px-4 pt-4">
+      <div className="px-4 pt-4 md:max-w-3xl md:mx-auto md:w-full">
         <div className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-3">
           <span className="text-sm text-gray-500 shrink-0">날짜</span>
           <input
@@ -265,7 +268,7 @@ export default function PaymentPage() {
 
       {/* ── 건수 탭 ── */}
       {tab === 'count' && (
-        <div className="flex-1 px-4 py-4 space-y-4 pb-40">
+        <div className="flex-1 px-4 py-4 space-y-4 pb-40 md:max-w-3xl md:mx-auto md:w-full">
           {countRows.map((row, idx) => (
             <div key={row.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
               <div className="flex items-center justify-between">
@@ -310,7 +313,7 @@ export default function PaymentPage() {
                 ))}
               </div>
 
-              {/* 횟수 직접입력 */}
+              {/* 횟수 */}
               <div>
                 <p className="text-xs text-gray-400 mb-1.5">횟수</p>
                 <input
@@ -341,7 +344,7 @@ export default function PaymentPage() {
 
       {/* ── 결제 탭 ── */}
       {tab === 'payment' && (
-        <div className="flex-1 px-4 py-4 space-y-4 pb-52">
+        <div className="flex-1 px-4 py-4 space-y-4 pb-52 md:max-w-3xl md:mx-auto md:w-full">
           {payRows.map((row, idx) => (
             <div key={row.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
               <div className="flex items-center justify-between">
@@ -372,19 +375,16 @@ export default function PaymentPage() {
                   unit_price: row.unit_price,
                   session_count: row.session_count,
                   payment_method: row.payment_method,
-                  after_school_support: row.after_school_support,
-                  sports_voucher_support: row.sports_voucher_support,
-                  secondary_method: row.secondary_method,
-                  secondary_override: row.secondary_override,
+                  secondary_methods: row.secondary_methods,
+                  secondary_overrides: row.secondary_overrides,
                   payment_note: row.payment_note,
                 }}
                 feeTables={feeTables}
                 total={row.total_amount}
-                support={row.support_amount}
-                secondarySupport={row.secondary_support}
+                voucherSupports={row.voucherSupports}
                 remainingSupport={row.remaining_support}
                 selfPayment={row.self_payment}
-                onChange={(updates) => updatePayRow(row.id, updates)}
+                onChange={(updates) => updatePayRow(row.id, updates as Partial<PayRow>)}
               />
 
               {/* 영수증 첨부 */}
@@ -455,7 +455,7 @@ export default function PaymentPage() {
             <span className="font-bold text-gray-900">{formatKRW(totalSelf)}</span>
           </div>
           {totalSupport > 0 && (
-            <div className="flex justify-between text-sm text-[#00b4d8] pb-2">
+            <div className="flex justify-between text-sm text-[#7db83a] pb-2">
               <span>지원금 합계</span>
               <span>{formatKRW(totalSupport)}</span>
             </div>
