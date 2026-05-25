@@ -15,7 +15,7 @@ export default function DirectorDailyPage() {
 
   const { data: branches = [] } = useBranches()
   const { data: allTeachers = [] } = useDirectorUsers()
-  const teachers = allTeachers.filter((u) => u.role === 'teacher')
+  const teachers = allTeachers.filter((u) => u.role === 'teacher' || u.role === 'director')
 
   const { data: records = [], isLoading, error, refetch } =
     useDirectorDailyRecords(date, selectedBranch, selectedTeacher)

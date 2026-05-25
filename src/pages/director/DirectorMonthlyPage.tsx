@@ -31,7 +31,7 @@ export default function DirectorMonthlyPage() {
 
   const { data: branches = [] } = useBranches()
   const { data: allUsers = [] } = useDirectorUsers()
-  const teachers = allUsers.filter((u) => u.role === 'teacher')
+  const teachers = allUsers.filter((u) => u.role === 'teacher' || u.role === 'director')
 
   const { data: records = [], isLoading, error, refetch } =
     useDirectorMonthlyRecords(year, month, selectedBranch, selectedTeacher)

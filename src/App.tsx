@@ -5,7 +5,6 @@ import { useAuthStore } from '@/store/auth'
 
 const LoginPage         = lazy(() => import('@/pages/auth/LoginPage'))
 const TeacherDashboard  = lazy(() => import('@/pages/teacher/TeacherDashboard'))
-const DailyInputPage    = lazy(() => import('@/pages/teacher/DailyInputPage'))
 const MonthlyViewPage   = lazy(() => import('@/pages/teacher/MonthlyViewPage'))
 const PaymentPage       = lazy(() => import('@/pages/teacher/PaymentPage'))
 const DirectorDashboard = lazy(() => import('@/pages/director/DirectorDashboard'))
@@ -77,7 +76,7 @@ export default function App() {
 
           {/* 선생님 라우트 */}
           <Route path="/teacher"         element={<RequireAuth><TeacherDashboard /></RequireAuth>} />
-          <Route path="/teacher/input"   element={<RequireAuth><DailyInputPage /></RequireAuth>} />
+          <Route path="/teacher/input"   element={<Navigate to="/teacher/payment" replace />} />
           <Route path="/teacher/monthly" element={<RequireAuth><MonthlyViewPage /></RequireAuth>} />
           <Route path="/teacher/payment" element={<RequireAuth><PaymentPage /></RequireAuth>} />
 
