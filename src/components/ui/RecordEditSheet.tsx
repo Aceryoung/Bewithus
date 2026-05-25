@@ -18,8 +18,8 @@ interface EditState {
 
 interface Props {
   record: SessionRecord
-  onSave: () => void
-  onDelete: () => void
+  onSave: (updated: SessionRecord) => void
+  onDelete: (id: string) => void
   onClose: () => void
 }
 
@@ -151,7 +151,12 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
     if (error) {
       alert(`수정 실패: ${error.message}`)
     } else {
-      onSave()
+      const updatedRecord: SessionRecord = {
+        ...record,
+        ...updatePayload,
+        receipt_url: newReceiptUrl !== undefined ? newReceiptUrl : record.receipt_url,
+      } as SessionRecord
+      onSave(updatedRecord)
     }
   }
 
@@ -164,7 +169,7 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
     if (error) {
       alert(`삭제 실패: ${error.message}`)
     } else {
-      onDelete()
+      onDelete(record.id)
     }
   }
 

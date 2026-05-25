@@ -6,7 +6,7 @@ import BottomNav from '@/components/ui/BottomNav'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
 import ErrorState from '@/components/ui/ErrorState'
 import { useAccountsData } from '@/hooks/queries'
-import { useAddFee, useDeleteFee, useAddTeacher, useDeleteUser } from '@/hooks/mutations'
+import { useAddFee, useDeleteFee, useAddTeacher } from '@/hooks/mutations'
 import type { User, FeeTable } from '@/types'
 
 interface TeacherWithStats extends User {
@@ -21,10 +21,11 @@ export default function AccountsPage() {
 
   const { data, isLoading, error, refetch } = useAccountsData(monthStart, today)
 
+
   const addFee = useAddFee(monthStart, today)
   const deleteFee = useDeleteFee(monthStart, today)
   const addTeacher = useAddTeacher(monthStart, today)
-  const deleteUser = useDeleteUser(monthStart, today)
+
 
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ name: '', branch_id: '', pin: '' })
@@ -74,11 +75,9 @@ export default function AccountsPage() {
 
   const handleDelete = async (id: string, name: string) => {
     if (!confirm(`"${name}" 선생님 계정을 삭제하시겠습니까?\n\n⚠️ 해당 선생님의 모든 건수 기록도 함께 삭제됩니다.\n이 작업은 되돌릴 수 없습니다.`)) return
-    try {
-      await deleteUser.mutateAsync(id)
-    } catch (e) {
-      alert(`삭제 실패: ${(e as Error).message}`)
-    }
+    const { error } = await supabase.rpc('delete_teacher_account', { p_teacher_id: id })
+    if (error) { alert(`삭제 실패: ${error.message}`); return }
+    void refetch()
   }
 
   const handlePinReset = async (id: string, name: string) => {

@@ -36,10 +36,24 @@ export default function TeacherDashboard() {
   const error = errorToday || errorSummary
   const refetch = () => { void refetchToday(); void refetchSummary() }
 
-  const invalidateRecords = () => {
+  const handleRecordSaved = (updated: import('@/types').Record) => {
     if (!user) return
-    queryClient.invalidateQueries({ queryKey: qk.todayRecords(user.id, today) })
-    queryClient.invalidateQueries({ queryKey: qk.monthSummary(user.id, monthStart) })
+    queryClient.setQueryData(
+      qk.todayRecords(user.id, today),
+      (old: import('@/types').Record[] | undefined) =>
+        (old ?? []).map((r) => r.id === updated.id ? updated : r),
+    )
+    void queryClient.invalidateQueries({ queryKey: qk.monthSummary(user.id, monthStart) })
+  }
+
+  const handleRecordDeleted = (id: string) => {
+    if (!user) return
+    queryClient.setQueryData(
+      qk.todayRecords(user.id, today),
+      (old: import('@/types').Record[] | undefined) =>
+        (old ?? []).filter((r) => r.id !== id),
+    )
+    void queryClient.invalidateQueries({ queryKey: qk.monthSummary(user.id, monthStart) })
   }
 
   const handlePinChange = async () => {
@@ -242,8 +256,8 @@ export default function TeacherDashboard() {
       {editingRecord && (
         <RecordEditSheet
           record={editingRecord}
-          onSave={() => { setEditingRecord(null); invalidateRecords() }}
-          onDelete={() => { setEditingRecord(null); invalidateRecords() }}
+          onSave={(updated) => { setEditingRecord(null); handleRecordSaved(updated) }}
+          onDelete={(id) => { setEditingRecord(null); handleRecordDeleted(id) }}
           onClose={() => setEditingRecord(null)}
         />
       )}

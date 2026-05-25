@@ -22,8 +22,21 @@ export default function MonthlyViewPage() {
   const { data: records = [], isLoading: loading, error, refetch } =
     useMonthlyRecords(user?.id ?? null, year, month)
 
-  const invalidate = () => {
-    if (user) queryClient.invalidateQueries({ queryKey: qk.monthlyRecords(user.id, year, month) })
+  const handleRecordSaved = (updated: SessionRecord) => {
+    if (!user) return
+    queryClient.setQueryData(
+      qk.monthlyRecords(user.id, year, month),
+      (old: SessionRecord[] | undefined) =>
+        (old ?? []).map((r) => r.id === updated.id ? updated : r),
+    )
+  }
+
+  const handleRecordDeleted = (id: string) => {
+    if (!user) return
+    queryClient.setQueryData(
+      qk.monthlyRecords(user.id, year, month),
+      (old: SessionRecord[] | undefined) => (old ?? []).filter((r) => r.id !== id),
+    )
   }
 
   const totalCount = records.length
@@ -180,14 +193,8 @@ export default function MonthlyViewPage() {
       {editingRecord && (
         <RecordEditSheet
           record={editingRecord}
-          onSave={() => {
-            setEditingRecord(null)
-            invalidate()
-          }}
-          onDelete={() => {
-            setEditingRecord(null)
-            invalidate()
-          }}
+          onSave={(updated) => { setEditingRecord(null); handleRecordSaved(updated) }}
+          onDelete={(id) => { setEditingRecord(null); handleRecordDeleted(id) }}
           onClose={() => setEditingRecord(null)}
         />
       )}
