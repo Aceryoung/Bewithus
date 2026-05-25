@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { todayStr, formatKRW } from '@/lib/utils'
 import { ATTENDANCE_LABELS, PAYMENT_METHOD_LABELS } from '@/constants'
-import { exportTeacherMonthly, exportAllTeachersMonthly } from '@/lib/excel'
 import PageHeader from '@/components/ui/PageHeader'
 import BottomNav from '@/components/ui/BottomNav'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
@@ -121,18 +120,20 @@ export default function DirectorRecordsPage() {
               <button onClick={nextMonth} className="text-[#00b4d8] text-xl px-2">›</button>
             </div>
             <button
-              onClick={() => void exportAllTeachersMonthly(
-                summaries.map((s) => ({
-                  teacherName: s.teacher.name,
-                  records: s.records as import('@/types').Record[],
-                  pendingMakeups: pendingMakeups[s.teacher.id] ?? {},
-                })),
-                year, month,
+              onClick={() => void import('@/lib/excel').then(({ exportAllTeachersMonthly }) =>
+                exportAllTeachersMonthly(
+                  summaries.map((s) => ({
+                    teacherName: s.teacher.name,
+                    records: s.records as import('@/types').Record[],
+                    pendingMakeups: pendingMakeups[s.teacher.id] ?? {},
+                  })),
+                  year, month,
+                )
               )}
               disabled={summaries.length === 0 || isLoading}
               className="flex items-center gap-1.5 bg-[#7db83a] text-white text-sm font-semibold px-3 py-3 rounded-xl shadow-sm active:bg-[#5f9428] disabled:opacity-40 transition-colors shrink-0"
             >
-              <span>⬇</span><span>전체</span>
+              <span>전체 다운</span>
             </button>
           </div>
         )}
@@ -273,15 +274,17 @@ export default function DirectorRecordsPage() {
                             </div>
                           </button>
                           <button
-                            onClick={() => void exportTeacherMonthly({
-                              teacherName: s.teacher.name,
-                              records: s.records as import('@/types').Record[],
-                              year, month,
-                              pendingMakeups: pendingMakeups[s.teacher.id] ?? {},
-                            })}
+                            onClick={() => void import('@/lib/excel').then(({ exportTeacherMonthly }) =>
+                              exportTeacherMonthly({
+                                teacherName: s.teacher.name,
+                                records: s.records as import('@/types').Record[],
+                                year, month,
+                                pendingMakeups: pendingMakeups[s.teacher.id] ?? {},
+                              })
+                            )}
                             className="flex items-center gap-1 text-xs text-[#00b4d8] bg-[#e8f7fb] px-2.5 py-1.5 rounded-lg active:bg-[#d0eff7] transition-colors shrink-0 mt-0.5"
                           >
-                            <span>⬇</span><span>엑셀</span>
+                            <span>엑셀</span>
                           </button>
                         </div>
                       </div>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/auth'
 import { todayStr, formatKRW, calcSupport } from '@/lib/utils'
@@ -8,7 +9,8 @@ import PageHeader from '@/components/ui/PageHeader'
 import BottomNav from '@/components/ui/BottomNav'
 import RecordFormFields from '@/components/ui/RecordFormFields'
 import SavedToast from '@/components/ui/SavedToast'
-import type { Attendance, PaymentMethod, FeeTable } from '@/types'
+import { useFeeTables, useMonthlyUsed } from '@/hooks/queries'
+import type { Attendance, PaymentMethod } from '@/types'
 
 type ActiveTab = 'count' | 'payment'
 
@@ -32,10 +34,15 @@ interface PayRow {
   unit_price: number
   session_count: number
   payment_method: PaymentMethod
+  after_school_support?: number
+  sports_voucher_support?: number
+  secondary_method?: PaymentMethod
+  secondary_override?: number
   support_amount: number
+  secondary_support: number
+  remaining_support: number
   self_payment: number
   total_amount: number
-  after_school_support?: number
   payment_note?: string
   receiptFile?: File
 }
@@ -49,6 +56,8 @@ function newPayRow(): PayRow {
     session_count: 1,
     payment_method: 'card',
     support_amount: 0,
+    secondary_support: 0,
+    remaining_support: 0,
     self_payment: 0,
     total_amount: 0,
   }
@@ -62,19 +71,59 @@ function recalcPayRows(
   return rows.map((row) => {
     const name = row.patient_name.trim()
     if (name && !inFormAccum[name]) inFormAccum[name] = {}
-    const dbUsed     = name ? (monthlyUsed[name]?.[row.payment_method] ?? 0) : 0
-    const inFormUsed = name ? (inFormAccum[name][row.payment_method] ?? 0) : 0
+
     const total = row.unit_price * row.session_count
-    const { support, selfPayment } = calcSupport(total, row.payment_method, dbUsed + inFormUsed, row.after_school_support)
-    if (name) inFormAccum[name][row.payment_method] = (inFormAccum[name][row.payment_method] ?? 0) + support
-    return { ...row, total_amount: total, support_amount: support, self_payment: selfPayment }
+
+    const primaryOverride =
+      row.payment_method === 'after_school' ? row.after_school_support :
+      row.payment_method === 'sports_voucher' ? row.sports_voucher_support :
+      undefined
+    const primaryDbUsed   = name ? (monthlyUsed[name]?.[row.payment_method] ?? 0) : 0
+    const primaryFormUsed = name ? (inFormAccum[name]?.[row.payment_method] ?? 0) : 0
+
+    // 주 결제방식: 독립 용량 (full total 기준)
+    const primaryCapacity = calcSupport(total, row.payment_method, primaryDbUsed + primaryFormUsed, primaryOverride).support
+
+    // 보조 결제방식: 독립 용량 계산 후 cascade로 실제 사용량 결정
+    let secondaryCapacity = 0
+    let secondarySupport = 0
+    if (row.secondary_method) {
+      const secOverride =
+        (row.secondary_method === 'after_school' || row.secondary_method === 'sports_voucher')
+          ? row.secondary_override : undefined
+      const secDbUsed   = name ? (monthlyUsed[name]?.[row.secondary_method] ?? 0) : 0
+      const secFormUsed = name ? (inFormAccum[name]?.[row.secondary_method] ?? 0) : 0
+      secondaryCapacity = calcSupport(total, row.secondary_method, secDbUsed + secFormUsed, secOverride).support
+      // cascade: 주 결제 이후 남은 금액에서만 사용
+      secondarySupport = Math.min(secondaryCapacity, Math.max(0, total - primaryCapacity))
+    }
+
+    const totalSupportUsed = primaryCapacity + secondarySupport
+    const finalSelf = Math.max(0, total - totalSupportUsed)
+    // 두 방식의 독립 용량 합이 결제금액 초과 → 남은지원금 자동 계산
+    const autoRemaining = Math.max(0, primaryCapacity + secondaryCapacity - total)
+
+    if (name) {
+      inFormAccum[name][row.payment_method] = (inFormAccum[name][row.payment_method] ?? 0) + primaryCapacity
+      if (row.secondary_method) {
+        inFormAccum[name][row.secondary_method] = (inFormAccum[name][row.secondary_method] ?? 0) + secondarySupport
+      }
+    }
+
+    return {
+      ...row,
+      total_amount: total,
+      support_amount: totalSupportUsed,   // DB: 총 지원금 (기존 코드 호환)
+      secondary_support: secondarySupport, // DB: 보조 지원금 (내역용)
+      remaining_support: autoRemaining,    // DB: 자동 계산된 남은지원금
+      self_payment: finalSelf,
+    }
   })
 }
 
-const SESSION_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8]
-
 export default function PaymentPage() {
   const user = useAuthStore((s) => s.user)
+  const queryClient = useQueryClient()
   const [tab, setTab] = useState<ActiveTab>('count')
   const [date, setDate] = useState(todayStr())
 
@@ -85,45 +134,11 @@ export default function PaymentPage() {
 
   /* 결제 탭 상태 */
   const [payRows, setPayRows] = useState<PayRow[]>([newPayRow()])
-  const [feeTables, setFeeTables] = useState<FeeTable[]>([])
-  const [monthlyUsed, setMonthlyUsed] = useState<Record<string, Record<PaymentMethod, number>>>({})
   const [savingPay, setSavingPay] = useState(false)
   const [savedPayN, setSavedPayN] = useState(0)
 
-  useEffect(() => {
-    if (!user?.branch_id) return
-    supabase
-      .from('fee_tables')
-      .select('*')
-      .eq('branch_id', user.branch_id)
-      .eq('is_active', true)
-      .then(({ data }: { data: FeeTable[] | null }) => { if (data) setFeeTables(data) })
-  }, [user])
-
-  useEffect(() => {
-    if (!user) return
-    const now = new Date(date)
-    const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
-    supabase
-      .from('records')
-      .select('patient_name, payment_method, support_amount')
-      .eq('teacher_id', user.id)
-      .gte('date', monthStart)
-      .lte('date', date)
-      .then(({ data }: { data: { patient_name: string; payment_method: string; support_amount: number }[] | null }) => {
-        if (!data) return
-        const used: Record<string, Record<PaymentMethod, number>> = {}
-        for (const r of data) {
-          if (!used[r.patient_name]) {
-            used[r.patient_name] = {
-              education: 0, sports_voucher: 0, after_school: 0, card: 0, cash: 0, bank_transfer: 0, other: 0,
-            }
-          }
-          used[r.patient_name][r.payment_method as PaymentMethod] += r.support_amount
-        }
-        setMonthlyUsed(used)
-      })
-  }, [date, user])
+  const { data: feeTables = [] } = useFeeTables(user?.branch_id ?? null)
+  const { data: monthlyUsed = {} } = useMonthlyUsed(user?.id ?? null, date)
 
   useEffect(() => {
     setPayRows((prev) => recalcPayRows(prev, monthlyUsed))
@@ -156,8 +171,9 @@ export default function PaymentPage() {
         total_amount: 0,
         payment_method: 'card',
         support_amount: 0,
+        secondary_support: 0,
+        remaining_support: 0,
         self_payment: 0,
-        skip_amount: true,
       })),
     )
     setSavingCount(false)
@@ -165,6 +181,8 @@ export default function PaymentPage() {
     setSavedCountN(valid.length)
     setCountRows([newCountRow()])
     setTimeout(() => setSavedCountN(0), 3000)
+    void queryClient.invalidateQueries({ queryKey: ['records', 'today', user.id] })
+    void queryClient.invalidateQueries({ queryKey: ['records', 'monthSummary', user.id] })
   }
 
   /* ── 결제 저장 ── */
@@ -188,6 +206,9 @@ export default function PaymentPage() {
         payment_method: r.payment_method,
         payment_note: r.payment_note || null,
         support_amount: r.support_amount,
+        secondary_method: r.secondary_method || null,
+        secondary_support: r.secondary_support,
+        remaining_support: r.remaining_support,
         self_payment: r.self_payment,
       })),
     ).select('id')
@@ -202,6 +223,9 @@ export default function PaymentPage() {
     setSavedPayN(valid.length)
     setPayRows([newPayRow()])
     setTimeout(() => setSavedPayN(0), 3000)
+    void queryClient.invalidateQueries({ queryKey: ['records', 'today', user.id] })
+    void queryClient.invalidateQueries({ queryKey: ['records', 'monthSummary', user.id] })
+    void queryClient.invalidateQueries({ queryKey: ['monthlyUsed', user.id] })
   }
 
   const totalSelf    = payRows.reduce((acc, r) => acc + r.self_payment, 0)
@@ -286,21 +310,22 @@ export default function PaymentPage() {
                 ))}
               </div>
 
-              {/* 횟수 */}
+              {/* 횟수 직접입력 */}
               <div>
                 <p className="text-xs text-gray-400 mb-1.5">횟수</p>
-                <div className="flex gap-1.5 flex-wrap">
-                  {SESSION_OPTIONS.map((n) => (
-                    <button
-                      key={n}
-                      onClick={() => setCountRows((prev) => prev.map((r) => r.id === row.id ? { ...r, session_count: n } : r))}
-                      className={`w-10 h-10 rounded-lg text-sm font-medium transition-colors
-                        ${row.session_count === n ? 'bg-[#00b4d8] text-white' : 'bg-gray-100 text-gray-600'}`}
-                    >
-                      {n}
-                    </button>
-                  ))}
-                </div>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  placeholder="횟수 입력"
+                  value={row.session_count || ''}
+                  onKeyDown={(e) => { if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault() }}
+                  onChange={(e) => {
+                    const n = Math.max(1, Math.round(Number(e.target.value) || 1))
+                    setCountRows((prev) => prev.map((r) => r.id === row.id ? { ...r, session_count: n } : r))
+                  }}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#00b4d8]"
+                />
               </div>
             </div>
           ))}
@@ -348,11 +373,16 @@ export default function PaymentPage() {
                   session_count: row.session_count,
                   payment_method: row.payment_method,
                   after_school_support: row.after_school_support,
+                  sports_voucher_support: row.sports_voucher_support,
+                  secondary_method: row.secondary_method,
+                  secondary_override: row.secondary_override,
                   payment_note: row.payment_note,
                 }}
                 feeTables={feeTables}
                 total={row.total_amount}
                 support={row.support_amount}
+                secondarySupport={row.secondary_support}
+                remainingSupport={row.remaining_support}
                 selfPayment={row.self_payment}
                 onChange={(updates) => updatePayRow(row.id, updates)}
               />
@@ -376,8 +406,7 @@ export default function PaymentPage() {
                   </div>
                 ) : (
                   <label className="flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed border-gray-200 rounded-xl text-gray-400 text-sm cursor-pointer active:bg-gray-50 transition-colors">
-                    <span>📷</span>
-                    <span>영수증 사진 첨부</span>
+                    <span>사진 첨부</span>
                     <input
                       type="file"
                       accept="image/*"

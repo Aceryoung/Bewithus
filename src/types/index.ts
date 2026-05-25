@@ -42,6 +42,9 @@ export interface Record {
   self_payment: number
   receipt_url: string | null
   payment_note: string | null
+  secondary_method: string | null
+  secondary_support: number
+  remaining_support: number
   created_at: string
   updated_at: string
   teacher?: User

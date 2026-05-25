@@ -28,11 +28,11 @@ export function calcSupport(
   totalAmount: number,
   paymentMethod: PaymentMethod,
   usedSupportThisMonth: number,
-  afterSchoolOverride?: number,
+  manualOverride?: number,
 ): { support: number; selfPayment: number } {
-  // 방과후 직접입력이 있는 경우 override 우선 적용
-  if (paymentMethod === 'after_school' && afterSchoolOverride !== undefined) {
-    const support = Math.min(afterSchoolOverride, totalAmount)
+  // 방과후/스포츠바우처 직접입력이 있는 경우 override 우선 적용
+  if ((paymentMethod === 'after_school' || paymentMethod === 'sports_voucher') && manualOverride !== undefined) {
+    const support = Math.min(manualOverride, totalAmount)
     return { support, selfPayment: Math.max(0, totalAmount - support) }
   }
 

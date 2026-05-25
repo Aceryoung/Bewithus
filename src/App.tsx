@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/auth'
 import OfflineBanner from '@/components/ui/OfflineBanner'
+import ErrorBoundary from '@/components/ui/ErrorBoundary'
 
 const LoginPage         = lazy(() => import('@/pages/auth/LoginPage'))
 const TeacherDashboard  = lazy(() => import('@/pages/teacher/TeacherDashboard'))
@@ -63,6 +64,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <OfflineBanner />
+      <ErrorBoundary>
       <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route
@@ -103,6 +105,7 @@ export default function App() {
           />
         </Routes>
       </Suspense>
+      </ErrorBoundary>
     </BrowserRouter>
   )
 }

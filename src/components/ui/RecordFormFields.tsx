@@ -1,6 +1,6 @@
 import type { PaymentMethod, FeeTable } from '@/types'
 import { formatKRW } from '@/lib/utils'
-import { PAYMENT_METHOD_LABELS, SESSION_OPTIONS, MONTHLY_SUPPORT_LIMITS } from '@/constants'
+import { PAYMENT_METHOD_LABELS, MONTHLY_SUPPORT_LIMITS } from '@/constants'
 
 export interface RecordFieldState {
   fee_type: string
@@ -8,6 +8,9 @@ export interface RecordFieldState {
   session_count: number
   payment_method: PaymentMethod
   after_school_support?: number
+  sports_voucher_support?: number
+  secondary_method?: PaymentMethod
+  secondary_override?: number
   payment_note?: string
 }
 
@@ -15,12 +18,16 @@ interface Props {
   state: RecordFieldState
   feeTables: FeeTable[]
   total: number
-  support: number
+  support: number          // 총 지원금 (primary + secondary)
+  secondarySupport?: number
+  remainingSupport?: number // 자동 계산된 남은지원금
   selfPayment: number
   onChange: (updates: Partial<RecordFieldState>) => void
 }
 
-export default function RecordFormFields({ state, feeTables, total, support, selfPayment, onChange }: Props) {
+export default function RecordFormFields({ state, feeTables, total, support, secondarySupport, remainingSupport, selfPayment, onChange }: Props) {
+  const primarySupport = support - (secondarySupport ?? 0)
+
   return (
     <>
       {/* 요금 종류 */}
@@ -63,24 +70,25 @@ export default function RecordFormFields({ state, feeTables, total, support, sel
         )}
       </div>
 
-      {/* 횟수 */}
+      {/* 횟수 직접입력 */}
       <div>
         <p className="text-xs text-gray-400 mb-1.5">횟수</p>
-        <div className="flex gap-1.5 flex-wrap">
-          {SESSION_OPTIONS.map((n) => (
-            <button
-              key={n}
-              onClick={() => onChange({ session_count: n })}
-              className={`w-10 h-10 rounded-lg text-sm font-medium transition-colors
-                ${state.session_count === n ? 'bg-[#00b4d8] text-white' : 'bg-gray-100 text-gray-600'}`}
-            >
-              {n}
-            </button>
-          ))}
-        </div>
+        <input
+          type="number"
+          inputMode="numeric"
+          min={1}
+          placeholder="횟수 입력"
+          value={state.session_count || ''}
+          onKeyDown={(e) => { if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault() }}
+          onChange={(e) => {
+            const n = Math.max(1, Math.round(Number(e.target.value) || 1))
+            onChange({ session_count: n })
+          }}
+          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#00b4d8]"
+        />
       </div>
 
-      {/* 결제 방식 */}
+      {/* 결제 방식 (primary) */}
       <div>
         <p className="text-xs text-gray-400 mb-1.5">결제 방식</p>
         <div className="grid grid-cols-3 gap-1.5">
@@ -91,6 +99,9 @@ export default function RecordFormFields({ state, feeTables, total, support, sel
                 onChange({
                   payment_method: key,
                   after_school_support: key === 'after_school' ? state.after_school_support : undefined,
+                  sports_voucher_support: key === 'sports_voucher' ? state.sports_voucher_support : undefined,
+                  secondary_method: state.secondary_method === key ? undefined : state.secondary_method,
+                  secondary_override: state.secondary_method === key ? undefined : state.secondary_override,
                 })
               }
               className={`py-2 rounded-lg text-xs font-medium transition-colors
@@ -102,7 +113,7 @@ export default function RecordFormFields({ state, feeTables, total, support, sel
         </div>
       </div>
 
-      {/* 결제 방식 직접입력 */}
+      {/* 결제 방식 직접입력 메모 */}
       {state.payment_method === 'other' && (
         <input
           type="text"
@@ -139,6 +150,82 @@ export default function RecordFormFields({ state, feeTables, total, support, sel
         </div>
       )}
 
+      {/* 스포츠바우처 지원금 직접입력 */}
+      {state.payment_method === 'sports_voucher' && (
+        <div>
+          <p className="text-xs text-gray-400 mb-1.5">
+            스포츠바우처 지원금 직접입력
+            <span className="text-gray-300 ml-1">
+              (빈 칸이면 월 {formatKRW(MONTHLY_SUPPORT_LIMITS.sports_voucher!)} 자동계산)
+            </span>
+          </p>
+          <input
+            type="number"
+            inputMode="numeric"
+            placeholder={`0 ~ ${(MONTHLY_SUPPORT_LIMITS.sports_voucher! / 10000).toFixed(0)}만원`}
+            value={state.sports_voucher_support ?? ''}
+            onKeyDown={(e) => { if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault() }}
+            onChange={(e) =>
+              onChange({
+                sports_voucher_support:
+                  e.target.value === '' ? undefined : Math.max(0, Number(e.target.value)),
+              })
+            }
+            className="w-full border border-purple-200 bg-purple-50 rounded-lg px-3 py-2 text-sm outline-none focus:border-purple-400"
+          />
+        </div>
+      )}
+
+      {/* 보조 결제방식 */}
+      <div>
+        <p className="text-xs text-gray-400 mb-1.5">보조 결제방식 <span className="text-gray-300">(선택)</span></p>
+        <div className="flex gap-1.5 flex-wrap">
+          <button
+            onClick={() => onChange({ secondary_method: undefined, secondary_override: undefined })}
+            className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors
+              ${!state.secondary_method ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-600'}`}
+          >
+            없음
+          </button>
+          {(Object.entries(PAYMENT_METHOD_LABELS) as [PaymentMethod, string][])
+            .filter(([key]) => key !== state.payment_method)
+            .map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => onChange({ secondary_method: key, secondary_override: undefined })}
+                className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors
+                  ${state.secondary_method === key ? 'bg-[#7db83a] text-white' : 'bg-gray-100 text-gray-600'}`}
+              >
+                {label}
+              </button>
+            ))}
+        </div>
+      </div>
+
+      {/* 보조 결제방식 직접입력 (after_school / sports_voucher) */}
+      {state.secondary_method && (state.secondary_method === 'after_school' || state.secondary_method === 'sports_voucher') && (
+        <div>
+          <p className="text-xs text-gray-400 mb-1.5">
+            {PAYMENT_METHOD_LABELS[state.secondary_method]} 지원금 직접입력
+            <span className="text-gray-300 ml-1">(빈 칸이면 자동계산)</span>
+          </p>
+          <input
+            type="number"
+            inputMode="numeric"
+            placeholder="지원금 금액"
+            value={state.secondary_override ?? ''}
+            onKeyDown={(e) => { if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault() }}
+            onChange={(e) =>
+              onChange({
+                secondary_override:
+                  e.target.value === '' ? undefined : Math.max(0, Number(e.target.value)),
+              })
+            }
+            className="w-full border border-[#7db83a]/40 bg-[#f0f9e8] rounded-lg px-3 py-2 text-sm outline-none focus:border-[#7db83a]"
+          />
+        </div>
+      )}
+
       {/* 금액 미리보기 */}
       {total > 0 && (
         <div className="bg-gray-50 rounded-xl p-3 text-sm space-y-1.5">
@@ -146,16 +233,28 @@ export default function RecordFormFields({ state, feeTables, total, support, sel
             <span className="text-gray-500">총 요금</span>
             <span className="font-medium">{formatKRW(total)}</span>
           </div>
-          {support > 0 && (
+          {primarySupport > 0 && (
             <div className="flex justify-between">
-              <span className="text-[#00b4d8]">지원금</span>
-              <span className="text-[#00b4d8]">−{formatKRW(support)}</span>
+              <span className="text-[#00b4d8]">{PAYMENT_METHOD_LABELS[state.payment_method]} 지원금</span>
+              <span className="text-[#00b4d8]">−{formatKRW(primarySupport)}</span>
+            </div>
+          )}
+          {(secondarySupport ?? 0) > 0 && state.secondary_method && (
+            <div className="flex justify-between">
+              <span className="text-[#7db83a]">{PAYMENT_METHOD_LABELS[state.secondary_method]} 지원금</span>
+              <span className="text-[#7db83a]">−{formatKRW(secondarySupport!)}</span>
             </div>
           )}
           <div className="flex justify-between font-semibold border-t border-gray-200 pt-1.5">
             <span className="text-gray-700">자부담</span>
             <span className="text-gray-900">{formatKRW(selfPayment)}</span>
           </div>
+          {(remainingSupport ?? 0) > 0 && (
+            <div className="flex justify-between text-xs border-t border-dashed border-gray-200 pt-1.5">
+              <span className="text-gray-400">남은지원금</span>
+              <span className="text-gray-400">{formatKRW(remainingSupport!)}</span>
+            </div>
+          )}
         </div>
       )}
     </>
