@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { useState } from 'react'
 import { formatKRW } from '@/lib/utils'
 import { ATTENDANCE_LABELS, PAYMENT_METHOD_LABELS } from '@/constants'
 import { exportTeacherMonthly, exportAllTeachersMonthly } from '@/lib/excel'
 import PageHeader from '@/components/ui/PageHeader'
 import BottomNav from '@/components/ui/BottomNav'
+import LoadingSpinner from '@/components/ui/LoadingSpinner'
+import ErrorState from '@/components/ui/ErrorState'
+import { useBranches, useDirectorUsers, useDirectorMonthlyRecords } from '@/hooks/queries'
 import type { Record, User, PaymentMethod } from '@/types'
 
 interface TeacherSummary {
@@ -23,70 +25,41 @@ export default function DirectorMonthlyPage() {
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
-  const [branches, setBranches] = useState<{ id: string; name: string }[]>([])
-  const [teachers, setTeachers] = useState<User[]>([])
-  const [records, setRecords] = useState<Record[]>([])
   const [selectedBranch, setSelectedBranch] = useState<string>('all')
   const [selectedTeacher, setSelectedTeacher] = useState<string>('all')
   const [expandedTeacher, setExpandedTeacher] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
 
-  useEffect(() => {
-    Promise.all([
-      supabase.from('branches').select('id, name'),
-      supabase.from('users').select('*').eq('role', 'teacher').eq('is_active', true),
-    ]).then(([b, u]) => {
-      if (b.data) setBranches(b.data)
-      if (u.data) setTeachers(u.data as User[])
-    })
-  }, [])
+  const { data: branches = [] } = useBranches()
+  const { data: allUsers = [] } = useDirectorUsers()
+  const teachers = allUsers.filter((u) => u.role === 'teacher')
 
-  useEffect(() => {
-    loadRecords()
-  }, [year, month, selectedBranch, selectedTeacher])
-
-  const loadRecords = async () => {
-    setLoading(true)
-    const monthStart = `${year}-${String(month).padStart(2, '0')}-01`
-    const nextMonth = month === 12 ? `${year + 1}-01-01` : `${year}-${String(month + 1).padStart(2, '0')}-01`
-
-    let query = supabase.from('records').select('*').gte('date', monthStart).lt('date', nextMonth)
-    if (selectedBranch !== 'all') query = query.eq('branch_id', selectedBranch)
-    if (selectedTeacher !== 'all') query = query.eq('teacher_id', selectedTeacher)
-    const { data } = await query.order('date', { ascending: false })
-    if (data) setRecords(data as Record[])
-    setLoading(false)
-  }
+  const { data: records = [], isLoading, error, refetch } =
+    useDirectorMonthlyRecords(year, month, selectedBranch, selectedTeacher)
 
   const filteredTeachers = selectedBranch === 'all'
     ? teachers
     : teachers.filter((t) => t.branch_id === selectedBranch)
 
-  const visibleTeachers = selectedTeacher === 'all' ? filteredTeachers : filteredTeachers.filter((t) => t.id === selectedTeacher)
+  const visibleTeachers = selectedTeacher === 'all'
+    ? filteredTeachers
+    : filteredTeachers.filter((t) => t.id === selectedTeacher)
 
   const summaries: TeacherSummary[] = visibleTeachers.map((teacher) => {
     const tr = records.filter((r) => r.teacher_id === teacher.id)
     return {
-      teacher,
-      records: tr,
-      totalCount: tr.length,
-      presentCount: tr.filter((r) => r.attendance === 'present').length,
-      absentCount: tr.filter((r) => r.attendance === 'absent').length,
-      makeupCount: tr.filter((r) => r.attendance === 'makeup').length,
-      totalAmount: tr.reduce((acc, r) => acc + r.total_amount, 0),
+      teacher, records: tr,
+      totalCount:    tr.length,
+      presentCount:  tr.filter((r) => r.attendance === 'present').length,
+      absentCount:   tr.filter((r) => r.attendance === 'absent').length,
+      makeupCount:   tr.filter((r) => r.attendance === 'makeup').length,
+      totalAmount:   tr.reduce((acc, r) => acc + r.total_amount, 0),
       supportAmount: tr.reduce((acc, r) => acc + r.support_amount, 0),
-      selfPayment: tr.reduce((acc, r) => acc + r.self_payment, 0),
+      selfPayment:   tr.reduce((acc, r) => acc + r.self_payment, 0),
     }
   })
 
-  const prevMonth = () => {
-    if (month === 1) { setYear((y) => y - 1); setMonth(12) }
-    else setMonth((m) => m - 1)
-  }
-  const nextMonth = () => {
-    if (month === 12) { setYear((y) => y + 1); setMonth(1) }
-    else setMonth((m) => m + 1)
-  }
+  const prevMonth = () => { if (month === 1) { setYear((y) => y - 1); setMonth(12) } else setMonth((m) => m - 1) }
+  const nextMonth = () => { if (month === 12) { setYear((y) => y + 1); setMonth(1) } else setMonth((m) => m + 1) }
 
   return (
     <div className="flex flex-col min-h-dvh pb-16">
@@ -107,11 +80,10 @@ export default function DirectorMonthlyPage() {
                 year, month,
               )
             }
-            disabled={summaries.length === 0 || loading}
+            disabled={summaries.length === 0 || isLoading}
             className="flex items-center gap-1.5 bg-[#7db83a] text-white text-sm font-semibold px-3 py-3 rounded-xl shadow-sm active:bg-[#5f9428] disabled:opacity-40 transition-colors shrink-0"
           >
-            <span>⬇</span>
-            <span>전체</span>
+            <span>⬇</span><span>전체</span>
           </button>
         </div>
 
@@ -143,13 +115,14 @@ export default function DirectorMonthlyPage() {
           ))}
         </div>
 
-        {loading ? (
-          <div className="text-center text-gray-400 py-8">불러오는 중...</div>
+        {isLoading ? (
+          <LoadingSpinner />
+        ) : error ? (
+          <ErrorState onRetry={refetch} />
         ) : (
           <>
             {summaries.map((s) => (
               <div key={s.teacher.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                {/* 선생님 요약 행 (클릭 시 펼침) */}
                 <div className="p-4">
                   <div className="flex items-start justify-between gap-2">
                     <button
@@ -172,23 +145,14 @@ export default function DirectorMonthlyPage() {
                       </div>
                     </button>
                     <button
-                      onClick={() =>
-                        void exportTeacherMonthly({
-                          teacherName: s.teacher.name,
-                          records: s.records as import('@/types').Record[],
-                          year,
-                          month,
-                        })
-                      }
+                      onClick={() => void exportTeacherMonthly({ teacherName: s.teacher.name, records: s.records as import('@/types').Record[], year, month })}
                       className="flex items-center gap-1 text-xs text-[#00b4d8] bg-[#e8f7fb] px-2.5 py-1.5 rounded-lg active:bg-[#d0eff7] transition-colors shrink-0 mt-0.5"
                     >
-                      <span>⬇</span>
-                      <span>엑셀</span>
+                      <span>⬇</span><span>엑셀</span>
                     </button>
                   </div>
                 </div>
 
-                {/* 상세 펼침 */}
                 {expandedTeacher === s.teacher.id && (
                   <div className="border-t border-gray-100 px-4 pb-4">
                     {s.records.length === 0 ? (

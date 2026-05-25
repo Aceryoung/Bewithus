@@ -1,15 +1,24 @@
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/auth'
-import LoginPage from '@/pages/auth/LoginPage'
-import TeacherDashboard from '@/pages/teacher/TeacherDashboard'
-import DailyInputPage from '@/pages/teacher/DailyInputPage'
-import MonthlyViewPage from '@/pages/teacher/MonthlyViewPage'
-import PaymentPage from '@/pages/teacher/PaymentPage'
-import DirectorDashboard from '@/pages/director/DirectorDashboard'
-import DirectorRecordsPage from '@/pages/director/DirectorRecordsPage'
-import AccountsPage from '@/pages/director/AccountsPage'
+
+const LoginPage         = lazy(() => import('@/pages/auth/LoginPage'))
+const TeacherDashboard  = lazy(() => import('@/pages/teacher/TeacherDashboard'))
+const DailyInputPage    = lazy(() => import('@/pages/teacher/DailyInputPage'))
+const MonthlyViewPage   = lazy(() => import('@/pages/teacher/MonthlyViewPage'))
+const PaymentPage       = lazy(() => import('@/pages/teacher/PaymentPage'))
+const DirectorDashboard = lazy(() => import('@/pages/director/DirectorDashboard'))
+const DirectorRecordsPage = lazy(() => import('@/pages/director/DirectorRecordsPage'))
+const AccountsPage      = lazy(() => import('@/pages/director/AccountsPage'))
+
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center min-h-dvh bg-slate-50">
+      <div className="w-8 h-8 rounded-full border-2 border-[#00b4d8] border-t-transparent animate-spin" />
+    </div>
+  )
+}
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user)
@@ -35,9 +44,7 @@ export default function App() {
   const user = useAuthStore((s) => s.user)
   const restoreSession = useAuthStore((s) => s.restoreSession)
 
-  // Supabase Auth 세션 변화 감지: 탭 재진입·토큰 갱신 등에 대응
   useEffect(() => {
-    // 앱 최초 로드 시 세션 복원
     restoreSession()
 
     const {
@@ -55,44 +62,46 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <Routes>
-        <Route
-          path="/login"
-          element={
-            user ? (
-              <Navigate to={user.role === 'director' || user.role === 'admin' ? '/director' : '/teacher'} replace />
-            ) : (
-              <LoginPage />
-            )
-          }
-        />
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route
+            path="/login"
+            element={
+              user ? (
+                <Navigate to={user.role === 'director' || user.role === 'admin' ? '/director' : '/teacher'} replace />
+              ) : (
+                <LoginPage />
+              )
+            }
+          />
 
-        {/* 선생님 라우트 */}
-        <Route path="/teacher"          element={<RequireAuth><TeacherDashboard /></RequireAuth>} />
-        <Route path="/teacher/input"    element={<RequireAuth><DailyInputPage /></RequireAuth>} />
-        <Route path="/teacher/monthly"  element={<RequireAuth><MonthlyViewPage /></RequireAuth>} />
-        <Route path="/teacher/payment"  element={<RequireAuth><PaymentPage /></RequireAuth>} />
+          {/* 선생님 라우트 */}
+          <Route path="/teacher"         element={<RequireAuth><TeacherDashboard /></RequireAuth>} />
+          <Route path="/teacher/input"   element={<RequireAuth><DailyInputPage /></RequireAuth>} />
+          <Route path="/teacher/monthly" element={<RequireAuth><MonthlyViewPage /></RequireAuth>} />
+          <Route path="/teacher/payment" element={<RequireAuth><PaymentPage /></RequireAuth>} />
 
-        {/* 대표/관리자 공통 라우트 */}
-        <Route path="/director"            element={<RequireDirector><DirectorDashboard /></RequireDirector>} />
-        <Route path="/director/records"    element={<RequireDirector><DirectorRecordsPage /></RequireDirector>} />
-        <Route path="/director/accounts"   element={<RequireDirector><AccountsPage /></RequireDirector>} />
-        {/* 대표 전용 (결제/건수 입력) */}
-        <Route path="/director/payment"    element={<RequireRole role="director"><PaymentPage /></RequireRole>} />
-        {/* 구 라우트 호환 */}
-        <Route path="/director/daily"      element={<Navigate to="/director/records" replace />} />
-        <Route path="/director/monthly"    element={<Navigate to="/director/records" replace />} />
+          {/* 대표/관리자 공통 라우트 */}
+          <Route path="/director"          element={<RequireDirector><DirectorDashboard /></RequireDirector>} />
+          <Route path="/director/records"  element={<RequireDirector><DirectorRecordsPage /></RequireDirector>} />
+          <Route path="/director/accounts" element={<RequireDirector><AccountsPage /></RequireDirector>} />
+          {/* 대표 전용 */}
+          <Route path="/director/payment"  element={<RequireRole role="director"><PaymentPage /></RequireRole>} />
+          {/* 구 라우트 호환 */}
+          <Route path="/director/daily"    element={<Navigate to="/director/records" replace />} />
+          <Route path="/director/monthly"  element={<Navigate to="/director/records" replace />} />
 
-        <Route
-          path="*"
-          element={
-            <Navigate
-              to={user ? (user.role === 'director' || user.role === 'admin' ? '/director' : '/teacher') : '/login'}
-              replace
-            />
-          }
-        />
-      </Routes>
+          <Route
+            path="*"
+            element={
+              <Navigate
+                to={user ? (user.role === 'director' || user.role === 'admin' ? '/director' : '/teacher') : '/login'}
+                replace
+              />
+            }
+          />
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   )
 }

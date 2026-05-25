@@ -1,15 +1,29 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import type { FeeTable, Record as SessionRecord, PaymentMethod } from '@/types'
+import type { FeeTable, Record as SessionRecord, User, PaymentMethod } from '@/types'
 
 // ── Query Key 팩토리 ─────────────────────────────────────────
 export const qk = {
+  // teacher
   feeTables: (branchId: string) => ['feeTables', branchId] as const,
   monthlyUsed: (teacherId: string, date: string) => ['monthlyUsed', teacherId, date] as const,
   todayRecords: (teacherId: string, today: string) => ['records', 'today', teacherId, today] as const,
   monthSummary: (teacherId: string, monthStart: string) => ['records', 'monthSummary', teacherId, monthStart] as const,
   monthlyRecords: (teacherId: string, year: number, month: number) =>
     ['records', 'monthly', teacherId, year, month] as const,
+  // director – static
+  branches: () => ['branches'] as const,
+  directorUsers: () => ['users', 'director'] as const,
+  // director – dynamic
+  directorDashboard: (monthStart: string, today: string) =>
+    ['director', 'dashboard', monthStart, today] as const,
+  directorDailyRecords: (date: string, branchId: string, teacherId: string) =>
+    ['director', 'daily', date, branchId, teacherId] as const,
+  directorMonthlyRecords: (year: number, month: number, branchId: string, teacherId: string) =>
+    ['director', 'monthly', year, month, branchId, teacherId] as const,
+  pendingMakeups: () => ['makeupSessions', 'pending'] as const,
+  accountsData: (monthStart: string, today: string) =>
+    ['director', 'accounts', monthStart, today] as const,
 }
 
 // ── 지점 요금표 ──────────────────────────────────────────────
@@ -129,5 +143,144 @@ export function useMonthlyRecords(teacherId: string | null, year: number, month:
       return (data ?? []) as SessionRecord[]
     },
     enabled: !!teacherId,
+  })
+}
+
+// ── 지점 목록 (director 공통) ────────────────────────────────
+export function useBranches() {
+  return useQuery({
+    queryKey: qk.branches(),
+    queryFn: async () => {
+      const { data, error } = await supabase.from('branches').select('id, name')
+      if (error) throw error
+      return (data ?? []) as { id: string; name: string }[]
+    },
+    staleTime: 1000 * 60 * 10,
+  })
+}
+
+// ── 사용자 목록 (director 공통 — teacher+director+admin) ─────
+export function useDirectorUsers() {
+  return useQuery({
+    queryKey: qk.directorUsers(),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .in('role', ['teacher', 'director', 'admin'])
+        .eq('is_active', true)
+      if (error) throw error
+      return (data ?? []) as User[]
+    },
+    staleTime: 1000 * 60 * 5,
+  })
+}
+
+// ── DirectorDashboard: 이달 전체 통계용 원시 데이터 ──────────
+export function useDirectorDashboard(monthStart: string, today: string) {
+  return useQuery({
+    queryKey: qk.directorDashboard(monthStart, today),
+    queryFn: async () => {
+      const [branchRes, userRes, recordRes] = await Promise.all([
+        supabase.from('branches').select('id, name'),
+        supabase.from('users').select('*').in('role', ['teacher', 'director']).eq('is_active', true),
+        supabase.from('records').select('*').gte('date', monthStart).lte('date', today),
+      ])
+      if (branchRes.error) throw branchRes.error
+      if (userRes.error) throw userRes.error
+      if (recordRes.error) throw recordRes.error
+      return {
+        branches: (branchRes.data ?? []) as { id: string; name: string }[],
+        users: (userRes.data ?? []) as User[],
+        records: (recordRes.data ?? []) as SessionRecord[],
+      }
+    },
+    staleTime: 1000 * 30,
+  })
+}
+
+// ── 대표 일별 기록 ────────────────────────────────────────────
+export function useDirectorDailyRecords(date: string, branchId: string, teacherId: string) {
+  return useQuery({
+    queryKey: qk.directorDailyRecords(date, branchId, teacherId),
+    queryFn: async () => {
+      let query = supabase
+        .from('records')
+        .select('*, teacher:teacher_id(id, name, branch_id)')
+        .eq('date', date)
+      if (branchId !== 'all') query = query.eq('branch_id', branchId)
+      if (teacherId !== 'all') query = query.eq('teacher_id', teacherId)
+      const { data, error } = await query.order('created_at', { ascending: false })
+      if (error) throw error
+      return (data ?? []) as SessionRecord[]
+    },
+    staleTime: 1000 * 30,
+  })
+}
+
+// ── 대표 월별 기록 ────────────────────────────────────────────
+export function useDirectorMonthlyRecords(
+  year: number, month: number, branchId: string, teacherId: string,
+) {
+  return useQuery({
+    queryKey: qk.directorMonthlyRecords(year, month, branchId, teacherId),
+    queryFn: async () => {
+      const monthStart = `${year}-${String(month).padStart(2, '0')}-01`
+      const nextM = month === 12 ? `${year + 1}-01-01` : `${year}-${String(month + 1).padStart(2, '0')}-01`
+      let query = supabase.from('records').select('*').gte('date', monthStart).lt('date', nextM)
+      if (branchId !== 'all') query = query.eq('branch_id', branchId)
+      if (teacherId !== 'all') query = query.eq('teacher_id', teacherId)
+      const { data, error } = await query.order('date', { ascending: false })
+      if (error) throw error
+      return (data ?? []) as SessionRecord[]
+    },
+    staleTime: 1000 * 60,
+  })
+}
+
+// ── 미완료 보강 (DirectorRecordsPage 월별 탭) ────────────────
+export function usePendingMakeups() {
+  return useQuery({
+    queryKey: qk.pendingMakeups(),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('makeup_sessions')
+        .select('teacher_id, patient_name')
+        .eq('status', 'pending')
+      if (error) throw error
+      const map: { [tid: string]: { [name: string]: number } } = {}
+      for (const m of (data ?? []) as { teacher_id: string; patient_name: string }[]) {
+        if (!map[m.teacher_id]) map[m.teacher_id] = {}
+        map[m.teacher_id][m.patient_name] = (map[m.teacher_id][m.patient_name] ?? 0) + 1
+      }
+      return map
+    },
+    staleTime: 1000 * 60,
+  })
+}
+
+// ── AccountsPage 데이터 ───────────────────────────────────────
+export function useAccountsData(monthStart: string, today: string) {
+  return useQuery({
+    queryKey: qk.accountsData(monthStart, today),
+    queryFn: async () => {
+      const [branchRes, userRes, recordRes, feeRes] = await Promise.all([
+        supabase.from('branches').select('id, name'),
+        supabase.from('users').select('*').in('role', ['teacher', 'admin', 'director']).order('name'),
+        supabase.from('records').select('teacher_id, self_payment').gte('date', monthStart).lte('date', today),
+        supabase.from('fee_tables').select('*').eq('is_active', true).order('fee_type'),
+      ])
+      if (branchRes.error) throw branchRes.error
+      if (userRes.error) throw userRes.error
+      if (recordRes.error) throw recordRes.error
+      if (feeRes.error) throw feeRes.error
+      return {
+        branches: (branchRes.data ?? []) as { id: string; name: string }[],
+        users: (userRes.data ?? []) as User[],
+        records: (recordRes.data ?? []) as { teacher_id: string; self_payment: number }[],
+        feeTables: (feeRes.data ?? []) as FeeTable[],
+      }
+    },
+    staleTime: 1000 * 30,
   })
 }

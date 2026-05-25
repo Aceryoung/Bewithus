@@ -1,10 +1,15 @@
-import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { useState } from 'react'
 import { todayStr, formatKRW } from '@/lib/utils'
 import { ATTENDANCE_LABELS, PAYMENT_METHOD_LABELS } from '@/constants'
 import { exportTeacherMonthly, exportAllTeachersMonthly } from '@/lib/excel'
 import PageHeader from '@/components/ui/PageHeader'
 import BottomNav from '@/components/ui/BottomNav'
+import LoadingSpinner from '@/components/ui/LoadingSpinner'
+import ErrorState from '@/components/ui/ErrorState'
+import {
+  useBranches, useDirectorUsers,
+  useDirectorDailyRecords, useDirectorMonthlyRecords, usePendingMakeups,
+} from '@/hooks/queries'
 import type { Record, User, PaymentMethod } from '@/types'
 
 type ViewTab = 'daily' | 'monthly'
@@ -24,82 +29,32 @@ interface TeacherSummary {
 export default function DirectorRecordsPage() {
   const now = new Date()
   const [tab, setTab] = useState<ViewTab>('daily')
-
-  /* 공통 */
-  const [branches, setBranches] = useState<{ id: string; name: string }[]>([])
-  const [teachers, setTeachers] = useState<User[]>([])
   const [selectedBranch, setSelectedBranch] = useState('all')
   const [selectedTeacher, setSelectedTeacher] = useState('all')
-  const [loading, setLoading] = useState(false)
-
-  /* 일별 */
   const [date, setDate] = useState(todayStr())
-  const [dailyRecords, setDailyRecords] = useState<Record[]>([])
-
-  /* 월별 */
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
-  const [monthlyRecords, setMonthlyRecords] = useState<Record[]>([])
   const [expandedTeacher, setExpandedTeacher] = useState<string | null>(null)
-  /* 남은보강: teacher_id → { patient_name → pending count } */
-  const [pendingMakeups, setPendingMakeups] = useState<{ [tid: string]: { [name: string]: number } }>({})
 
-  useEffect(() => {
-    Promise.all([
-      supabase.from('branches').select('id, name'),
-      supabase.from('users').select('*').in('role', ['teacher', 'director']).eq('is_active', true),
-    ]).then(([b, u]) => {
-      if (b.data) setBranches(b.data)
-      if (u.data) setTeachers(u.data as User[])
-    })
-  }, [])
+  const { data: branches = [] } = useBranches()
+  const { data: allUsers = [] } = useDirectorUsers()
+  const teachers = allUsers.filter((u) => u.role === 'teacher' || u.role === 'director')
 
-  useEffect(() => { if (tab === 'daily') loadDaily() }, [date, selectedBranch, selectedTeacher, tab])
-  useEffect(() => { if (tab === 'monthly') loadMonthly() }, [year, month, selectedBranch, selectedTeacher, tab])
+  const { data: dailyRecords = [], isLoading: loadingDaily, error: errorDaily, refetch: refetchDaily } =
+    useDirectorDailyRecords(date, selectedBranch, selectedTeacher)
 
-  const loadDaily = async () => {
-    setLoading(true)
-    let q = supabase.from('records').select('*, teacher:teacher_id(id, name, branch_id)').eq('date', date)
-    if (selectedBranch !== 'all') q = q.eq('branch_id', selectedBranch)
-    if (selectedTeacher !== 'all') q = q.eq('teacher_id', selectedTeacher)
-    const { data } = await q.order('created_at', { ascending: false })
-    if (data) setDailyRecords(data as Record[])
-    setLoading(false)
-  }
+  const { data: monthlyRecords = [], isLoading: loadingMonthly, error: errorMonthly, refetch: refetchMonthly } =
+    useDirectorMonthlyRecords(year, month, selectedBranch, selectedTeacher)
 
-  const loadMonthly = async () => {
-    setLoading(true)
-    const monthStart = `${year}-${String(month).padStart(2, '0')}-01`
-    const nextMonth  = month === 12 ? `${year + 1}-01-01` : `${year}-${String(month + 1).padStart(2, '0')}-01`
-    let q = supabase.from('records').select('*').gte('date', monthStart).lt('date', nextMonth)
-    if (selectedBranch !== 'all') q = q.eq('branch_id', selectedBranch)
-    if (selectedTeacher !== 'all') q = q.eq('teacher_id', selectedTeacher)
-    const { data } = await q.order('date', { ascending: false })
+  const { data: pendingMakeups = {} } = usePendingMakeups()
 
-    /* 남은보강 집계 (pending makeup_sessions) */
-    const { data: makeupData } = await supabase
-      .from('makeup_sessions')
-      .select('teacher_id, patient_name')
-      .eq('status', 'pending')
-    if (makeupData) {
-      const map: { [tid: string]: { [name: string]: number } } = {}
-      for (const m of makeupData as { teacher_id: string; patient_name: string }[]) {
-        if (!map[m.teacher_id]) map[m.teacher_id] = {}
-        map[m.teacher_id][m.patient_name] = (map[m.teacher_id][m.patient_name] ?? 0) + 1
-      }
-      setPendingMakeups(map)
-    }
-    if (data) setMonthlyRecords(data as Record[])
-    setLoading(false)
-  }
+  const isLoading = tab === 'daily' ? loadingDaily : loadingMonthly
+  const error = tab === 'daily' ? errorDaily : errorMonthly
+  const refetch = tab === 'daily' ? refetchDaily : refetchMonthly
 
   const filteredTeachers = selectedBranch === 'all' ? teachers : teachers.filter((t) => t.branch_id === selectedBranch)
 
-  /* 탭 전환 시 필터 유지, 데이터만 재로드 */
-  const switchTab = (t: ViewTab) => {
-    setTab(t)
-    setExpandedTeacher(null)
-  }
+  const switchTab = (t: ViewTab) => { setTab(t); setExpandedTeacher(null) }
 
   /* ── 일별 집계 ── */
   const dTotal   = dailyRecords.length
@@ -116,13 +71,13 @@ export default function DirectorRecordsPage() {
     const tr = monthlyRecords.filter((r) => r.teacher_id === teacher.id)
     return {
       teacher, records: tr,
-      totalCount:   tr.length,
-      presentCount: tr.filter((r) => r.attendance === 'present').length,
-      absentCount:  tr.filter((r) => r.attendance === 'absent').length,
-      makeupCount:  tr.filter((r) => r.attendance === 'makeup').length,
-      totalAmount:  tr.reduce((a, r) => a + r.total_amount, 0),
-      supportAmount:tr.reduce((a, r) => a + r.support_amount, 0),
-      selfPayment:  tr.reduce((a, r) => a + r.self_payment, 0),
+      totalCount:    tr.length,
+      presentCount:  tr.filter((r) => r.attendance === 'present').length,
+      absentCount:   tr.filter((r) => r.attendance === 'absent').length,
+      makeupCount:   tr.filter((r) => r.attendance === 'makeup').length,
+      totalAmount:   tr.reduce((a, r) => a + r.total_amount, 0),
+      supportAmount: tr.reduce((a, r) => a + r.support_amount, 0),
+      selfPayment:   tr.reduce((a, r) => a + r.self_payment, 0),
     }
   })
 
@@ -133,7 +88,6 @@ export default function DirectorRecordsPage() {
     <div className="flex flex-col min-h-dvh bg-[#f7f8fc]">
       <PageHeader title="건수 현황" />
 
-      {/* 일별 / 월별 탭 */}
       <div className="flex bg-white border-b border-gray-100 px-4 pt-2">
         {(['daily', 'monthly'] as ViewTab[]).map((t) => (
           <button
@@ -148,8 +102,7 @@ export default function DirectorRecordsPage() {
       </div>
 
       <div className="flex-1 px-4 py-4 space-y-4 pb-20">
-
-        {/* ── 날짜 / 월 선택 ── */}
+        {/* 날짜 / 월 선택 */}
         {tab === 'daily' ? (
           <div className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex items-center gap-3">
             <span className="text-sm text-gray-500 shrink-0">날짜</span>
@@ -176,16 +129,15 @@ export default function DirectorRecordsPage() {
                 })),
                 year, month,
               )}
-              disabled={summaries.length === 0 || loading}
+              disabled={summaries.length === 0 || isLoading}
               className="flex items-center gap-1.5 bg-[#7db83a] text-white text-sm font-semibold px-3 py-3 rounded-xl shadow-sm active:bg-[#5f9428] disabled:opacity-40 transition-colors shrink-0"
             >
-              <span>⬇</span>
-              <span>전체</span>
+              <span>⬇</span><span>전체</span>
             </button>
           </div>
         )}
 
-        {/* ── 호점 필터 ── */}
+        {/* 호점 필터 */}
         <div className="flex gap-2 overflow-x-auto pb-1">
           <button
             onClick={() => { setSelectedBranch('all'); setSelectedTeacher('all') }}
@@ -202,7 +154,7 @@ export default function DirectorRecordsPage() {
           ))}
         </div>
 
-        {/* ── 선생님 필터 ── */}
+        {/* 선생님 필터 */}
         <div className="flex gap-2 overflow-x-auto pb-1">
           <button
             onClick={() => setSelectedTeacher('all')}
@@ -219,8 +171,10 @@ export default function DirectorRecordsPage() {
           ))}
         </div>
 
-        {loading ? (
-          <div className="text-center text-gray-400 py-8">불러오는 중...</div>
+        {isLoading ? (
+          <LoadingSpinner />
+        ) : error ? (
+          <ErrorState onRetry={refetch} />
         ) : (
           <>
             {/* ══ 일별 뷰 ══ */}
@@ -319,7 +273,12 @@ export default function DirectorRecordsPage() {
                             </div>
                           </button>
                           <button
-                            onClick={() => void exportTeacherMonthly({ teacherName: s.teacher.name, records: s.records as import('@/types').Record[], year, month, pendingMakeups: pendingMakeups[s.teacher.id] ?? {} })}
+                            onClick={() => void exportTeacherMonthly({
+                              teacherName: s.teacher.name,
+                              records: s.records as import('@/types').Record[],
+                              year, month,
+                              pendingMakeups: pendingMakeups[s.teacher.id] ?? {},
+                            })}
                             className="flex items-center gap-1 text-xs text-[#00b4d8] bg-[#e8f7fb] px-2.5 py-1.5 rounded-lg active:bg-[#d0eff7] transition-colors shrink-0 mt-0.5"
                           >
                             <span>⬇</span><span>엑셀</span>

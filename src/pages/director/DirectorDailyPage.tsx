@@ -1,62 +1,42 @@
-import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { useState } from 'react'
 import { todayStr, formatKRW } from '@/lib/utils'
 import { ATTENDANCE_LABELS, PAYMENT_METHOD_LABELS } from '@/constants'
 import PageHeader from '@/components/ui/PageHeader'
 import BottomNav from '@/components/ui/BottomNav'
-import type { Record, User, PaymentMethod } from '@/types'
+import LoadingSpinner from '@/components/ui/LoadingSpinner'
+import ErrorState from '@/components/ui/ErrorState'
+import { useBranches, useDirectorUsers, useDirectorDailyRecords } from '@/hooks/queries'
+import type { User, PaymentMethod } from '@/types'
 
 export default function DirectorDailyPage() {
   const [date, setDate] = useState(todayStr())
-  const [branches, setBranches] = useState<{ id: string; name: string }[]>([])
-  const [teachers, setTeachers] = useState<User[]>([])
-  const [records, setRecords] = useState<Record[]>([])
   const [selectedBranch, setSelectedBranch] = useState<string>('all')
   const [selectedTeacher, setSelectedTeacher] = useState<string>('all')
-  const [loading, setLoading] = useState(false)
 
-  useEffect(() => {
-    Promise.all([
-      supabase.from('branches').select('id, name'),
-      supabase.from('users').select('*').eq('role', 'teacher').eq('is_active', true),
-    ]).then(([b, u]) => {
-      if (b.data) setBranches(b.data)
-      if (u.data) setTeachers(u.data as User[])
-    })
-  }, [])
+  const { data: branches = [] } = useBranches()
+  const { data: allTeachers = [] } = useDirectorUsers()
+  const teachers = allTeachers.filter((u) => u.role === 'teacher')
 
-  useEffect(() => {
-    loadRecords()
-  }, [date, selectedBranch, selectedTeacher])
-
-  const loadRecords = async () => {
-    setLoading(true)
-    let query = supabase.from('records').select('*, teacher:teacher_id(id, name, branch_id)').eq('date', date)
-    if (selectedBranch !== 'all') query = query.eq('branch_id', selectedBranch)
-    if (selectedTeacher !== 'all') query = query.eq('teacher_id', selectedTeacher)
-    const { data } = await query.order('created_at', { ascending: false })
-    if (data) setRecords(data as Record[])
-    setLoading(false)
-  }
+  const { data: records = [], isLoading, error, refetch } =
+    useDirectorDailyRecords(date, selectedBranch, selectedTeacher)
 
   const filteredTeachers = selectedBranch === 'all'
     ? teachers
     : teachers.filter((t) => t.branch_id === selectedBranch)
 
-  const totalCount = records.length
+  const totalCount   = records.length
   const presentCount = records.filter((r) => r.attendance === 'present').length
-  const absentCount = records.filter((r) => r.attendance === 'absent').length
-  const makeupCount = records.filter((r) => r.attendance === 'makeup').length
-  const totalAmount = records.reduce((acc, r) => acc + r.total_amount, 0)
+  const absentCount  = records.filter((r) => r.attendance === 'absent').length
+  const makeupCount  = records.filter((r) => r.attendance === 'makeup').length
+  const totalAmount  = records.reduce((acc, r) => acc + r.total_amount, 0)
   const supportAmount = records.reduce((acc, r) => acc + r.support_amount, 0)
-  const selfPayment = records.reduce((acc, r) => acc + r.self_payment, 0)
+  const selfPayment  = records.reduce((acc, r) => acc + r.self_payment, 0)
 
   return (
     <div className="flex flex-col min-h-dvh pb-16">
       <PageHeader title="일건수 확인" />
 
       <div className="flex-1 px-4 py-4 space-y-4">
-        {/* 날짜 선택 */}
         <div className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex items-center gap-3">
           <span className="text-sm text-gray-500 shrink-0">날짜</span>
           <input
@@ -73,18 +53,14 @@ export default function DirectorDailyPage() {
             onClick={() => { setSelectedBranch('all'); setSelectedTeacher('all') }}
             className={`px-4 py-2 rounded-full text-sm font-medium shrink-0 transition-colors
               ${selectedBranch === 'all' ? 'bg-[#00b4d8] text-white' : 'bg-gray-100 text-gray-600'}`}
-          >
-            전체
-          </button>
+          >전체</button>
           {branches.map((b) => (
             <button
               key={b.id}
               onClick={() => { setSelectedBranch(b.id); setSelectedTeacher('all') }}
               className={`px-4 py-2 rounded-full text-sm font-medium shrink-0 transition-colors
                 ${selectedBranch === b.id ? 'bg-[#00b4d8] text-white' : 'bg-gray-100 text-gray-600'}`}
-            >
-              {b.name}
-            </button>
+            >{b.name}</button>
           ))}
         </div>
 
@@ -95,18 +71,14 @@ export default function DirectorDailyPage() {
               onClick={() => setSelectedTeacher('all')}
               className={`px-3 py-1.5 rounded-full text-xs font-medium shrink-0 transition-colors
                 ${selectedTeacher === 'all' ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-600'}`}
-            >
-              전체 선생님
-            </button>
+            >전체 선생님</button>
             {filteredTeachers.map((t) => (
               <button
                 key={t.id}
                 onClick={() => setSelectedTeacher(t.id)}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium shrink-0 transition-colors
                   ${selectedTeacher === t.id ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-600'}`}
-              >
-                {t.name}
-              </button>
+              >{t.name}</button>
             ))}
           </div>
         )}
@@ -145,8 +117,10 @@ export default function DirectorDailyPage() {
         </div>
 
         {/* 상세 내역 */}
-        {loading ? (
-          <div className="text-center text-gray-400 py-8">불러오는 중...</div>
+        {isLoading ? (
+          <LoadingSpinner />
+        ) : error ? (
+          <ErrorState onRetry={refetch} />
         ) : records.length === 0 ? (
           <div className="text-center text-gray-300 py-12">해당 날짜의 기록이 없습니다.</div>
         ) : (
