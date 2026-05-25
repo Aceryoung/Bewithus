@@ -1,42 +1,30 @@
-import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/store/auth'
 import { formatKRW, getWeekOfMonth } from '@/lib/utils'
 import { ATTENDANCE_LABELS, PAYMENT_METHOD_LABELS } from '@/constants'
 import PageHeader from '@/components/ui/PageHeader'
 import BottomNav from '@/components/ui/BottomNav'
 import RecordEditSheet from '@/components/ui/RecordEditSheet'
+import LoadingSpinner from '@/components/ui/LoadingSpinner'
+import ErrorState from '@/components/ui/ErrorState'
+import { useMonthlyRecords, qk } from '@/hooks/queries'
 import type { Record as SessionRecord, PaymentMethod } from '@/types'
 
 export default function MonthlyViewPage() {
   const user = useAuthStore((s) => s.user)
+  const queryClient = useQueryClient()
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
-  const [records, setRecords] = useState<SessionRecord[]>([])
-  const [loading, setLoading] = useState(true)
   const [editingRecord, setEditingRecord] = useState<SessionRecord | null>(null)
-  const [refreshKey, setRefreshKey] = useState(0)
 
-  useEffect(() => {
-    if (!user) return
-    setLoading(true)
-    const monthStart = `${year}-${String(month).padStart(2, '0')}-01`
-    const nextMonth = month === 12 ? `${year + 1}-01-01` : `${year}-${String(month + 1).padStart(2, '0')}-01`
-    void refreshKey // refreshKey 변경 시 재실행 트리거
+  const { data: records = [], isLoading: loading, error, refetch } =
+    useMonthlyRecords(user?.id ?? null, year, month)
 
-    supabase
-      .from('records')
-      .select('*')
-      .eq('teacher_id', user.id)
-      .gte('date', monthStart)
-      .lt('date', nextMonth)
-      .order('date', { ascending: false })
-      .then(({ data }) => {
-        if (data) setRecords(data as SessionRecord[])
-        setLoading(false)
-      })
-  }, [user, year, month, refreshKey])
+  const invalidate = () => {
+    if (user) queryClient.invalidateQueries({ queryKey: qk.monthlyRecords(user.id, year, month) })
+  }
 
   const totalCount = records.length
   const presentCount = records.filter((r) => r.attendance === 'present').length
@@ -85,7 +73,9 @@ export default function MonthlyViewPage() {
         </div>
 
         {loading ? (
-          <div className="text-center text-gray-400 py-12">불러오는 중...</div>
+          <LoadingSpinner />
+        ) : error ? (
+          <ErrorState onRetry={refetch} />
         ) : (
           <>
             {/* 월 요약 */}
@@ -178,7 +168,7 @@ export default function MonthlyViewPage() {
               ))}
 
             {records.length === 0 && (
-              <div className="text-center text-gray-300 py-12">이달 기록이 없습니다.</div>
+              <div className="text-center text-gray-300 py-12 bg-white rounded-2xl border border-gray-100 shadow-sm">이달 기록이 없습니다.</div>
             )}
           </>
         )}
@@ -192,11 +182,11 @@ export default function MonthlyViewPage() {
           record={editingRecord}
           onSave={() => {
             setEditingRecord(null)
-            setRefreshKey((k) => k + 1)
+            invalidate()
           }}
           onDelete={() => {
             setEditingRecord(null)
-            setRefreshKey((k) => k + 1)
+            invalidate()
           }}
           onClose={() => setEditingRecord(null)}
         />

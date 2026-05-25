@@ -1,68 +1,45 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase, createTempClient, userEmail, pinToPassword } from '@/lib/supabase'
+import { useQueryClient } from '@tanstack/react-query'
+import { createTempClient, userEmail, pinToPassword } from '@/lib/supabase'
 import { useAuthStore } from '@/store/auth'
 import { todayStr, formatKRW, formatDate } from '@/lib/utils'
 import { ATTENDANCE_LABELS, PAYMENT_METHOD_LABELS } from '@/constants'
 import BottomNav from '@/components/ui/BottomNav'
 import RecordEditSheet from '@/components/ui/RecordEditSheet'
+import ErrorState from '@/components/ui/ErrorState'
+import { useTodayRecords, useMonthSummary, qk } from '@/hooks/queries'
 import type { Record as SessionRecord } from '@/types'
-
-interface Summary {
-  total: number
-  present: number
-  absent: number
-  makeup: number
-  amount: number
-}
 
 export default function TeacherDashboard() {
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
   const logout = useAuthStore((s) => s.logout)
+  const queryClient = useQueryClient()
 
   const [showPinModal, setShowPinModal] = useState(false)
   const [pinForm, setPinForm] = useState({ current: '', next: '', confirm: '' })
   const [pinLoading, setPinLoading] = useState(false)
   const [pinError, setPinError] = useState('')
-  const today = todayStr()
-
-  const [todayRecords, setTodayRecords] = useState<SessionRecord[]>([])
-  const [monthSummary, setMonthSummary] = useState<Summary>({ total: 0, present: 0, absent: 0, makeup: 0, amount: 0 })
-  const [loading, setLoading] = useState(true)
   const [editingRecord, setEditingRecord] = useState<SessionRecord | null>(null)
 
-  useEffect(() => {
+  const today = todayStr()
+  const now = new Date()
+  const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+
+  const { data: todayRecords = [], isLoading: loadingToday, error: errorToday, refetch: refetchToday } =
+    useTodayRecords(user?.id ?? null, today)
+  const { data: monthSummary = { total: 0, present: 0, absent: 0, makeup: 0, amount: 0 }, isLoading: loadingSummary, error: errorSummary, refetch: refetchSummary } =
+    useMonthSummary(user?.id ?? null, monthStart, today)
+
+  const loading = loadingToday || loadingSummary
+  const error = errorToday || errorSummary
+  const refetch = () => { void refetchToday(); void refetchSummary() }
+
+  const invalidateRecords = () => {
     if (!user) return
-    loadData()
-  }, [user])
-
-  const loadData = async () => {
-    if (!user) return
-    setLoading(true)
-
-    const now = new Date()
-    const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
-
-    const [todayRes, monthRes] = await Promise.all([
-      supabase.from('records').select('*').eq('teacher_id', user.id).eq('date', today).order('created_at', { ascending: false }),
-      supabase.from('records').select('*').eq('teacher_id', user.id).gte('date', monthStart).lte('date', today),
-    ])
-
-    if (todayRes.data) setTodayRecords(todayRes.data as SessionRecord[])
-
-    if (monthRes.data) {
-      const records = monthRes.data as SessionRecord[]
-      setMonthSummary({
-        total: records.length,
-        present: records.filter((r) => r.attendance === 'present').length,
-        absent: records.filter((r) => r.attendance === 'absent').length,
-        makeup: records.filter((r) => r.attendance === 'makeup').length,
-        amount: records.reduce((acc, r) => acc + r.self_payment, 0),
-      })
-    }
-
-    setLoading(false)
+    queryClient.invalidateQueries({ queryKey: qk.todayRecords(user.id, today) })
+    queryClient.invalidateQueries({ queryKey: qk.monthSummary(user.id, monthStart) })
   }
 
   const handlePinChange = async () => {
@@ -101,6 +78,14 @@ export default function TeacherDashboard() {
           <div className="w-8 h-8 rounded-full border-2 border-sky-400 border-t-transparent animate-spin" />
           <p className="text-slate-400 text-sm">불러오는 중...</p>
         </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-dvh bg-slate-50">
+        <ErrorState onRetry={refetch} />
       </div>
     )
   }
@@ -257,8 +242,8 @@ export default function TeacherDashboard() {
       {editingRecord && (
         <RecordEditSheet
           record={editingRecord}
-          onSave={() => { setEditingRecord(null); loadData() }}
-          onDelete={() => { setEditingRecord(null); loadData() }}
+          onSave={() => { setEditingRecord(null); invalidateRecords() }}
+          onDelete={() => { setEditingRecord(null); invalidateRecords() }}
           onClose={() => setEditingRecord(null)}
         />
       )}

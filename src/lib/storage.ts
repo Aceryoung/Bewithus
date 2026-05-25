@@ -57,11 +57,23 @@ async function compressImage(file: File): Promise<Blob> {
  * 저장 경로: receipts/{teacherId}/{recordId}.jpg
  * @returns 공개 URL (실패 시 null)
  */
+const MAX_FILE_SIZE_MB = 10
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
+
 export async function uploadReceipt(
   file: File,
   teacherId: string,
   recordId: string,
 ): Promise<string | null> {
+  if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+    alert(`파일 크기는 ${MAX_FILE_SIZE_MB}MB 이하만 가능합니다.`)
+    return null
+  }
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+    alert('이미지 파일(JPG, PNG, WebP, HEIC)만 업로드 가능합니다.')
+    return null
+  }
+
   let blob: Blob
   try {
     blob = await compressImage(file)

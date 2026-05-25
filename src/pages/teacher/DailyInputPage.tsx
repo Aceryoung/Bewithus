@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/auth'
 import { todayStr, formatKRW, calcSupport } from '@/lib/utils'
@@ -8,7 +9,8 @@ import PageHeader from '@/components/ui/PageHeader'
 import BottomNav from '@/components/ui/BottomNav'
 import RecordFormFields from '@/components/ui/RecordFormFields'
 import SavedToast from '@/components/ui/SavedToast'
-import type { Attendance, PaymentMethod, FeeTable } from '@/types'
+import { useFeeTables, useMonthlyUsed, qk } from '@/hooks/queries'
+import type { Attendance, PaymentMethod } from '@/types'
 
 interface Row {
   id: string
@@ -75,50 +77,15 @@ function recalculateRows(
 
 export default function DailyInputPage() {
   const user = useAuthStore((s) => s.user)
+  const queryClient = useQueryClient()
 
   const [date, setDate] = useState(todayStr())
   const [rows, setRows] = useState<Row[]>([newRow()])
-  const [feeTables, setFeeTables] = useState<FeeTable[]>([])
-  const [monthlyUsed, setMonthlyUsed] = useState<Record<string, Record<PaymentMethod, number>>>({})
   const [saving, setSaving] = useState(false)
   const [savedCount, setSavedCount] = useState(0)
 
-  useEffect(() => {
-    if (!user?.branch_id) return
-    supabase
-      .from('fee_tables')
-      .select('*')
-      .eq('branch_id', user.branch_id)
-      .eq('is_active', true)
-      .then(({ data }: { data: FeeTable[] | null }) => {
-        if (data) setFeeTables(data)
-      })
-  }, [user])
-
-  useEffect(() => {
-    if (!user) return
-    const now = new Date(date)
-    const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
-    supabase
-      .from('records')
-      .select('patient_name, payment_method, support_amount')
-      .eq('teacher_id', user.id)
-      .gte('date', monthStart)
-      .lte('date', date)
-      .then(({ data }: { data: { patient_name: string; payment_method: string; support_amount: number }[] | null }) => {
-        if (!data) return
-        const used: Record<string, Record<PaymentMethod, number>> = {}
-        for (const r of data) {
-          if (!used[r.patient_name]) {
-            used[r.patient_name] = {
-              education: 0, sports_voucher: 0, after_school: 0, card: 0, cash: 0, bank_transfer: 0, other: 0,
-            }
-          }
-          used[r.patient_name][r.payment_method as PaymentMethod] += r.support_amount
-        }
-        setMonthlyUsed(used)
-      })
-  }, [date, user])
+  const { data: feeTables = [] } = useFeeTables(user?.branch_id ?? null)
+  const { data: monthlyUsed = {} } = useMonthlyUsed(user?.id ?? null, date)
 
   useEffect(() => {
     setRows((prev: Row[]) => recalculateRows(prev, monthlyUsed))
@@ -178,6 +145,16 @@ export default function DailyInputPage() {
     setSavedCount(validRows.length)
     setRows([newRow()])
     setTimeout(() => setSavedCount(0), 3000)
+
+    // 저장 후 오늘 기록·요약·이달 지원금 캐시 무효화
+    if (user) {
+      const today = todayStr()
+      const now2 = new Date()
+      const monthStart = `${now2.getFullYear()}-${String(now2.getMonth() + 1).padStart(2, '0')}-01`
+      queryClient.invalidateQueries({ queryKey: qk.todayRecords(user.id, today) })
+      queryClient.invalidateQueries({ queryKey: qk.monthSummary(user.id, monthStart) })
+      queryClient.invalidateQueries({ queryKey: qk.monthlyUsed(user.id, date) })
+    }
   }
 
   const totalSelfPayment = rows.reduce((acc, r) => acc + r.self_payment, 0)
@@ -224,7 +201,11 @@ export default function DailyInputPage() {
               type="text"
               placeholder="환자명 입력"
               value={row.patient_name}
-              onChange={(e) => updateRow(row.id, { patient_name: e.target.value.replace(/[0-9]/g, '') })}
+              onChange={(e) =>
+                updateRow(row.id, {
+                  patient_name: e.target.value.replace(/[0-9]/g, '').slice(0, 20),
+                })
+              }
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-400"
             />
 

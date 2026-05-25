@@ -57,7 +57,7 @@ export default function RecordFormFields({ state, feeTables, total, support, sel
             placeholder="1회 단가 입력 (원)"
             value={state.unit_price || ''}
             onKeyDown={(e) => { if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault() }}
-            onChange={(e) => onChange({ unit_price: Number(e.target.value) })}
+            onChange={(e) => onChange({ unit_price: Math.max(0, Number(e.target.value)) })}
             className="w-full mt-2 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#00b4d8]"
           />
         )}
@@ -130,7 +130,8 @@ export default function RecordFormFields({ state, feeTables, total, support, sel
             onKeyDown={(e) => { if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault() }}
             onChange={(e) =>
               onChange({
-                after_school_support: e.target.value === '' ? undefined : Number(e.target.value),
+                after_school_support:
+                  e.target.value === '' ? undefined : Math.max(0, Number(e.target.value)),
               })
             }
             className="w-full border border-orange-200 bg-orange-50 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400"
