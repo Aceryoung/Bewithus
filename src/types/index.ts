@@ -47,6 +47,7 @@ export interface Record {
   tertiary_method: string | null
   tertiary_support: number
   remaining_support: number
+  updated_by_name: string | null
   created_at: string
   updated_at: string
   teacher?: User
@@ -84,6 +85,16 @@ export interface MonthlySummary {
   total_amount: number
   support_amount: number
   self_payment: number
+}
+
+export interface Inquiry {
+  id: string
+  teacher_id: string
+  teacher_name: string
+  error_code: string | null
+  message: string
+  is_read: boolean
+  created_at: string
 }
 
 // AuthSession 제거: Supabase Auth JWT 세션으로 대체됨

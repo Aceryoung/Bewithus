@@ -203,9 +203,13 @@ export default function RecordFormFields({
             <span className="text-gray-900">{formatKRW(selfPayment)}</span>
           </div>
           {remainingSupport > 0 && (
-            <div className="flex justify-between text-xs border-t border-dashed border-gray-200 pt-1.5">
-              <span className="text-gray-400">남은지원금</span>
-              <span className="text-gray-400">{formatKRW(remainingSupport)}</span>
+            <div className={`flex justify-between text-xs border-t pt-1.5 ${remainingSupport <= 20000 ? 'border-orange-200' : 'border-dashed border-gray-200'}`}>
+              <span className={remainingSupport <= 20000 ? 'text-orange-500 font-semibold' : 'text-gray-400'}>
+                남은지원금{remainingSupport <= 20000 ? ' ⚠︎' : ''}
+              </span>
+              <span className={remainingSupport <= 20000 ? 'text-orange-500 font-semibold' : 'text-gray-400'}>
+                {formatKRW(remainingSupport)}
+              </span>
             </div>
           )}
         </div>

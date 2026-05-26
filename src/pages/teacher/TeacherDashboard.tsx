@@ -193,6 +193,7 @@ export default function TeacherDashboard() {
                       <p className="text-sm font-semibold text-slate-900 truncate">{r.patient_name}</p>
                       <p className="text-xs text-slate-400 mt-0.5">
                         {ATTENDANCE_LABELS[r.attendance]} · {r.fee_type} {r.session_count}회 · {paymentLabel(r.payment_method, r.payment_note, r.secondary_method, r.tertiary_method, PAYMENT_METHOD_LABELS)}
+                        {r.updated_by_name && <span className="text-orange-400"> · 수정: {r.updated_by_name}</span>}
                       </p>
                     </div>
                   </div>

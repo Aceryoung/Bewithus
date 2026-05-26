@@ -12,6 +12,7 @@ const PaymentPage       = lazy(() => import('@/pages/teacher/PaymentPage'))
 const DirectorDashboard = lazy(() => import('@/pages/director/DirectorDashboard'))
 const DirectorRecordsPage = lazy(() => import('@/pages/director/DirectorRecordsPage'))
 const AccountsPage      = lazy(() => import('@/pages/director/AccountsPage'))
+const InquiryPage       = lazy(() => import('@/pages/director/InquiryPage'))
 
 function PageLoader() {
   return (
@@ -87,7 +88,8 @@ export default function App() {
           {/* 대표/관리자 공통 라우트 */}
           <Route path="/director"          element={<RequireDirector><DirectorDashboard /></RequireDirector>} />
           <Route path="/director/records"  element={<RequireDirector><DirectorRecordsPage /></RequireDirector>} />
-          <Route path="/director/accounts" element={<RequireDirector><AccountsPage /></RequireDirector>} />
+          <Route path="/director/accounts"   element={<RequireDirector><AccountsPage /></RequireDirector>} />
+          <Route path="/director/inquiries" element={<RequireDirector><InquiryPage /></RequireDirector>} />
           {/* 대표 전용 */}
           <Route path="/director/payment"  element={<RequireRole role="director"><PaymentPage /></RequireRole>} />
           {/* 구 라우트 호환 */}

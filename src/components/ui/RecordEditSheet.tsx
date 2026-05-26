@@ -1,11 +1,15 @@
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useAuthStore } from '@/store/auth'
 import { calcSupport } from '@/lib/utils'
 import { ATTENDANCE_LABELS } from '@/constants'
 import { uploadReceipt, deleteReceipt } from '@/lib/storage'
 import RecordFormFields from '@/components/ui/RecordFormFields'
+import ErrorModal from '@/components/ui/ErrorModal'
+import { isAppError } from '@/lib/appErrors'
 import { useFeeTables, useMonthlyUsed } from '@/hooks/queries'
 import type { Record as SessionRecord, Attendance, PaymentMethod } from '@/types'
+import type { AppErrorCode } from '@/lib/appErrors'
 
 const VOUCHER_METHODS: PaymentMethod[] = ['education', 'sports_voucher', 'after_school']
 
@@ -60,10 +64,12 @@ function initFromRecord(record: SessionRecord): EditState {
 }
 
 export default function RecordEditSheet({ record, onSave, onDelete, onClose }: Props) {
+  const user = useAuthStore((s) => s.user)
   const [state, setState] = useState<EditState>(() => initFromRecord(record))
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [receiptAction, setReceiptAction] = useState<'none' | 'upload' | 'delete'>('none')
+  const [errorModal, setErrorModal] = useState<{ code: AppErrorCode; detail?: string } | null>(null)
   const [receiptFile, setReceiptFile] = useState<File | null>(null)
   const receiptPreview = receiptAction === 'upload' && receiptFile
     ? URL.createObjectURL(receiptFile)
@@ -136,7 +142,14 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
 
     let newReceiptUrl: string | null | undefined = undefined
     if (receiptAction === 'upload' && receiptFile) {
-      newReceiptUrl = await uploadReceipt(receiptFile, record.teacher_id, record.id)
+      try {
+        newReceiptUrl = await uploadReceipt(receiptFile, record.teacher_id, record.id)
+      } catch (e) {
+        setSaving(false)
+        const code: AppErrorCode = isAppError(e) ? e.appCode : 'ERR-301'
+        setErrorModal({ code, detail: e instanceof Error ? e.message : undefined })
+        return
+      }
     } else if (receiptAction === 'delete') {
       await deleteReceipt(record.teacher_id, record.id)
       newReceiptUrl = null
@@ -160,6 +173,7 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
       tertiary_support: tertiarySupport,
       remaining_support: autoRemainingSupport,
       self_payment: selfPayment,
+      updated_by_name: user?.name ?? null,
     }
     if (newReceiptUrl !== undefined) updatePayload.receipt_url = newReceiptUrl
 
@@ -167,7 +181,7 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
 
     setSaving(false)
     if (error) {
-      alert(`수정 실패: ${error.message}`)
+      setErrorModal({ code: 'ERR-102', detail: error.message })
     } else {
       const updatedRecord: SessionRecord = {
         ...record,
@@ -185,25 +199,34 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
     const { error } = await supabase.from('records').delete().eq('id', record.id)
     setDeleting(false)
     if (error) {
-      alert(`삭제 실패: ${error.message}`)
+      setErrorModal({ code: 'ERR-103', detail: error.message })
     } else {
       onDelete(record.id)
     }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end" onClick={onClose}>
+    <>
+    {errorModal && (
+      <ErrorModal
+        code={errorModal.code}
+        detail={errorModal.detail}
+        onClose={() => setErrorModal(null)}
+      />
+    )}
+    <div className="fixed inset-0 z-50 flex flex-col justify-end md:items-center md:justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40" />
 
       <div
-        className="relative bg-white rounded-t-2xl max-h-[88dvh] overflow-y-auto"
+        className="relative bg-white rounded-t-2xl max-h-[88dvh] overflow-y-auto md:rounded-2xl md:max-h-[90dvh] md:w-full md:max-w-md md:shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-center pt-3 pb-1 sticky top-0 bg-white">
+        {/* 모바일 드래그 핸들 */}
+        <div className="flex justify-center pt-3 pb-1 sticky top-0 bg-white md:hidden">
           <div className="w-10 h-1 bg-gray-300 rounded-full" />
         </div>
 
-        <div className="px-4 pb-8 space-y-4">
+        <div className="px-4 pb-8 space-y-4 md:px-6 md:pt-5 md:pb-6">
           {/* 헤더 */}
           <div className="flex justify-between items-center pt-1">
             <div>
@@ -320,5 +343,6 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
         </div>
       </div>
     </div>
+    </>
   )
 }

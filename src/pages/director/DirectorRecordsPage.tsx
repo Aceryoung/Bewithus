@@ -1,13 +1,17 @@
 import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { useAuthStore } from '@/store/auth'
 import { todayStr, formatKRW, paymentLabel } from '@/lib/utils'
 import { ATTENDANCE_LABELS, PAYMENT_METHOD_LABELS } from '@/constants'
 import PageHeader from '@/components/ui/PageHeader'
 import BottomNav from '@/components/ui/BottomNav'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
 import ErrorState from '@/components/ui/ErrorState'
+import RecordEditSheet from '@/components/ui/RecordEditSheet'
 import {
   useBranches, useDirectorUsers,
   useDirectorDailyRecords, useDirectorMonthlyRecords, usePendingMakeups,
+  qk,
 } from '@/hooks/queries'
 import type { Record, User } from '@/types'
 
@@ -27,6 +31,9 @@ interface TeacherSummary {
 
 export default function DirectorRecordsPage() {
   const now = new Date()
+  const queryClient = useQueryClient()
+  const user = useAuthStore((s) => s.user)
+  const canEdit = (teacherId: string) => user?.role !== 'admin' && user?.id === teacherId
   const [tab, setTab] = useState<ViewTab>('daily')
   const [selectedBranch, setSelectedBranch] = useState('all')
   const [selectedTeacher, setSelectedTeacher] = useState('all')
@@ -34,6 +41,7 @@ export default function DirectorRecordsPage() {
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [expandedTeacher, setExpandedTeacher] = useState<string | null>(null)
+  const [editingRecord, setEditingRecord] = useState<Record | null>(null)
 
   const { data: branches = [] } = useBranches()
   const { data: allUsers = [] } = useDirectorUsers()
@@ -82,6 +90,30 @@ export default function DirectorRecordsPage() {
 
   const prevMonth = () => { if (month === 1) { setYear((y) => y - 1); setMonth(12) } else setMonth((m) => m - 1) }
   const nextMonth = () => { if (month === 12) { setYear((y) => y + 1); setMonth(1) } else setMonth((m) => m + 1) }
+
+  const handleRecordSaved = (updated: Record) => {
+    queryClient.setQueryData(
+      qk.directorDailyRecords(date, selectedBranch, selectedTeacher),
+      (old: Record[] | undefined) => (old ?? []).map((r) => r.id === updated.id ? updated : r),
+    )
+    queryClient.setQueryData(
+      qk.directorMonthlyRecords(year, month, selectedBranch, selectedTeacher),
+      (old: Record[] | undefined) => (old ?? []).map((r) => r.id === updated.id ? updated : r),
+    )
+    setEditingRecord(null)
+  }
+
+  const handleRecordDeleted = (id: string) => {
+    queryClient.setQueryData(
+      qk.directorDailyRecords(date, selectedBranch, selectedTeacher),
+      (old: Record[] | undefined) => (old ?? []).filter((r) => r.id !== id),
+    )
+    queryClient.setQueryData(
+      qk.directorMonthlyRecords(year, month, selectedBranch, selectedTeacher),
+      (old: Record[] | undefined) => (old ?? []).filter((r) => r.id !== id),
+    )
+    setEditingRecord(null)
+  }
 
   return (
     <div className="flex flex-col min-h-dvh bg-[#f7f8fc]">
@@ -219,8 +251,8 @@ export default function DirectorRecordsPage() {
                   <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-2">
                     {dailyRecords.map((r) => (
                       <div key={r.id} className="py-2 border-b border-gray-50 last:border-0">
-                        <div className="flex justify-between items-start">
-                          <div>
+                        <div className="flex justify-between items-start gap-2">
+                          <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-gray-900">{r.patient_name}</p>
                             <p className="text-xs text-gray-400 mt-0.5">
                               {(r.teacher as unknown as User)?.name ?? '—'} · {ATTENDANCE_LABELS[r.attendance]}
@@ -228,12 +260,20 @@ export default function DirectorRecordsPage() {
                               {' · '}{paymentLabel(r.payment_method, r.payment_note, r.secondary_method, r.tertiary_method, PAYMENT_METHOD_LABELS)}
                             </p>
                           </div>
-                          <div className="text-right">
-                            <p className="text-sm font-semibold text-gray-900">
-                              {r.attendance === 'absent' ? '—' : formatKRW(r.self_payment)}
-                            </p>
-                            {r.support_amount > 0 && (
-                              <p className="text-xs text-[#00b4d8]">지원금 {formatKRW(r.support_amount)}</p>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <div className="text-right">
+                              <p className="text-sm font-semibold text-gray-900">
+                                {r.attendance === 'absent' ? '—' : formatKRW(r.self_payment)}
+                              </p>
+                              {r.support_amount > 0 && (
+                                <p className="text-xs text-[#00b4d8]">지원금 {formatKRW(r.support_amount)}</p>
+                              )}
+                            </div>
+                            {canEdit(r.teacher_id) && (
+                              <button
+                                onClick={() => setEditingRecord(r)}
+                                className="text-xs text-[#00b4d8] bg-[#e8f7fb] px-2.5 py-1 rounded-lg active:bg-[#d0eff7] transition-colors"
+                              >수정</button>
                             )}
                           </div>
                         </div>
@@ -295,17 +335,25 @@ export default function DirectorRecordsPage() {
                             <p className="text-xs text-gray-300 text-center py-4">기록이 없습니다.</p>
                           ) : (
                             s.records.map((r) => (
-                              <div key={r.id} className="py-2 border-b border-gray-50 last:border-0 flex justify-between items-start">
-                                <div>
+                              <div key={r.id} className="py-2 border-b border-gray-50 last:border-0 flex justify-between items-start gap-2">
+                                <div className="flex-1 min-w-0">
                                   <p className="text-sm text-gray-800">{r.patient_name}</p>
                                   <p className="text-xs text-gray-400">
                                     {r.date.slice(5)} · {ATTENDANCE_LABELS[r.attendance]} · {r.fee_type} {r.session_count}회
                                     {' · '}{paymentLabel(r.payment_method, r.payment_note, r.secondary_method, r.tertiary_method, PAYMENT_METHOD_LABELS)}
                                   </p>
                                 </div>
-                                <div className="text-right">
-                                  <p className="text-sm font-medium">{r.attendance === 'absent' ? '—' : formatKRW(r.self_payment)}</p>
-                                  {r.support_amount > 0 && <p className="text-xs text-[#00b4d8]">{formatKRW(r.support_amount)}</p>}
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <div className="text-right">
+                                    <p className="text-sm font-medium">{r.attendance === 'absent' ? '—' : formatKRW(r.self_payment)}</p>
+                                    {r.support_amount > 0 && <p className="text-xs text-[#00b4d8]">{formatKRW(r.support_amount)}</p>}
+                                  </div>
+                                  {canEdit(r.teacher_id) && (
+                                    <button
+                                      onClick={() => setEditingRecord(r)}
+                                      className="text-xs text-[#00b4d8] bg-[#e8f7fb] px-2.5 py-1 rounded-lg active:bg-[#d0eff7] transition-colors"
+                                    >수정</button>
+                                  )}
                                 </div>
                               </div>
                             ))
@@ -322,6 +370,15 @@ export default function DirectorRecordsPage() {
       </div>
 
       <BottomNav />
+
+      {editingRecord && (
+        <RecordEditSheet
+          record={editingRecord}
+          onSave={handleRecordSaved}
+          onDelete={handleRecordDeleted}
+          onClose={() => setEditingRecord(null)}
+        />
+      )}
     </div>
   )
 }

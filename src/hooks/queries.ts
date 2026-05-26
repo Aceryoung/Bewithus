@@ -274,6 +274,58 @@ export function usePendingMakeups() {
   })
 }
 
+// ── 문의함 ────────────────────────────────────────────────────
+export function useInquiries() {
+  return useQuery({
+    queryKey: ['inquiries'] as const,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('inquiries')
+        .select('*')
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      return (data ?? []) as import('@/types').Inquiry[]
+    },
+    staleTime: 1000 * 30,
+  })
+}
+
+export function useUnreadInquiryCount() {
+  return useQuery({
+    queryKey: ['inquiries', 'unread'] as const,
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('inquiries')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_read', false)
+      if (error) throw error
+      return count ?? 0
+    },
+    staleTime: 1000 * 30,
+  })
+}
+
+// ── 최근 환자 이름 목록 (자동완성용) ─────────────────────────
+export function useRecentPatients(teacherId: string | null) {
+  return useQuery({
+    queryKey: ['recentPatients', teacherId] as const,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('records')
+        .select('patient_name')
+        .eq('teacher_id', teacherId!)
+        .order('created_at', { ascending: false })
+        .limit(200)
+      if (error) throw error
+      const seen = new Set<string>()
+      for (const r of data ?? []) seen.add(r.patient_name)
+      return [...seen]
+    },
+    enabled: !!teacherId,
+    staleTime: 1000 * 60 * 5,
+  })
+}
+
 // ── AccountsPage 데이터 ───────────────────────────────────────
 export function useAccountsData(monthStart: string, today: string) {
   return useQuery({

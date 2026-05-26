@@ -168,6 +168,7 @@ export default function MonthlyViewPage() {
                             {r.date.slice(5)} · {ATTENDANCE_LABELS[r.attendance]}
                             {' · '}{r.fee_type} {r.session_count}회
                             {' · '}{paymentLabel(r.payment_method, r.payment_note, r.secondary_method, r.tertiary_method, PAYMENT_METHOD_LABELS)}
+                            {r.updated_by_name && <span className="text-orange-400"> · 수정: {r.updated_by_name}</span>}
                           </p>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">

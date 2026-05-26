@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { createAppError } from './appErrors'
 
 /**
  * 이미지를 JPEG로 압축
@@ -66,12 +67,10 @@ export async function uploadReceipt(
   recordId: string,
 ): Promise<string | null> {
   if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-    alert(`파일 크기는 ${MAX_FILE_SIZE_MB}MB 이하만 가능합니다.`)
-    return null
+    throw createAppError('ERR-302')
   }
   if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-    alert('이미지 파일(JPG, PNG, WebP, HEIC)만 업로드 가능합니다.')
-    return null
+    throw createAppError('ERR-303')
   }
 
   let blob: Blob

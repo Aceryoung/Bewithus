@@ -9,8 +9,13 @@ import PageHeader from '@/components/ui/PageHeader'
 import BottomNav from '@/components/ui/BottomNav'
 import RecordFormFields from '@/components/ui/RecordFormFields'
 import SavedToast from '@/components/ui/SavedToast'
-import { useFeeTables, useMonthlyUsed } from '@/hooks/queries'
+import ErrorModal from '@/components/ui/ErrorModal'
+import PatientInput from '@/components/ui/PatientInput'
+import { isAppError } from '@/lib/appErrors'
+import { saveDraft, loadDraft, clearDraft } from '@/lib/draft'
+import { useFeeTables, useMonthlyUsed, useRecentPatients } from '@/hooks/queries'
 import type { Attendance, PaymentMethod } from '@/types'
+import type { AppErrorCode } from '@/lib/appErrors'
 
 type ActiveTab = 'count' | 'payment'
 
@@ -128,21 +133,43 @@ export default function PaymentPage() {
   const [date, setDate] = useState(todayStr())
 
   /* 건수 탭 상태 */
-  const [countRows, setCountRows] = useState<CountRow[]>([newCountRow()])
+  const [countRows, setCountRows] = useState<CountRow[]>(() => {
+    if (!user) return [newCountRow()]
+    const draft = loadDraft<CountRow[]>(user.id, 'countRows')
+    return draft ? draft.data : [newCountRow()]
+  })
   const [savingCount, setSavingCount] = useState(false)
   const [savedCountN, setSavedCountN] = useState(0)
 
   /* 결제 탭 상태 */
-  const [payRows, setPayRows] = useState<PayRow[]>([newPayRow()])
+  const [payRows, setPayRows] = useState<PayRow[]>(() => {
+    if (!user) return [newPayRow()]
+    const draft = loadDraft<PayRow[]>(user.id, 'payRows')
+    return draft ? draft.data : [newPayRow()]
+  })
   const [savingPay, setSavingPay] = useState(false)
   const [savedPayN, setSavedPayN] = useState(0)
+  const [errorModal, setErrorModal] = useState<{ code: AppErrorCode; detail?: string } | null>(null)
+  const [dupWarning, setDupWarning] = useState<string[]>([])
 
   const { data: feeTables = [] } = useFeeTables(user?.branch_id ?? null)
   const { data: monthlyUsed = {} } = useMonthlyUsed(user?.id ?? null, date)
+  const { data: recentPatients = [] } = useRecentPatients(user?.id ?? null)
 
   useEffect(() => {
     setPayRows((prev) => recalcPayRows(prev, monthlyUsed))
   }, [monthlyUsed])
+
+  /* ── 임시저장 (변경될 때마다) ── */
+  useEffect(() => {
+    if (!user) return
+    saveDraft(user.id, 'countRows', countRows)
+  }, [countRows, user])
+
+  useEffect(() => {
+    if (!user) return
+    saveDraft(user.id, 'payRows', payRows)
+  }, [payRows, user])
 
   const updatePayRow = (id: string, updates: Partial<PayRow>) => {
     setPayRows((prev) => {
@@ -152,11 +179,24 @@ export default function PaymentPage() {
   }
 
   /* ── 건수 저장 ── */
-  const handleSaveCount = async () => {
+  const handleSaveCount = async (force = false) => {
     if (!user) return
-    if (!user.branch_id) { alert('호점이 배정되지 않은 계정입니다. 대표에게 문의하세요.'); return }
+    if (!user.branch_id) { setErrorModal({ code: 'ERR-401' }); return }
     const valid = countRows.filter((r) => r.patient_name.trim())
     if (valid.length === 0) return
+
+    /* ── 중복 체크 ── */
+    if (!force) {
+      const { data: existing } = await supabase
+        .from('records').select('patient_name').eq('teacher_id', user.id).eq('date', date)
+      const existingNames = new Set((existing ?? []).map((r) => r.patient_name))
+      const dups = valid.map((r) => r.patient_name.trim()).filter((n) => existingNames.has(n))
+      if (dups.length > 0) {
+        setDupWarning(dups)
+        return
+      }
+    }
+
     setSavingCount(true)
     const { error } = await supabase.from('records').insert(
       valid.map((r) => ({
@@ -178,7 +218,8 @@ export default function PaymentPage() {
       })),
     )
     setSavingCount(false)
-    if (error) { alert(`저장 실패: ${error.message}`); return }
+    if (error) { setErrorModal({ code: 'ERR-101', detail: error.message }); return }
+    clearDraft(user.id, 'countRows')
     setSavedCountN(valid.length)
     setCountRows([newCountRow()])
     setTimeout(() => setSavedCountN(0), 3000)
@@ -187,11 +228,24 @@ export default function PaymentPage() {
   }
 
   /* ── 결제 저장 ── */
-  const handleSavePay = async () => {
+  const handleSavePay = async (force = false) => {
     if (!user) return
-    if (!user.branch_id) { alert('호점이 배정되지 않은 계정입니다. 대표에게 문의하세요.'); return }
+    if (!user.branch_id) { setErrorModal({ code: 'ERR-401' }); return }
     const valid = payRows.filter((r) => r.patient_name.trim())
     if (valid.length === 0) return
+
+    /* ── 중복 체크 ── */
+    if (!force) {
+      const { data: existing2 } = await supabase
+        .from('records').select('patient_name').eq('teacher_id', user.id).eq('date', date)
+      const existingNames2 = new Set((existing2 ?? []).map((r) => r.patient_name))
+      const dups2 = valid.map((r) => r.patient_name.trim()).filter((n) => existingNames2.has(n))
+      if (dups2.length > 0) {
+        setDupWarning(dups2)
+        return
+      }
+    }
+
     setSavingPay(true)
     const { data: inserted, error } = await supabase.from('records').insert(
       valid.map((r) => ({
@@ -216,13 +270,19 @@ export default function PaymentPage() {
       })),
     ).select('id')
     setSavingPay(false)
-    if (error || !inserted) { alert(`저장 실패: ${error?.message ?? '알 수 없는 오류'}`); return }
+    if (error || !inserted) { setErrorModal({ code: 'ERR-101', detail: error?.message }); return }
     for (let i = 0; i < inserted.length; i++) {
       const file = valid[i].receiptFile
       if (!file) continue
-      const url = await uploadReceipt(file, user.id, inserted[i].id)
-      if (url) await supabase.from('records').update({ receipt_url: url }).eq('id', inserted[i].id)
+      try {
+        const url = await uploadReceipt(file, user.id, inserted[i].id)
+        if (url) await supabase.from('records').update({ receipt_url: url }).eq('id', inserted[i].id)
+      } catch (e) {
+        const code: AppErrorCode = isAppError(e) ? e.appCode : 'ERR-301'
+        setErrorModal({ code, detail: e instanceof Error ? e.message : undefined })
+      }
     }
+    clearDraft(user.id, 'payRows')
     setSavedPayN(valid.length)
     setPayRows([newPayRow()])
     setTimeout(() => setSavedPayN(0), 3000)
@@ -235,6 +295,37 @@ export default function PaymentPage() {
   const totalSupport = payRows.reduce((acc, r) => acc + r.support_amount, 0)
 
   return (
+    <>
+    {errorModal && (
+      <ErrorModal
+        code={errorModal.code}
+        detail={errorModal.detail}
+        onClose={() => setErrorModal(null)}
+      />
+    )}
+    {dupWarning.length > 0 && (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center px-5" onClick={() => setDupWarning([])}>
+        <div className="absolute inset-0 bg-black/40" />
+        <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+          <p className="font-bold text-gray-900 text-base">중복 입력 경고</p>
+          <p className="text-sm text-gray-600">
+            아래 환자가 <span className="font-semibold">{date}</span>에 이미 기록되어 있습니다.
+          </p>
+          <ul className="space-y-1">
+            {dupWarning.map((name) => (
+              <li key={name} className="text-sm font-semibold text-orange-500 bg-orange-50 rounded-lg px-3 py-2">{name}</li>
+            ))}
+          </ul>
+          <div className="flex gap-2 pt-1">
+            <button onClick={() => setDupWarning([])} className="flex-1 py-3 border border-gray-200 text-gray-500 rounded-xl text-sm">취소</button>
+            <button
+              onClick={async () => { setDupWarning([]); if (tab === 'count') await handleSaveCount(true); else await handleSavePay(true) }}
+              className="flex-1 py-3 bg-orange-500 text-white rounded-xl text-sm font-bold active:bg-orange-600"
+            >그래도 저장</button>
+          </div>
+        </div>
+      </div>
+    )}
     <div className="flex flex-col min-h-dvh bg-[#f7f8fc]">
       <SavedToast count={savedCountN || savedPayN} />
       <PageHeader title="결제 / 건수" showBack />
@@ -283,16 +374,10 @@ export default function PaymentPage() {
                 )}
               </div>
 
-              <input
-                type="text"
-                placeholder="환자명 입력"
+              <PatientInput
                 value={row.patient_name}
-                onChange={(e) =>
-                  setCountRows((prev) =>
-                    prev.map((r) => r.id === row.id ? { ...r, patient_name: e.target.value.replace(/[0-9]/g, '') } : r)
-                  )
-                }
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-400"
+                suggestions={recentPatients}
+                onChange={(v) => setCountRows((prev) => prev.map((r) => r.id === row.id ? { ...r, patient_name: v } : r))}
               />
 
               {/* 출결 */}
@@ -361,12 +446,10 @@ export default function PaymentPage() {
                 )}
               </div>
 
-              <input
-                type="text"
-                placeholder="환자명 입력"
+              <PatientInput
                 value={row.patient_name}
-                onChange={(e) => updatePayRow(row.id, { patient_name: e.target.value.replace(/[0-9]/g, '') })}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-400"
+                suggestions={recentPatients}
+                onChange={(v) => updatePayRow(row.id, { patient_name: v })}
               />
 
               <RecordFormFields
@@ -439,7 +522,7 @@ export default function PaymentPage() {
       {tab === 'count' && (
         <div className="fixed bottom-16 left-1/2 -translate-x-1/2 w-full max-w-[480px] px-4 pb-3 pt-2 bg-white border-t border-gray-100 shadow-lg">
           <button
-            onClick={handleSaveCount}
+            onClick={() => void handleSaveCount()}
             disabled={savingCount || countRows.every((r) => !r.patient_name.trim())}
             className="w-full py-4 bg-[#00b4d8] text-white rounded-xl font-bold text-base active:bg-[#0096b8] disabled:opacity-40 transition-colors"
           >
@@ -461,7 +544,7 @@ export default function PaymentPage() {
             </div>
           )}
           <button
-            onClick={handleSavePay}
+            onClick={() => void handleSavePay()}
             disabled={savingPay || payRows.every((r) => !r.patient_name.trim())}
             className="w-full py-4 bg-[#00b4d8] text-white rounded-xl font-bold text-base active:bg-[#0096b8] disabled:opacity-40 transition-colors"
           >
@@ -470,5 +553,6 @@ export default function PaymentPage() {
         </div>
       )}
     </div>
+    </>
   )
 }
