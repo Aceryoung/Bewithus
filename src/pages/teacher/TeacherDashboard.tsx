@@ -8,7 +8,6 @@ import { ATTENDANCE_LABELS, PAYMENT_METHOD_LABELS } from '@/constants'
 import BottomNav from '@/components/ui/BottomNav'
 import RecordEditSheet from '@/components/ui/RecordEditSheet'
 import ErrorState from '@/components/ui/ErrorState'
-import InquiryModal from '@/components/ui/InquiryModal'
 import { useTodayRecords, useMonthSummary, qk } from '@/hooks/queries'
 import type { Record as SessionRecord } from '@/types'
 
@@ -19,7 +18,6 @@ export default function TeacherDashboard() {
   const queryClient = useQueryClient()
 
   const [showPinModal, setShowPinModal] = useState(false)
-  const [showInquiry, setShowInquiry] = useState(false)
   const [pinForm, setPinForm] = useState({ current: '', next: '', confirm: '' })
   const [pinLoading, setPinLoading] = useState(false)
   const [pinError, setPinError] = useState('')
@@ -124,12 +122,6 @@ export default function TeacherDashboard() {
             <p className="text-gray-400 text-sm mt-1">{formatDate(today)}</p>
           </div>
           <div className="flex gap-1.5 mt-1">
-            <button
-              onClick={() => setShowInquiry(true)}
-              className="text-xs text-[#7db83a] bg-[#f0f9e8] px-3 py-1.5 rounded-full active:bg-[#e0f3d0] transition-colors"
-            >
-              문의하기
-            </button>
             <button
               onClick={() => { setShowPinModal(true); setPinError(''); setPinForm({ current: '', next: '', confirm: '' }) }}
               className="text-xs text-[#00b4d8] bg-[#e8f7fb] px-3 py-1.5 rounded-full active:bg-[#d0eff7] transition-colors"
@@ -273,9 +265,6 @@ export default function TeacherDashboard() {
         />
       )}
 
-      {showInquiry && (
-        <InquiryModal onClose={() => setShowInquiry(false)} />
-      )}
     </div>
   )
 }

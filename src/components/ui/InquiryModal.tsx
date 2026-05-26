@@ -9,19 +9,22 @@ interface Props {
 
 export default function InquiryModal({ errorCode, onClose }: Props) {
   const user = useAuthStore((s) => s.user)
-  const [message, setMessage] = useState('')
+  const [message, setMessage] = useState(errorCode ? `[${errorCode}] ` : '')
   const [sending, setSending] = useState(false)
   const [done, setDone] = useState(false)
 
   const handleSubmit = async () => {
     if (!user || !message.trim()) return
     setSending(true)
-    await supabase.from('inquiries').insert({
+    const { data, error } = await supabase.from('inquiries').insert({
       teacher_id: user.id,
       teacher_name: user.name,
       error_code: errorCode ?? null,
       message: message.trim(),
-    })
+    }).select().single()
+    if (!error && data) {
+      void supabase.functions.invoke('send-inquiry-email', { body: { record: data } })
+    }
     setSending(false)
     setDone(true)
   }
