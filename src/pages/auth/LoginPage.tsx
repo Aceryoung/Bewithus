@@ -256,9 +256,7 @@ export default function LoginPage() {
                 >
                   <option value="" disabled>이름을 선택해주세요</option>
                   {branchUsers.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.name}{u.role === 'director' ? ' (대표)' : ''}
-                    </option>
+                    <option key={u.id} value={u.id}>{u.name}</option>
                   ))}
                 </select>
                 {/* 커스텀 화살표 */}
