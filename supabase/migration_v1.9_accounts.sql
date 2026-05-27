@@ -45,6 +45,16 @@ BEGIN
         '{"provider":"email","providers":["email"]}', '{}', false
       );
 
+      -- auth.identities 없으면 signInWithPassword가 실패하므로 반드시 삽입
+      INSERT INTO auth.identities (id, user_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
+      VALUES (
+        gen_random_uuid(),
+        v_auth_id,
+        jsonb_build_object('sub', v_auth_id::text, 'email', 'user_' || v_uid::text || '@bewithus.internal'),
+        'email',
+        NOW(), NOW(), NOW()
+      );
+
       INSERT INTO public.users (id, auth_id, name, role, job_title, branch_id, is_active, pin_must_change)
       VALUES (v_uid, v_auth_id, rec.uname, rec.urole, rec.ujob, v_branch_id, true, true);
 
