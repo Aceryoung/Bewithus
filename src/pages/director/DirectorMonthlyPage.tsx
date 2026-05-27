@@ -34,7 +34,11 @@ export default function DirectorMonthlyPage() {
   const teachers = allUsers.filter((u) => u.role === 'teacher' || u.role === 'director')
 
   const { data: records = [], isLoading, error, refetch } =
-    useDirectorMonthlyRecords(year, month, selectedBranch, selectedTeacher)
+    useDirectorMonthlyRecords(year, month, selectedBranch, 'all')
+
+  // 전체 다운용: 필터 상태와 무관하게 항상 전체 선생님·전체 지점 데이터
+  const { data: allRecords = [] } =
+    useDirectorMonthlyRecords(year, month, 'all', 'all')
 
   const filteredTeachers = selectedBranch === 'all'
     ? teachers
@@ -44,8 +48,8 @@ export default function DirectorMonthlyPage() {
     ? filteredTeachers
     : filteredTeachers.filter((t) => t.id === selectedTeacher)
 
-  const summaries: TeacherSummary[] = visibleTeachers.map((teacher) => {
-    const tr = records.filter((r) => r.teacher_id === teacher.id)
+  const buildSummary = (recs: typeof records, teacher: User): TeacherSummary => {
+    const tr = recs.filter((r) => r.teacher_id === teacher.id)
     return {
       teacher, records: tr,
       totalCount:    tr.length,
@@ -56,7 +60,10 @@ export default function DirectorMonthlyPage() {
       supportAmount: tr.reduce((acc, r) => acc + r.support_amount, 0),
       selfPayment:   tr.reduce((acc, r) => acc + r.self_payment, 0),
     }
-  })
+  }
+
+  const summaries: TeacherSummary[] = visibleTeachers.map((t) => buildSummary(records, t))
+  const allBranchSummaries: TeacherSummary[] = teachers.map((t) => buildSummary(allRecords, t))
 
   const prevMonth = () => { if (month === 1) { setYear((y) => y - 1); setMonth(12) } else setMonth((m) => m - 1) }
   const nextMonth = () => { if (month === 12) { setYear((y) => y + 1); setMonth(1) } else setMonth((m) => m + 1) }
@@ -76,7 +83,7 @@ export default function DirectorMonthlyPage() {
           <button
             onClick={() =>
               void exportAllTeachersMonthly(
-                summaries.map((s) => ({
+                allBranchSummaries.map((s) => ({
                   teacherName: s.teacher.name,
                   records: s.records as import('@/types').Record[],
                   branchName: branches.find((b) => b.id === s.teacher.branch_id)?.name,
@@ -84,7 +91,7 @@ export default function DirectorMonthlyPage() {
                 year, month,
               )
             }
-            disabled={summaries.length === 0 || isLoading}
+            disabled={allBranchSummaries.length === 0 || isLoading}
             className="flex items-center gap-1.5 bg-[#7db83a] text-white text-sm font-semibold px-3 py-3 rounded-xl shadow-sm active:bg-[#5f9428] disabled:opacity-40 transition-colors shrink-0"
           >
             <span>⬇</span><span>전체</span>

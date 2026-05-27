@@ -53,6 +53,10 @@ export default function DirectorRecordsPage() {
   const { data: monthlyRecords = [], isLoading: loadingMonthly, error: errorMonthly, refetch: refetchMonthly } =
     useDirectorMonthlyRecords(year, month, selectedBranch, selectedTeacher)
 
+  // 전체 다운용: 필터 상태와 무관하게 항상 전체 데이터
+  const { data: allMonthlyRecords = [] } =
+    useDirectorMonthlyRecords(year, month, 'all', 'all')
+
   const { data: pendingMakeups = {} } = usePendingMakeups()
 
   const isLoading = tab === 'daily' ? loadingDaily : loadingMonthly
@@ -74,8 +78,9 @@ export default function DirectorRecordsPage() {
 
   /* ── 월별 집계 ── */
   const visibleTeachers = selectedTeacher === 'all' ? filteredTeachers : filteredTeachers.filter((t) => t.id === selectedTeacher)
-  const summaries: TeacherSummary[] = visibleTeachers.map((teacher) => {
-    const tr = monthlyRecords.filter((r) => r.teacher_id === teacher.id)
+
+  const buildSummary = (recs: typeof monthlyRecords, teacher: User): TeacherSummary => {
+    const tr = recs.filter((r) => r.teacher_id === teacher.id)
     return {
       teacher, records: tr,
       totalCount:    tr.length,
@@ -86,7 +91,10 @@ export default function DirectorRecordsPage() {
       supportAmount: tr.reduce((a, r) => a + r.support_amount, 0),
       selfPayment:   tr.reduce((a, r) => a + r.self_payment, 0),
     }
-  })
+  }
+
+  const summaries: TeacherSummary[] = visibleTeachers.map((t) => buildSummary(monthlyRecords, t))
+  const allTeacherSummaries: TeacherSummary[] = teachers.map((t) => buildSummary(allMonthlyRecords, t))
 
   const prevMonth = () => { if (month === 1) { setYear((y) => y - 1); setMonth(12) } else setMonth((m) => m - 1) }
   const nextMonth = () => { if (month === 12) { setYear((y) => y + 1); setMonth(1) } else setMonth((m) => m + 1) }
@@ -154,7 +162,7 @@ export default function DirectorRecordsPage() {
             <button
               onClick={() => void import('@/lib/excel').then(({ exportAllTeachersMonthly }) =>
                 exportAllTeachersMonthly(
-                  summaries.map((s) => ({
+                  allTeacherSummaries.map((s) => ({
                     teacherName: s.teacher.name,
                     records: s.records as import('@/types').Record[],
                     pendingMakeups: pendingMakeups[s.teacher.id] ?? {},
@@ -163,7 +171,7 @@ export default function DirectorRecordsPage() {
                   year, month,
                 )
               )}
-              disabled={summaries.length === 0 || isLoading}
+              disabled={allTeacherSummaries.length === 0 || isLoading}
               className="flex items-center gap-1.5 bg-[#7db83a] text-white text-sm font-semibold px-3 py-3 rounded-xl shadow-sm active:bg-[#5f9428] disabled:opacity-40 transition-colors shrink-0"
             >
               <span>전체 다운</span>

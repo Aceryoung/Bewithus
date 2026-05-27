@@ -413,14 +413,17 @@ export async function exportAllTeachersMonthly(
       self:    records.reduce((a, r) => a + r.self_payment, 0),
     })
     ;[5, 6, 7].forEach((c) => { row.getCell(c).numFmt = '₩#,##0' })
+  }
 
+  /* 전체 통합 출석표: 전체 요약 바로 다음 */
+  const allRecords = teachers.flatMap((t) => t.records)
+  buildAttendanceSheet(wb, '전체 통합 출석표', '전체', allRecords, year, month)
+
+  /* 선생님별 시트 */
+  for (const { teacherName, records, pendingMakeups, branchName } of teachers) {
     buildSummarySheet(wb, teacherName, teacherName, records, year, month, pendingMakeups ?? {}, branchName)
     buildAttendanceSheet(wb, `${teacherName} 출석표`, teacherName, records, year, month)
   }
-
-  /* 전체 통합 출석표: 1·2호점 환자 전원 */
-  const allRecords = teachers.flatMap((t) => t.records)
-  buildAttendanceSheet(wb, '전체 통합 출석표', '전체', allRecords, year, month)
 
   addLegendSheet(wb)
   await download(wb, `비위더스_${year}년${month}월_전체건수.xlsx`)
