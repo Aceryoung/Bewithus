@@ -358,6 +358,13 @@ export default function DirectorRecordsPage() {
                                     <p className="text-sm font-medium">{r.attendance === 'absent' ? '—' : formatKRW(r.self_payment)}</p>
                                     {r.support_amount > 0 && <p className="text-xs text-[#00b4d8]">{formatKRW(r.support_amount)}</p>}
                                   </div>
+                                  {r.receipt_url && (
+                                    <button
+                                      onClick={() => window.open(r.receipt_url!, '_blank')}
+                                      className="text-sm text-gray-400 bg-gray-100 px-2 py-1 rounded-lg active:bg-gray-200 transition-colors"
+                                      title="영수증 보기"
+                                    >📷</button>
+                                  )}
                                   {canEdit(r.teacher_id) && (
                                     <button
                                       onClick={() => setEditingRecord(r)}
