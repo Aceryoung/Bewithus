@@ -22,6 +22,7 @@ interface EditState {
   secondary_methods: PaymentMethod[]
   secondary_overrides: Partial<Record<PaymentMethod, number>>
   payment_note?: string
+  billing_month: string
 }
 
 interface Props {
@@ -60,6 +61,7 @@ function initFromRecord(record: SessionRecord): EditState {
     secondary_methods: secondaryMethods,
     secondary_overrides: {},
     payment_note: record.payment_note ?? undefined,
+    billing_month: record.billing_month ?? record.date.slice(0, 7),
   }
 }
 
@@ -160,6 +162,7 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
 
     const updatePayload: Record<string, unknown> = {
       attendance: state.attendance,
+      billing_month: state.billing_month,
       fee_type: state.attendance === 'absent' ? record.fee_type : state.fee_type || '직접입력',
       unit_price: state.attendance === 'absent' ? 0 : state.unit_price,
       session_count: state.session_count,
@@ -258,6 +261,20 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
             ))}
           </div>
 
+          {/* 청구 월 */}
+          <div>
+            <p className="text-xs text-gray-400 mb-1.5">청구 월 <span className="text-gray-300">(다른 달 청구건인 경우 변경)</span></p>
+            <input
+              type="month"
+              value={state.billing_month}
+              onChange={(e) => update({ billing_month: e.target.value })}
+              className={`w-full border rounded-lg px-3 py-2 text-sm outline-none transition-colors
+                ${state.billing_month !== record.date.slice(0, 7)
+                  ? 'border-orange-300 bg-orange-50 text-orange-700 focus:border-orange-400'
+                  : 'border-gray-200 focus:border-[#00b4d8]'}`}
+            />
+          </div>
+
           {/* 출석·보강 시에만 아래 항목 표시 */}
           {state.attendance !== 'absent' && (
             <RecordFormFields
@@ -268,6 +285,7 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
               remainingSupport={autoRemainingSupport}
               selfPayment={selfPayment}
               onChange={update}
+              allowHalfSession={record.branch_id === '22222222-0000-0000-0000-000000000002'}
             />
           )}
 

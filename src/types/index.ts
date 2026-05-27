@@ -54,6 +54,7 @@ export interface Record {
   tertiary_method: string | null
   tertiary_support: number
   remaining_support: number
+  billing_month: string | null
   updated_by_name: string | null
   created_at: string
   updated_at: string

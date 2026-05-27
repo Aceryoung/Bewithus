@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import type { PaymentMethod, FeeTable } from '@/types'
 import { formatKRW } from '@/lib/utils'
 import { PAYMENT_METHOD_LABELS, BRANCH_VOUCHER_CONFIG, MONTHLY_SUPPORT_LIMITS } from '@/constants'
@@ -25,12 +26,15 @@ interface Props {
   selfPayment: number
   onChange: (updates: Partial<RecordFieldState>) => void
   branchName?: string
+  allowHalfSession?: boolean
 }
 
 export default function RecordFormFields({
-  state, feeTables, total, voucherSupports, remainingSupport, selfPayment, onChange, branchName,
+  state, feeTables, total, voucherSupports, remainingSupport, selfPayment, onChange, branchName, allowHalfSession = false,
 }: Props) {
   const totalSupport = Object.values(voucherSupports).reduce((a, b) => a + (b ?? 0), 0)
+  const [countDisplay, setCountDisplay] = useState(String(state.session_count))
+  useEffect(() => { setCountDisplay(String(state.session_count)) }, [state.session_count])
 
   const branchConfig = branchName ? BRANCH_VOUCHER_CONFIG[branchName] : undefined
   const dynamicVoucherMethods: PaymentMethod[] = branchConfig
@@ -96,20 +100,43 @@ export default function RecordFormFields({
 
       {/* 횟수 */}
       <div>
-        <p className="text-xs text-gray-400 mb-1.5">횟수</p>
-        <input
-          type="number"
-          inputMode="numeric"
-          min={1}
-          placeholder="횟수 입력"
-          value={state.session_count || ''}
-          onKeyDown={(e) => { if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault() }}
-          onChange={(e) => {
-            const n = Math.max(1, Math.round(Number(e.target.value) || 1))
-            onChange({ session_count: n })
-          }}
-          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#00b4d8]"
-        />
+        <p className="text-xs text-gray-400 mb-1.5">
+          횟수{allowHalfSession && <span className="text-[#00b4d8] ml-1">(0.5 단위 가능)</span>}
+        </p>
+        {allowHalfSession ? (
+          <input
+            type="text"
+            inputMode="decimal"
+            placeholder="횟수 입력"
+            value={countDisplay}
+            onChange={(e) => {
+              const text = e.target.value
+              setCountDisplay(text)
+              const num = parseFloat(text)
+              if (!isNaN(num) && num > 0) onChange({ session_count: Math.max(0.5, Math.round(num * 2) / 2) })
+            }}
+            onBlur={(e) => {
+              const n = Math.max(0.5, Math.round((parseFloat(e.target.value) || 0.5) * 2) / 2)
+              setCountDisplay(String(n))
+              onChange({ session_count: n })
+            }}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#00b4d8]"
+          />
+        ) : (
+          <input
+            type="number"
+            inputMode="numeric"
+            min={1}
+            placeholder="횟수 입력"
+            value={state.session_count || ''}
+            onKeyDown={(e) => { if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault() }}
+            onChange={(e) => {
+              const n = Math.max(1, Math.round(Number(e.target.value) || 1))
+              onChange({ session_count: n })
+            }}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#00b4d8]"
+          />
+        )}
       </div>
 
       {/* 결제 방식 */}

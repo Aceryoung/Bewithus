@@ -210,6 +210,8 @@ export default function DirectorDashboard() {
             </div>
           </div>
         ))}
+
+        <p className="text-center text-[10px] text-gray-300 pb-2">Made by QuickBizLab</p>
       </div>
 
       <BottomNav />

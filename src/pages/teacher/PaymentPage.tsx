@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/auth'
 import { todayStr, formatKRW, calcSupport } from '@/lib/utils'
-import { ATTENDANCE_LABELS, BRANCH_VOUCHER_CONFIG } from '@/constants'
+import { ATTENDANCE_LABELS, BRANCH_VOUCHER_CONFIG, MONTHLY_SUPPORT_LIMITS, PAYMENT_METHOD_LABELS } from '@/constants'
 import { uploadReceipt } from '@/lib/storage'
 import PageHeader from '@/components/ui/PageHeader'
 import BottomNav from '@/components/ui/BottomNav'
@@ -26,6 +26,8 @@ interface CountRow {
   attendance: Attendance
   session_count: number
   birth_year?: string
+  billing_month?: string
+  _countDisplay?: string
 }
 
 function newCountRow(): CountRow {
@@ -51,6 +53,7 @@ interface PayRow {
   self_payment: number
   total_amount: number
   payment_note?: string
+  billing_month?: string
   receiptFile?: File
 }
 
@@ -228,6 +231,7 @@ export default function PaymentPage() {
         teacher_id: user.id,
         branch_id: user.branch_id,
         date,
+        billing_month: r.billing_month ?? date.slice(0, 7),
         patient_name: r.patient_name.trim(),
         birth_year: r.birth_year?.trim() || null,
         attendance: r.attendance,
@@ -278,6 +282,7 @@ export default function PaymentPage() {
         teacher_id: user.id,
         branch_id: user.branch_id,
         date,
+        billing_month: r.billing_month ?? date.slice(0, 7),
         patient_name: r.patient_name.trim(),
         birth_year: r.birth_year?.trim() || null,
         attendance: 'present',
@@ -440,19 +445,59 @@ export default function PaymentPage() {
 
               {/* 횟수 */}
               <div>
-                <p className="text-xs text-gray-400 mb-1.5">횟수</p>
+                <p className="text-xs text-gray-400 mb-1.5">
+                  횟수{user?.branch_id === '22222222-0000-0000-0000-000000000002' && <span className="text-[#00b4d8] ml-1">(0.5 단위 가능)</span>}
+                </p>
+                {user?.branch_id === '22222222-0000-0000-0000-000000000002' ? (
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="횟수 입력"
+                    value={row._countDisplay ?? String(row.session_count)}
+                    onChange={(e) => {
+                      const text = e.target.value
+                      const num = parseFloat(text)
+                      setCountRows((prev) => prev.map((r) => {
+                        if (r.id !== row.id) return r
+                        const updates: Partial<CountRow> = { _countDisplay: text }
+                        if (!isNaN(num) && num > 0) updates.session_count = Math.max(0.5, Math.round(num * 2) / 2)
+                        return { ...r, ...updates }
+                      }))
+                    }}
+                    onBlur={(e) => {
+                      const n = Math.max(0.5, Math.round((parseFloat(e.target.value) || 0.5) * 2) / 2)
+                      setCountRows((prev) => prev.map((r) => r.id === row.id ? { ...r, session_count: n, _countDisplay: String(n) } : r))
+                    }}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#00b4d8]"
+                  />
+                ) : (
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    placeholder="횟수 입력"
+                    value={row.session_count || ''}
+                    onKeyDown={(e) => { if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault() }}
+                    onChange={(e) => {
+                      const n = Math.max(1, Math.round(Number(e.target.value) || 1))
+                      setCountRows((prev) => prev.map((r) => r.id === row.id ? { ...r, session_count: n } : r))
+                    }}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#00b4d8]"
+                  />
+                )}
+              </div>
+
+              {/* 청구 월 */}
+              <div>
+                <p className="text-xs text-gray-400 mb-1.5">청구 월 <span className="text-gray-300">(다른 달 청구건인 경우 변경)</span></p>
                 <input
-                  type="number"
-                  inputMode="numeric"
-                  min={1}
-                  placeholder="횟수 입력"
-                  value={row.session_count || ''}
-                  onKeyDown={(e) => { if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault() }}
-                  onChange={(e) => {
-                    const n = Math.max(1, Math.round(Number(e.target.value) || 1))
-                    setCountRows((prev) => prev.map((r) => r.id === row.id ? { ...r, session_count: n } : r))
-                  }}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#00b4d8]"
+                  type="month"
+                  value={row.billing_month ?? date.slice(0, 7)}
+                  onChange={(e) => setCountRows((prev) => prev.map((r) => r.id === row.id ? { ...r, billing_month: e.target.value } : r))}
+                  className={`w-full border rounded-lg px-3 py-2 text-sm outline-none transition-colors
+                    ${(row.billing_month ?? date.slice(0, 7)) !== date.slice(0, 7)
+                      ? 'border-orange-300 bg-orange-50 text-orange-700 focus:border-orange-400'
+                      : 'border-gray-200 focus:border-[#00b4d8]'}`}
                 />
               </div>
             </div>
@@ -505,6 +550,26 @@ export default function PaymentPage() {
                 </div>
               )}
 
+              {(() => {
+                const name = row.patient_name.trim()
+                if (!name) return null
+                const used = monthlyUsed[name] ?? {}
+                const badges = (['education', 'sports_voucher', 'after_school'] as PaymentMethod[])
+                  .map((m) => ({ m, remaining: Math.max(0, (MONTHLY_SUPPORT_LIMITS[m] ?? 0) - (used[m] ?? 0)) }))
+                  .filter((b) => (used[b.m] ?? 0) > 0 && b.remaining > 0)
+                if (badges.length === 0) return null
+                return (
+                  <div className="flex flex-wrap gap-1.5">
+                    {badges.map(({ m, remaining }) => (
+                      <div key={m} className="flex items-center gap-1.5 bg-sky-50 border border-sky-100 rounded-lg px-2.5 py-1.5">
+                        <span className="text-xs text-gray-400">{PAYMENT_METHOD_LABELS[m]}</span>
+                        <span className="text-xs font-bold text-[#00b4d8]">{formatKRW(remaining)} 남음</span>
+                      </div>
+                    ))}
+                  </div>
+                )
+              })()}
+
               <RecordFormFields
                 state={{
                   fee_type: row.fee_type,
@@ -522,6 +587,7 @@ export default function PaymentPage() {
                 selfPayment={row.self_payment}
                 onChange={(updates) => updatePayRow(row.id, updates as Partial<PayRow>)}
                 branchName={user?.branch_name ?? undefined}
+                allowHalfSession={user?.branch_id === '22222222-0000-0000-0000-000000000002'}
               />
 
               {/* 영수증 첨부 */}
@@ -557,6 +623,20 @@ export default function PaymentPage() {
                     />
                   </label>
                 )}
+              </div>
+
+              {/* 청구 월 */}
+              <div>
+                <p className="text-xs text-gray-400 mb-1.5">청구 월 <span className="text-gray-300">(다른 달 청구건인 경우 변경)</span></p>
+                <input
+                  type="month"
+                  value={row.billing_month ?? date.slice(0, 7)}
+                  onChange={(e) => updatePayRow(row.id, { billing_month: e.target.value })}
+                  className={`w-full border rounded-lg px-3 py-2 text-sm outline-none transition-colors
+                    ${(row.billing_month ?? date.slice(0, 7)) !== date.slice(0, 7)
+                      ? 'border-orange-300 bg-orange-50 text-orange-700 focus:border-orange-400'
+                      : 'border-gray-200 focus:border-[#00b4d8]'}`}
+                />
               </div>
             </div>
           ))}
