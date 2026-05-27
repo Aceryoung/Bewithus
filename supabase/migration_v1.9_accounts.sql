@@ -39,7 +39,7 @@ BEGIN
         v_auth_id,
         '00000000-0000-0000-0000-000000000000',
         'authenticated', 'authenticated',
-        'user_' || v_uid::text || '@bewithus.internal',
+        v_uid::text || '@bewithus.internal',
         crypt('0000@bw', gen_salt('bf')),
         NOW(), NOW(), NOW(),
         '{"provider":"email","providers":["email"]}', '{}', false
@@ -49,9 +49,9 @@ BEGIN
       INSERT INTO auth.identities (id, provider_id, user_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
       VALUES (
         gen_random_uuid(),
-        'user_' || v_uid::text || '@bewithus.internal',
+        v_uid::text || '@bewithus.internal',
         v_auth_id,
-        jsonb_build_object('sub', v_auth_id::text, 'email', 'user_' || v_uid::text || '@bewithus.internal'),
+        jsonb_build_object('sub', v_auth_id::text, 'email', v_uid::text || '@bewithus.internal'),
         'email',
         NOW(), NOW(), NOW()
       );
