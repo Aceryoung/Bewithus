@@ -402,7 +402,7 @@ export async function exportAllTeachersMonthly(
   hRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF007A93' } }
   hRow.alignment = { horizontal: 'center', vertical: 'middle' }
 
-  for (const { teacherName, records, pendingMakeups, branchName } of teachers) {
+  for (const { teacherName, records } of teachers) {
     const row = summaryWs.addRow({
       name:    teacherName,
       count:   records.length,
