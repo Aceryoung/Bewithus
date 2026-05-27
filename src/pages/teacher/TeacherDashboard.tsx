@@ -123,6 +123,12 @@ export default function TeacherDashboard() {
           </div>
           <div className="flex gap-1.5 mt-1">
             <button
+              onClick={() => window.open('/manual.html', '_blank')}
+              className="text-xs text-gray-400 bg-gray-100 px-3 py-1.5 rounded-full active:bg-gray-200 transition-colors"
+            >
+              매뉴얼
+            </button>
+            <button
               onClick={() => { setShowPinModal(true); setPinError(''); setPinForm({ current: '', next: '', confirm: '' }) }}
               className="text-xs text-[#00b4d8] bg-[#e8f7fb] px-3 py-1.5 rounded-full active:bg-[#d0eff7] transition-colors"
             >

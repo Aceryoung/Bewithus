@@ -131,6 +131,12 @@ export default function DirectorDashboard() {
               <span className="w-1.5 h-1.5 rounded-full bg-[#7db83a] animate-pulse" />
               <span className="text-[#7db83a] text-xs font-semibold">실시간</span>
             </div>
+            <button
+              onClick={() => window.open('/manual.html', '_blank')}
+              className="text-xs text-gray-400 bg-gray-100 px-3 py-1.5 rounded-full active:bg-gray-200 transition-colors"
+            >
+              매뉴얼
+            </button>
             {user?.role === 'director' && (
               <button
                 onClick={() => { setShowPinModal(true); setPinError(''); setPinForm({ current: '', next: '', confirm: '' }) }}

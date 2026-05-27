@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>비위더스 SRA 사용 매뉴얼</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif; font-size:13px; color:#1a1a1a; background:#fff; line-height:1.65; }
+
+/* ── 표지 ── */
+.cover { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; padding:60px 40px; text-align:center; background:linear-gradient(160deg,#f0fbfd 0%,#fff 60%); page-break-after:always; }
+.cover-icon { width:72px; height:72px; background:#00b4d8; border-radius:20px; display:flex; align-items:center; justify-content:center; font-size:36px; margin-bottom:24px; box-shadow:0 8px 24px rgba(0,180,216,.25); }
+.cover h1 { font-size:36px; font-weight:800; color:#00b4d8; margin-bottom:8px; }
+.cover .sub { font-size:15px; color:#888; margin-bottom:48px; }
+.cover-cards { display:flex; gap:16px; }
+.cover-card { background:#fff; border:1px solid #e8f7fb; border-radius:14px; padding:18px 22px; text-align:left; min-width:160px; box-shadow:0 2px 8px rgba(0,0,0,.04); }
+.cover-card .label { font-size:11px; color:#aaa; margin-bottom:4px; }
+.cover-card .val { font-size:13px; font-weight:700; color:#333; }
+.cover-ver { margin-top:60px; font-size:11px; color:#ccc; }
+
+/* ── 페이지 ── */
+.page { padding:48px 52px; page-break-before:always; }
+
+/* 섹션 헤더 */
+.sec-hd { display:flex; align-items:center; gap:12px; margin-bottom:24px; padding-bottom:12px; border-bottom:2.5px solid #00b4d8; }
+.sec-badge { background:#00b4d8; color:#fff; font-size:12px; font-weight:700; padding:3px 12px; border-radius:20px; }
+.sec-badge.gr { background:#7db83a; }
+.sec-badge.pk { background:#e85b8a; }
+.sec-hd h2 { font-size:19px; font-weight:800; }
+
+h3 { font-size:13.5px; font-weight:700; color:#00b4d8; margin:20px 0 8px; display:flex; align-items:center; gap:6px; }
+h3::before { content:''; display:inline-block; width:4px; height:14px; background:#00b4d8; border-radius:2px; }
+p { color:#555; margin-bottom:7px; font-size:12px; }
+
+/* 스텝 */
+.steps { display:flex; flex-direction:column; gap:6px; margin:10px 0; }
+.step { display:flex; gap:10px; align-items:flex-start; background:#f7f8fc; border-radius:9px; padding:9px 12px; }
+.sn { width:20px; height:20px; background:#00b4d8; color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; flex-shrink:0; margin-top:1px; }
+.sn.gr { background:#7db83a; } .sn.pk { background:#e85b8a; }
+.sb strong { font-size:12px; color:#1a1a1a; display:block; margin-bottom:1px; }
+.sb p { font-size:11px; color:#777; margin:0; }
+
+/* 정보박스 */
+.ib { border-left:3px solid #00b4d8; background:#e8f7fb; border-radius:0 8px 8px 0; padding:9px 13px; margin:10px 0; font-size:11.5px; color:#444; }
+.ib.warn { background:#fff8e6; border-color:#f59e0b; }
+.ib.gr { background:#f0f9e8; border-color:#7db83a; }
+.ib strong { color:#00b4d8; } .ib.warn strong { color:#d97706; } .ib.gr strong { color:#7db83a; }
+
+table { width:100%; border-collapse:collapse; margin:10px 0; font-size:11px; }
+th { background:#00b4d8; color:#fff; padding:7px 10px; text-align:left; font-weight:600; }
+td { padding:7px 10px; border-bottom:1px solid #eee; color:#555; }
+tr:nth-child(even) td { background:#f7f8fc; }
+
+/* ══════════════════════════════
+   브라우저 창 프레임
+══════════════════════════════ */
+.browser { width:100%; margin:16px 0; }
+.browser-frame { background:#e8e8e8; border-radius:10px 10px 8px 8px; overflow:hidden; box-shadow:0 6px 24px rgba(0,0,0,.13); }
+.browser-bar { background:#d5d5d5; padding:7px 12px; display:flex; align-items:center; gap:8px; }
+.browser-dots { display:flex; gap:5px; }
+.browser-dots span { width:9px; height:9px; border-radius:50%; }
+.browser-dots .rd { background:#ff5f57; }
+.browser-dots .yw { background:#febc2e; }
+.browser-dots .gr { background:#28c840; }
+.browser-url { flex:1; background:#fff; border-radius:5px; padding:3px 10px; font-size:9px; color:#888; margin:0 8px; }
+.browser-screen { background:#f7f8fc; }
+
+/* ══════════════════════════════
+   앱 UI 컴포넌트 — 데스크탑 레이아웃
+══════════════════════════════ */
+
+/* 공통 헤더 */
+.app-topbar { background:#fff; border-bottom:1px solid #f0f0f0; padding:10px 0; }
+.app-topbar-inner { max-width:700px; margin:0 auto; padding:0 20px; display:flex; align-items:center; justify-content:space-between; }
+.topbar-title { font-size:13px; font-weight:800; color:#1a1a1a; }
+.topbar-sub { font-size:9px; color:#aaa; }
+
+/* 홈 헤더 */
+.home-topbar { background:#fff; border-bottom:1px solid #f0f0f0; padding:10px 0; }
+.home-topbar-inner { max-width:700px; margin:0 auto; padding:0 20px; display:flex; justify-content:space-between; align-items:center; }
+.ht-name { font-size:14px; font-weight:800; color:#1a1a1a; }
+.ht-date { font-size:9px; color:#aaa; margin-top:1px; }
+.ht-btns { display:flex; gap:5px; }
+.ht-btn { font-size:8px; padding:3px 9px; border-radius:20px; font-weight:600; }
+.ht-btn.blue { background:#e8f7fb; color:#00b4d8; }
+.ht-btn.gray { background:#f1f1f1; color:#888; }
+
+/* 컨텐츠 영역 */
+.app-content { max-width:700px; margin:0 auto; padding:12px 20px 14px; }
+
+/* CTA */
+.cta-btn { background:#00b4d8; color:#fff; border-radius:14px; padding:11px 20px; font-size:12px; font-weight:700; margin-bottom:10px; display:inline-block; }
+
+/* 카드 */
+.app-card { background:#fff; border-radius:14px; border:1px solid #f0f0f0; padding:12px 14px; margin-bottom:10px; }
+.card-label { font-size:8px; color:#aaa; font-weight:700; letter-spacing:.5px; text-transform:uppercase; margin-bottom:8px; }
+
+/* 통계 그리드 — 데스크탑 (4열) */
+.stat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:10px; }
+.stat-item { border-radius:10px; padding:8px 4px; text-align:center; }
+.stat-item .sv { font-size:18px; font-weight:800; }
+.stat-item .sl { font-size:8px; color:#aaa; margin-top:2px; }
+.st-gray { background:#f1f1f1; } .st-gray .sv { color:#333; }
+.st-blue { background:#e8f7fb; } .st-blue .sv { color:#00b4d8; }
+.st-pink { background:#fdeef5; } .st-pink .sv { color:#e85b8a; }
+.st-green { background:#f0f9e8; } .st-green .sv { color:#7db83a; }
+
+.sum-row { background:#f7f8fc; border-radius:8px; padding:7px 12px; display:flex; justify-content:space-between; }
+.sum-row span { font-size:10px; color:#888; }
+.sum-row strong { font-size:11px; color:#1a1a1a; font-weight:700; }
+
+/* 오늘 내역 */
+.record-list { background:#fff; border-radius:14px; border:1px solid #f0f0f0; overflow:hidden; }
+.record-list-hd { display:flex; justify-content:space-between; align-items:center; padding:10px 14px 8px; border-bottom:1px solid #f7f8fc; }
+.record-list-hd span { font-size:11px; font-weight:700; color:#555; }
+.record-list-hd .cnt { font-size:9px; background:#e8f7fb; color:#00b4d8; padding:2px 8px; border-radius:10px; font-weight:700; }
+.rec-row { display:flex; align-items:center; justify-content:space-between; padding:8px 14px; border-bottom:1px solid #f7f8fc; }
+.rec-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+.rec-info { margin-left:9px; }
+.rec-name { font-size:11px; font-weight:700; color:#1a1a1a; }
+.rec-sub { font-size:9px; color:#aaa; margin-top:1px; }
+.rec-right { display:flex; align-items:center; gap:8px; }
+.rec-amt { font-size:11px; font-weight:700; color:#1a1a1a; }
+.rec-edit { font-size:8px; background:#f1f1f1; color:#888; padding:3px 8px; border-radius:6px; }
+
+/* 하단 네비 */
+.bottom-nav { background:#fff; border-top:1px solid #eee; display:flex; justify-content:center; }
+.bottom-nav-inner { display:flex; max-width:480px; width:100%; }
+.nav-item { flex:1; padding:8px 2px 7px; text-align:center; font-size:8.5px; color:#aaa; }
+.nav-item.on { color:#00b4d8; font-weight:700; }
+
+/* 로그인 */
+.login-outer { display:flex; align-items:center; justify-content:center; padding:30px 20px; background:#f7f8fc; min-height:260px; }
+.login-box { background:#fff; border-radius:16px; padding:24px 28px; width:260px; box-shadow:0 4px 16px rgba(0,0,0,.06); }
+.login-logo { width:40px; height:40px; background:#00b4d8; border-radius:11px; display:flex; align-items:center; justify-content:center; font-size:20px; margin:0 auto 12px; }
+.login-t { text-align:center; font-size:14px; font-weight:800; margin-bottom:3px; }
+.login-s { text-align:center; font-size:9px; color:#aaa; margin-bottom:18px; }
+.login-lbl { font-size:9px; color:#888; margin-bottom:3px; }
+.login-inp { width:100%; border:1px solid #e5e5e5; border-radius:8px; padding:7px 10px; font-size:10px; color:#1a1a1a; background:#f7f8fc; margin-bottom:8px; }
+.login-inp.focused { border-color:#00b4d8; }
+.login-btn { width:100%; background:#00b4d8; color:#fff; border-radius:9px; padding:8px; text-align:center; font-size:11px; font-weight:700; margin-top:2px; }
+
+/* 신규 로그인 - 호점 선택 + PIN 키패드 */
+.login-new-outer { background:#f7f8fc; padding:16px 12px 12px; }
+.login-brand { text-align:center; padding-bottom:12px; }
+.login-brand-logo { width:36px; height:36px; background:#00b4d8; border-radius:10px; display:inline-flex; align-items:center; justify-content:center; font-size:18px; margin-bottom:4px; }
+.login-brand-sub { font-size:8.5px; color:#aaa; }
+.login-card { background:#fff; border-radius:16px; border:1px solid #f0f0f0; padding:12px 14px; margin-bottom:8px; }
+.login-card-lbl { font-size:7.5px; font-weight:700; color:#aaa; letter-spacing:.8px; text-transform:uppercase; margin-bottom:8px; }
+.branch-btn { display:block; width:100%; background:#f7f8fc; border:2px solid transparent; border-radius:12px; padding:12px 14px; text-align:center; font-size:12px; font-weight:700; color:#333; margin-bottom:6px; cursor:pointer; }
+.branch-btn:last-child { margin-bottom:0; }
+.branch-btn .bsub { font-size:8px; color:#aaa; font-weight:400; margin-top:2px; }
+.branch-btn.sel { background:#e8f7fb; border-color:#00b4d8; color:#007a93; }
+.name-select { width:100%; background:#f7f8fc; border:2px solid #e5e5e5; border-radius:10px; padding:8px 10px; font-size:10px; font-weight:600; color:#333; }
+.name-select.sel { border-color:#00b4d8; background:#e8f7fb; }
+.pin-dots { display:flex; justify-content:center; gap:8px; margin:8px 0 10px; }
+.pin-dot { width:34px; height:34px; border-radius:50%; border:2px solid #e5e5e5; background:#f7f8fc; display:flex; align-items:center; justify-content:center; }
+.pin-dot.filled { background:#00b4d8; border-color:#00b4d8; }
+.pin-dot.filled::after { content:''; display:block; width:10px; height:10px; border-radius:50%; background:#fff; }
+.pin-keypad { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; max-width:200px; margin:0 auto; }
+.pk-btn { background:#f7f8fc; border:1px solid #eee; border-radius:10px; height:36px; text-align:center; line-height:36px; font-size:13px; font-weight:600; color:#333; }
+.pk-btn.del { color:#aaa; font-size:11px; }
+.pk-btn.empty { background:transparent; border:none; }
+
+/* 탭 바 */
+.tab-bar { background:#fff; border-bottom:1px solid #f0f0f0; display:flex; justify-content:center; }
+.tab-inner { display:flex; max-width:700px; width:100%; padding:0 20px; }
+.tab-item { padding:8px 20px; font-size:10px; font-weight:600; color:#bbb; border-bottom:2px solid transparent; }
+.tab-item.on { color:#00b4d8; border-color:#00b4d8; }
+
+/* 날짜 행 */
+.date-bar { background:#fff; border:1px solid #eee; border-radius:10px; padding:7px 12px; display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+.date-bar span { font-size:9px; color:#888; }
+.date-bar .dv { font-size:10px; font-weight:600; color:#1a1a1a; }
+
+/* 결제 폼 */
+.pay-form { background:#fff; border-radius:14px; border:1px solid #f0f0f0; padding:12px 14px; margin-bottom:10px; }
+.form-lbl { font-size:9px; color:#aaa; margin-bottom:3px; }
+.form-inp { width:100%; border:1.5px solid #e5e5e5; border-radius:8px; padding:7px 10px; font-size:10px; color:#1a1a1a; background:#f7f8fc; margin-bottom:8px; }
+.form-inp.focused { border-color:#00b4d8; }
+.rem-badges { display:flex; gap:5px; margin-bottom:8px; }
+.rbadge { background:#e8f7fb; border:1px solid #c8edf6; border-radius:6px; padding:3px 8px; font-size:8.5px; }
+.rbadge span { color:#888; } .rbadge strong { color:#00b4d8; font-weight:700; }
+.sel-row { display:flex; gap:5px; margin-bottom:8px; }
+.sel-btn { flex:1; padding:6px; border-radius:7px; font-size:9px; font-weight:600; text-align:center; background:#f1f1f1; color:#888; }
+.sel-btn.on { background:#00b4d8; color:#fff; }
+.amt-box { background:#f7f8fc; border-radius:8px; padding:9px 12px; margin-bottom:8px; }
+.amt-row { display:flex; justify-content:space-between; margin-bottom:3px; }
+.amt-row span { font-size:9px; color:#888; }
+.amt-row strong { font-size:9px; font-weight:700; }
+.amt-div { border:none; border-top:1px solid #e5e5e5; margin:5px 0; }
+.self-row { display:flex; justify-content:space-between; }
+.self-row span { font-size:10px; color:#555; font-weight:600; }
+.self-row strong { font-size:12px; font-weight:800; color:#1a1a1a; }
+.save-bar-desk { background:#fff; border-top:1px solid #eee; padding:8px 0; }
+.save-bar-inner { max-width:700px; margin:0 auto; padding:0 20px; display:flex; justify-content:space-between; align-items:center; }
+.save-info span { font-size:9px; color:#888; }
+.save-info strong { font-size:11px; color:#1a1a1a; font-weight:700; margin-left:8px; }
+.save-btn { background:#00b4d8; color:#fff; border-radius:9px; padding:8px 24px; font-size:11px; font-weight:700; }
+
+/* 대표 대시보드 */
+.dir-teacher-row { display:flex; align-items:center; justify-content:space-between; padding:8px 14px; border-bottom:1px solid #f7f8fc; }
+.dir-name { font-size:11px; font-weight:700; color:#1a1a1a; }
+.dir-counts { display:flex; gap:5px; }
+.dc { font-size:8.5px; padding:2px 6px; border-radius:10px; font-weight:600; }
+.dc-bl { background:#e8f7fb; color:#00b4d8; }
+.dc-pk { background:#fdeef5; color:#e85b8a; }
+.dc-gr { background:#f0f9e8; color:#7db83a; }
+
+/* 문의함 */
+.inq-row { background:#f0fbfd; border:1.5px solid rgba(0,180,216,.2); border-radius:12px; padding:10px 13px; margin-bottom:7px; }
+.inq-row.read { background:#fff; border-color:#f0f0f0; }
+.inq-hd { display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; }
+.inq-left { display:flex; align-items:center; gap:5px; }
+.inq-dot { width:6px; height:6px; background:#00b4d8; border-radius:50%; }
+.inq-name { font-size:10.5px; font-weight:700; color:#1a1a1a; }
+.inq-err { font-size:8px; font-weight:700; color:#e53e3e; background:#fff0f0; padding:1px 6px; border-radius:10px; }
+.inq-time { font-size:8.5px; color:#bbb; }
+.inq-msg { font-size:9.5px; color:#666; line-height:1.5; }
+
+/* 오류 모달 */
+.modal-wrap { position:relative; min-height:200px; }
+.modal-bg { background:rgba(0,0,0,.3); position:absolute; inset:0; display:flex; align-items:center; justify-content:center; padding:0 30%; border-radius:0 0 8px 8px; }
+.modal-box { background:#fff; border-radius:16px; padding:16px 18px; width:100%; box-shadow:0 8px 32px rgba(0,0,0,.2); }
+.modal-hd { display:flex; justify-content:space-between; margin-bottom:10px; }
+.modal-hd span { font-size:12px; font-weight:700; color:#1a1a1a; }
+.modal-hd .x { color:#ccc; font-size:16px; }
+.err-badge { background:#fff0f0; border-radius:9px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center; margin-bottom:9px; }
+.err-code { font-size:15px; font-weight:800; color:#e53e3e; letter-spacing:2px; }
+.err-copy { font-size:8px; color:#e53e3e; background:#fff; border:1px solid #fca5a5; padding:2px 7px; border-radius:4px; }
+.modal-txt { width:100%; border:1px solid #e5e5e5; border-radius:8px; padding:8px; font-size:9.5px; color:#555; height:55px; margin-bottom:9px; background:#f7f8fc; display:block; resize:none; }
+.modal-btns { display:flex; gap:7px; }
+.m-cancel { flex:1; padding:8px; border:1px solid #e5e5e5; border-radius:8px; font-size:9.5px; color:#888; text-align:center; }
+.m-send { flex:1; padding:8px; background:#00b4d8; border-radius:8px; font-size:9.5px; font-weight:700; color:#fff; text-align:center; }
+
+/* 에러코드 */
+.err-cd { font-family:monospace; font-weight:700; color:#e53e3e; background:#fff0f0; padding:2px 7px; border-radius:4px; font-size:10.5px; }
+
+/* 캡션 */
+.browser-caption { text-align:center; font-size:10.5px; color:#888; margin-top:6px; font-weight:600; }
+
+/* 2단 레이아웃 */
+.layout { display:grid; gap:24px; margin:12px 0; align-items:start; }
+.l2 { grid-template-columns:1fr 340px; }
+.l2r { grid-template-columns:340px 1fr; }
+
+@media print {
+  body { font-size:11.5px; }
+  .cover { min-height:297mm; }
+  .page { padding:36px 44px; }
+  @page { margin:0; size:A4; }
+  .browser-frame { box-shadow:0 3px 10px rgba(0,0,0,.1); }
+}
+</style>
+</head>
+<body>
+
+<!-- ══════ 표지 ══════ -->
+<div class="cover">
+  <div class="cover-icon">🏥</div>
+  <h1>비위더스 SRA</h1>
+  <div class="sub">스마트 기록 관리 시스템 사용 매뉴얼</div>
+  <div class="cover-cards">
+    <div class="cover-card"><div class="label">대상</div><div class="val">선생님 · 대표 · 관리자</div></div>
+    <div class="cover-card"><div class="label">주요 기능</div><div class="val">건수 · 결제 · 지원금 관리</div></div>
+  </div>
+  <div class="cover-ver">비위더스 EMR v1.9 · 2026</div>
+</div>
+
+
+<!-- ══════ 1. 로그인 ══════ -->
+<div class="page">
+  <div class="sec-hd"><span class="sec-badge">1</span><h2>로그인 &amp; 기본 설정</h2></div>
+
+  <h3>1.1 PIN 로그인 순서</h3>
+  <p>아이디·비밀번호 없이 <strong>호점 선택 → 이름 선택 → PIN 4자리</strong> 순서로 간편하게 로그인합니다.</p>
+
+  <div class="layout l2" style="margin-top:10px;">
+    <div>
+      <div class="steps">
+        <div class="step"><div class="sn">1</div><div class="sb"><strong>호점 선택</strong><p>본인이 근무하는 호점(1호점 또는 2호점)을 탭합니다.</p></div></div>
+        <div class="step"><div class="sn">2</div><div class="sb"><strong>이름 선택</strong><p>드롭다운 목록에서 본인 이름을 찾아 선택합니다.</p></div></div>
+        <div class="step"><div class="sn">3</div><div class="sb"><strong>PIN 4자리 입력</strong><p>화면의 숫자 키패드로 PIN을 누릅니다. 4자리를 모두 입력하면 자동으로 로그인됩니다.</p></div></div>
+        <div class="step"><div class="sn">4</div><div class="sb"><strong>역할별 화면으로 자동 이동</strong><p>선생님 → 홈 화면, 대표/관리자 → 대시보드</p></div></div>
+      </div>
+      <div class="ib warn" style="margin-top:8px;"><strong>⚠️ 처음 로그인 시</strong> 초기 PIN(0000)으로 로그인하면 새 PIN 설정 화면이 나타납니다. 0000이 아닌 4자리 PIN을 새로 설정해야 합니다.</div>
+      <div class="ib warn"><strong>⚠️ 5회 연속 오류</strong> 시 30초 잠금됩니다. 잠금이 풀린 후 다시 시도하세요.</div>
+
+      <h3>1.2 PIN 번호 변경</h3>
+      <p>로그인 후 홈 화면 우상단의 <strong>"PIN 변경"</strong> 버튼을 눌러 변경할 수 있습니다.</p>
+      <div class="steps">
+        <div class="step"><div class="sn">1</div><div class="sb"><strong>홈 우상단 "PIN 변경" 탭</strong></div></div>
+        <div class="step"><div class="sn">2</div><div class="sb"><strong>새 PIN 4자리 입력 + 한 번 더 확인 입력</strong></div></div>
+        <div class="step"><div class="sn">3</div><div class="sb"><strong>"PIN 변경하기" 버튼 탭</strong></div></div>
+      </div>
+    </div>
+
+    <!-- 로그인 화면 2단 (호점 선택 + PIN 입력) -->
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <!-- 화면 1: 호점 선택 -->
+      <div class="browser">
+        <div class="browser-frame">
+          <div class="browser-bar">
+            <div class="browser-dots"><span class="rd"></span><span class="yw"></span><span class="gr"></span></div>
+            <div class="browser-url">bewithus.app/login</div>
+          </div>
+          <div class="browser-screen">
+            <div class="login-new-outer">
+              <div class="login-brand">
+                <div class="login-brand-logo">🏥</div>
+                <div class="login-brand-sub">비위더스</div>
+              </div>
+              <div class="login-card">
+                <div class="login-card-lbl">호점 선택</div>
+                <div class="branch-btn">1호점<div class="bsub">비위더스 재활운동센터</div></div>
+                <div class="branch-btn">2호점<div class="bsub">비위더스 운동발달연구소</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="browser-caption">① 호점 선택 화면</div>
+      </div>
+
+      <!-- 화면 2: 이름 + PIN -->
+      <div class="browser">
+        <div class="browser-frame">
+          <div class="browser-bar">
+            <div class="browser-dots"><span class="rd"></span><span class="yw"></span><span class="gr"></span></div>
+            <div class="browser-url">bewithus.app/login</div>
+          </div>
+          <div class="browser-screen">
+            <div class="login-new-outer">
+              <div class="login-brand">
+                <div class="login-brand-logo">🏥</div>
+                <div class="login-brand-sub">비위더스 재활운동센터</div>
+              </div>
+              <div class="login-card">
+                <div class="login-card-lbl">이름 선택</div>
+                <select class="name-select sel" style="pointer-events:none;"><option>김민지</option></select>
+              </div>
+              <div class="login-card">
+                <div class="login-card-lbl">PIN 번호</div>
+                <div class="pin-dots">
+                  <div class="pin-dot filled"></div>
+                  <div class="pin-dot filled"></div>
+                  <div class="pin-dot"></div>
+                  <div class="pin-dot"></div>
+                </div>
+                <div class="pin-keypad">
+                  <div class="pk-btn">1</div><div class="pk-btn">2</div><div class="pk-btn">3</div>
+                  <div class="pk-btn">4</div><div class="pk-btn">5</div><div class="pk-btn">6</div>
+                  <div class="pk-btn">7</div><div class="pk-btn">8</div><div class="pk-btn">9</div>
+                  <div class="pk-btn empty"></div><div class="pk-btn">0</div><div class="pk-btn del">⌫</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="browser-caption">② 이름 선택 + PIN 키패드 입력</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════ 2. 선생님 홈 ══════ -->
+<div class="page">
+  <div class="sec-hd"><span class="sec-badge">2</span><h2>선생님 — 홈 화면</h2></div>
+
+  <div class="browser">
+    <div class="browser-frame">
+      <div class="browser-bar">
+        <div class="browser-dots"><span class="rd"></span><span class="yw"></span><span class="gr"></span></div>
+        <div class="browser-url">bewithus.app/teacher</div>
+      </div>
+      <div class="browser-screen">
+        <div class="home-topbar">
+          <div class="home-topbar-inner">
+            <div>
+              <div class="ht-name">김민지 선생님</div>
+              <div class="ht-date">2026년 5월 27일 화요일</div>
+            </div>
+            <div class="ht-btns">
+              <div class="ht-btn blue">PIN 변경</div>
+              <div class="ht-btn gray">로그아웃</div>
+            </div>
+          </div>
+        </div>
+        <div class="app-content">
+          <div class="cta-btn">+ 오늘 건수 입력하기</div>
+          <div class="app-card">
+            <div class="card-label">이달 건수 요약</div>
+            <div class="stat-grid">
+              <div class="stat-item st-gray"><div class="sv">23</div><div class="sl">총건수</div></div>
+              <div class="stat-item st-blue"><div class="sv">18</div><div class="sl">출석</div></div>
+              <div class="stat-item st-pink"><div class="sv">3</div><div class="sl">결석</div></div>
+              <div class="stat-item st-green"><div class="sv">2</div><div class="sl">보강</div></div>
+            </div>
+            <div class="sum-row"><span>이달 자부담 합계</span><strong>342,000원</strong></div>
+          </div>
+          <div class="record-list">
+            <div class="record-list-hd"><span>오늘 입력 내역</span><span class="cnt">3건</span></div>
+            <div class="rec-row">
+              <div style="display:flex;align-items:center;">
+                <div class="rec-dot" style="background:#00b4d8;"></div>
+                <div class="rec-info"><div class="rec-name">홍길동</div><div class="rec-sub">출석 · 작업치료 2회 · 교육청</div></div>
+              </div>
+              <div class="rec-right"><div class="rec-amt">0원</div><div class="rec-edit">수정</div></div>
+            </div>
+            <div class="rec-row">
+              <div style="display:flex;align-items:center;">
+                <div class="rec-dot" style="background:#00b4d8;"></div>
+                <div class="rec-info"><div class="rec-name">박서연</div><div class="rec-sub">출석 · 언어치료 1회 · 카드</div></div>
+              </div>
+              <div class="rec-right"><div class="rec-amt">20,000원</div><div class="rec-edit">수정</div></div>
+            </div>
+            <div class="rec-row">
+              <div style="display:flex;align-items:center;">
+                <div class="rec-dot" style="background:#e85b8a;"></div>
+                <div class="rec-info"><div class="rec-name">김영희</div><div class="rec-sub">결석</div></div>
+              </div>
+              <div class="rec-right"><div class="rec-amt">—</div><div class="rec-edit">수정</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="bottom-nav">
+          <div class="bottom-nav-inner">
+            <div class="nav-item on">홈</div>
+            <div class="nav-item">결제/건수</div>
+            <div class="nav-item">월별건수</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="browser-caption">선생님 홈 화면 — 이달 요약 + 오늘 입력 내역</div>
+  </div>
+
+  <div style="margin-top:14px;">
+    <table>
+      <tr><th>영역</th><th>내용</th></tr>
+      <tr><td><strong>이달 건수 요약</strong></td><td>총건수·출석·결석·보강 건수 및 자부담 합계</td></tr>
+      <tr><td><strong>오늘 입력 내역</strong></td><td>당일 입력한 환자 목록. "수정" 버튼으로 즉시 수정 가능</td></tr>
+      <tr><td><strong>+ 오늘 건수 입력하기</strong></td><td>결제/건수 입력 화면으로 이동</td></tr>
+    </table>
+    <div class="ib warn"><strong>⚠️ 수정 권한:</strong> 본인이 입력한 기록만 수정·삭제 가능합니다. 다른 선생님 기록에는 수정 버튼이 표시되지 않습니다.</div>
+  </div>
+</div>
+
+
+<!-- ══════ 3. 건수 입력 ══════ -->
+<div class="page">
+  <div class="sec-hd"><span class="sec-badge">3</span><h2>선생님 — 건수 입력</h2></div>
+  <p>홈의 <strong>"+ 오늘 건수 입력하기"</strong> 또는 하단 <strong>"결제/건수"</strong> 탭을 누르면 이동합니다.</p>
+
+  <div class="browser">
+    <div class="browser-frame">
+      <div class="browser-bar">
+        <div class="browser-dots"><span class="rd"></span><span class="yw"></span><span class="gr"></span></div>
+        <div class="browser-url">bewithus.app/teacher/payment</div>
+      </div>
+      <div class="browser-screen">
+        <div class="app-topbar"><div class="app-topbar-inner"><div class="topbar-title">결제 / 건수</div></div></div>
+        <div class="tab-bar">
+          <div class="tab-inner">
+            <div class="tab-item on">건수 입력</div>
+            <div class="tab-item">결제 입력</div>
+          </div>
+        </div>
+        <div class="app-content">
+          <div class="date-bar"><span>날짜</span><div class="dv">2026-05-27</div></div>
+          <div class="pay-form">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+              <span style="font-size:9px;color:#aaa;font-weight:700;">환자 1</span>
+            </div>
+            <div class="form-lbl">환자명</div>
+            <div class="form-inp focused">박서연</div>
+            <div class="form-lbl">출결</div>
+            <div class="sel-row">
+              <div class="sel-btn on">출석</div>
+              <div class="sel-btn">결석</div>
+              <div class="sel-btn">보강</div>
+            </div>
+            <div class="form-lbl">횟수</div>
+            <div class="form-inp">2</div>
+          </div>
+          <div style="border:2px dashed #e5e5e5;border-radius:12px;padding:10px;text-align:center;font-size:10px;color:#bbb;margin-bottom:10px;">+ 환자 추가</div>
+          <div style="background:#00b4d8;color:#fff;border-radius:10px;padding:11px;text-align:center;font-size:12px;font-weight:700;">건수 저장하기</div>
+        </div>
+        <div class="bottom-nav">
+          <div class="bottom-nav-inner">
+            <div class="nav-item">홈</div>
+            <div class="nav-item on">결제/건수</div>
+            <div class="nav-item">월별건수</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="browser-caption">건수 입력 탭 — 환자명·출결·횟수 입력</div>
+  </div>
+
+  <div class="steps" style="margin-top:14px;">
+    <div class="step"><div class="sn">1</div><div class="sb"><strong>날짜 확인</strong><p>기본값은 오늘. 클릭하여 과거 날짜로 변경 가능합니다.</p></div></div>
+    <div class="step"><div class="sn">2</div><div class="sb"><strong>환자명 입력</strong><p>이전 기록이 있는 환자는 자동완성으로 제안됩니다.</p></div></div>
+    <div class="step"><div class="sn">3</div><div class="sb"><strong>출결 선택 — 출석 / 결석 / 보강</strong></div></div>
+    <div class="step"><div class="sn">4</div><div class="sb"><strong>횟수 입력 후 "건수 저장하기"</strong><p>"+ 환자 추가"로 여러 환자를 한 번에 입력할 수 있습니다.</p></div></div>
+  </div>
+  <div class="ib warn" style="margin-top:8px;"><strong>⚠️ 중복 경고:</strong> 같은 날 동일 환자가 이미 기록된 경우 경고창이 뜹니다. 맞으면 "그래도 저장", 아니면 "취소"를 누르세요.</div>
+  <div class="ib"><strong>💾 자동 임시저장:</strong> 입력 중 화면을 이탈해도 내용이 기기에 저장됩니다. 다시 열면 복원됩니다.</div>
+</div>
+
+
+<!-- ══════ 4. 결제 입력 ══════ -->
+<div class="page">
+  <div class="sec-hd"><span class="sec-badge">4</span><h2>선생님 — 결제 입력 &amp; 지원금</h2></div>
+
+  <div class="browser">
+    <div class="browser-frame">
+      <div class="browser-bar">
+        <div class="browser-dots"><span class="rd"></span><span class="yw"></span><span class="gr"></span></div>
+        <div class="browser-url">bewithus.app/teacher/payment</div>
+      </div>
+      <div class="browser-screen">
+        <div class="app-topbar"><div class="app-topbar-inner"><div class="topbar-title">결제 / 건수</div></div></div>
+        <div class="tab-bar">
+          <div class="tab-inner">
+            <div class="tab-item">건수 입력</div>
+            <div class="tab-item on">결제 입력</div>
+          </div>
+        </div>
+        <div class="app-content">
+          <div class="date-bar"><span>날짜</span><div class="dv">2026-05-27</div></div>
+          <div class="pay-form">
+            <div style="font-size:9px;color:#aaa;font-weight:700;margin-bottom:8px;">환자 1</div>
+            <div class="form-lbl">환자명</div>
+            <div class="form-inp">홍길동</div>
+            <!-- 남은 지원금 배지 -->
+            <div class="rem-badges">
+              <div class="rbadge"><span>교육청 </span><strong>40,000원 남음</strong></div>
+              <div class="rbadge"><span>스포츠바우처 </span><strong>130,000원 남음</strong></div>
+            </div>
+            <div class="form-lbl">수가 종류</div>
+            <div class="form-inp" style="margin-bottom:8px;">작업치료 / 단가 20,000원</div>
+            <div class="form-lbl">회기 수</div>
+            <div class="form-inp" style="margin-bottom:8px;">2회&nbsp;&nbsp;→&nbsp;&nbsp;합계 40,000원</div>
+            <div class="form-lbl">결제 방법</div>
+            <div class="sel-row">
+              <div class="sel-btn">카드</div>
+              <div class="sel-btn on">교육청</div>
+              <div class="sel-btn">현금</div>
+              <div class="sel-btn">계좌이체</div>
+            </div>
+            <div class="form-lbl" style="margin-top:4px;">청구 월 <span style="color:#bbb;font-size:8px;">(다른 달 청구건인 경우 변경)</span></div>
+            <div class="form-inp" style="margin-bottom:8px;color:#f97316;border-color:#fed7aa;">2026-04</div>
+            <div class="amt-box">
+              <div class="amt-row"><span>총 금액</span><strong>40,000원</strong></div>
+              <div class="amt-row"><span>교육청 지원</span><strong style="color:#00b4d8;">− 40,000원</strong></div>
+              <hr class="amt-div">
+              <div class="self-row"><span>자부담</span><strong>0원</strong></div>
+            </div>
+          </div>
+          <div class="save-bar-desk">
+            <div class="save-bar-inner">
+              <div class="save-info"><span>자부담 합계</span><strong>0원</strong></div>
+              <div class="save-btn">결제 저장하기</div>
+            </div>
+          </div>
+        </div>
+        <div class="bottom-nav">
+          <div class="bottom-nav-inner">
+            <div class="nav-item">홈</div>
+            <div class="nav-item on">결제/건수</div>
+            <div class="nav-item">월별건수</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="browser-caption">결제 입력 탭 — 남은 지원금 확인 + 자동 계산</div>
+  </div>
+
+  <div class="steps" style="margin-top:14px;">
+    <div class="step"><div class="sn">1</div><div class="sb"><strong>환자명 입력</strong><p>입력 즉시 이달 남은 지원금 잔액이 파란 배지로 표시됩니다.</p></div></div>
+    <div class="step"><div class="sn">2</div><div class="sb"><strong>수가 종류 선택</strong><p>등록된 수가표 선택 시 단가 자동 입력. 직접 입력도 가능합니다.</p></div></div>
+    <div class="step"><div class="sn">3</div><div class="sb"><strong>회기 수 입력 — 총 금액 자동 계산</strong></div></div>
+    <div class="step"><div class="sn">4</div><div class="sb"><strong>결제 방법 선택</strong><p>바우처 선택 시 지원금·자부담이 실시간으로 계산됩니다.</p></div></div>
+    <div class="step"><div class="sn">5</div><div class="sb"><strong>청구 월 확인 (필요 시 변경)</strong><p>기본값은 날짜와 같은 달입니다. 예) 4월에 결제해야 했는데 5월에 하는 경우 청구 월을 <strong>2026-04</strong>로 변경하면 4월 건수로 집계됩니다. 다른 달로 설정 시 주황색으로 표시됩니다.</p></div></div>
+    <div class="step"><div class="sn">6</div><div class="sb"><strong>자부담 확인 후 "결제 저장하기"</strong></div></div>
+  </div>
+
+  <div class="layout l2" style="margin-top:10px;">
+    <div class="ib gr"><strong>💡 남은 지원금:</strong> 환자명 입력 즉시 이달 잔액이 파란 배지로 표시됩니다. 해당 월에 바우처를 한 번도 사용하지 않았거나 잔액이 없으면 표시되지 않습니다.</div>
+    <div class="ib warn"><strong>📅 청구 월 변경:</strong> 전달 미결제 건을 이번 달에 입력하는 경우 청구 월을 해당 달로 변경하세요. 월별 통계와 엑셀 다운로드에 정확하게 반영됩니다.</div>
+  </div>
+
+  <table style="margin-top:10px;">
+    <tr><th>바우처</th><th>월 한도</th><th>초과 시</th></tr>
+    <tr><td>교육청</td><td style="font-weight:700;color:#00b4d8;">160,000원</td><td>초과분 자부담 처리</td></tr>
+    <tr><td>스포츠바우처</td><td style="font-weight:700;color:#00b4d8;">130,000원</td><td>초과분 자부담 처리</td></tr>
+    <tr><td>방과후</td><td style="font-weight:700;color:#00b4d8;">120,000원</td><td>초과분 자부담 처리</td></tr>
+  </table>
+</div>
+
+
+<!-- ══════ 5. 대표 대시보드 ══════ -->
+<div class="page">
+  <div class="sec-hd"><span class="sec-badge pk">5</span><h2>대표 / 관리자 기능</h2></div>
+
+  <div class="browser">
+    <div class="browser-frame">
+      <div class="browser-bar">
+        <div class="browser-dots"><span class="rd"></span><span class="yw"></span><span class="gr"></span></div>
+        <div class="browser-url">bewithus.app/director</div>
+      </div>
+      <div class="browser-screen">
+        <div class="home-topbar">
+          <div class="home-topbar-inner">
+            <div><div class="ht-name">비위더스 센터</div><div class="ht-date">2026년 5월 27일</div></div>
+            <div class="ht-btn gray">로그아웃</div>
+          </div>
+        </div>
+        <div class="app-content">
+          <div class="record-list">
+            <div class="record-list-hd"><span>선생님별 이달 건수</span></div>
+            <div class="dir-teacher-row">
+              <div class="dir-name">김민지</div>
+              <div class="dir-counts">
+                <div class="dc dc-bl">출석 18</div>
+                <div class="dc dc-pk">결석 3</div>
+                <div class="dc dc-gr">보강 2</div>
+                <div style="font-size:9px;font-weight:700;color:#1a1a1a;margin-left:8px;">342,000원</div>
+              </div>
+            </div>
+            <div class="dir-teacher-row">
+              <div class="dir-name">이수진</div>
+              <div class="dir-counts">
+                <div class="dc dc-bl">출석 22</div>
+                <div class="dc dc-pk">결석 1</div>
+                <div class="dc dc-gr">보강 0</div>
+                <div style="font-size:9px;font-weight:700;color:#1a1a1a;margin-left:8px;">418,000원</div>
+              </div>
+            </div>
+            <div class="dir-teacher-row">
+              <div class="dir-name">박서현</div>
+              <div class="dir-counts">
+                <div class="dc dc-bl">출석 15</div>
+                <div class="dc dc-pk">결석 2</div>
+                <div class="dc dc-gr">보강 1</div>
+                <div style="font-size:9px;font-weight:700;color:#1a1a1a;margin-left:8px;">280,000원</div>
+              </div>
+            </div>
+          </div>
+          <div class="app-card" style="margin-top:8px;">
+            <div class="sum-row"><span>센터 전체 자부담 합계</span><strong>1,040,000원</strong></div>
+          </div>
+        </div>
+        <div class="bottom-nav">
+          <div class="bottom-nav-inner">
+            <div class="nav-item on">대시보드</div>
+            <div class="nav-item">건수현황</div>
+            <div class="nav-item">직원관리</div>
+            <div class="nav-item" style="position:relative;">문의함<span style="position:absolute;top:5px;right:16px;background:red;color:#fff;font-size:7px;width:13px;height:13px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;">2</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="browser-caption">대표 대시보드 — 선생님별 이달 건수 현황</div>
+  </div>
+
+  <div style="margin-top:14px;">
+    <div class="layout l2">
+      <div>
+        <h3>건수 현황</h3>
+        <table>
+          <tr><th>모드</th><th>기능</th></tr>
+          <tr><td>날짜별</td><td>특정일 전체 기록, 대표 본인 기록 수정 가능</td></tr>
+          <tr><td>월별</td><td>선생님별 월간 합계, 엑셀 다운로드</td></tr>
+        </table>
+      </div>
+      <div>
+        <h3>직원 관리</h3>
+        <div class="steps">
+          <div class="step"><div class="sn gr">1</div><div class="sb"><strong>신규 직원 추가</strong><p>이름·역할·초기 PIN 설정</p></div></div>
+          <div class="step"><div class="sn gr">2</div><div class="sb"><strong>ID와 PIN 직원에게 전달</strong></div></div>
+          <div class="step"><div class="sn gr">3</div><div class="sb"><strong>퇴사 직원 비활성화 처리</strong></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="ib"><strong>역할 차이</strong> &nbsp;·&nbsp; <strong>대표:</strong> 모든 기능 + 직원 건수 직접 입력 &nbsp;·&nbsp; <strong>관리자:</strong> 조회·문의함만 가능</div>
+  </div>
+</div>
+
+
+<!-- ══════ 6. 오류 & 문의함 ══════ -->
+<div class="page">
+  <div class="sec-hd"><span class="sec-badge">6</span><h2>오류 발생 시 &amp; 문의함</h2></div>
+
+  <div class="layout l2">
+    <div>
+      <h3>6.1 오류 발생 시 (선생님)</h3>
+      <p>오류가 발생하면 에러코드가 포함된 <strong>문의하기 창이 자동으로 열립니다.</strong></p>
+      <div class="steps">
+        <div class="step"><div class="sn">1</div><div class="sb"><strong>문의 창 자동 오픈</strong><p>에러코드가 메시지 입력창에 자동으로 입력되어 있습니다.</p></div></div>
+        <div class="step"><div class="sn">2</div><div class="sb"><strong>어떤 상황에서 오류가 났는지 추가 작성</strong><p>예) "홍길동 건수 저장하려다 오류가 났어요"</p></div></div>
+        <div class="step"><div class="sn">3</div><div class="sb"><strong>"전송" 클릭</strong><p>담당자에게 이메일로 즉시 발송되며 문의함에도 기록됩니다.</p></div></div>
+      </div>
+
+      <h3>6.2 에러코드 표</h3>
+      <table>
+        <tr><th>코드</th><th>의미</th><th>조치</th></tr>
+        <tr><td><span class="err-cd">ERR-101</span></td><td>건수 저장 실패</td><td>네트워크 확인 후 재시도</td></tr>
+        <tr><td><span class="err-cd">ERR-102</span></td><td>기록 수정 실패</td><td>네트워크 확인 후 재시도</td></tr>
+        <tr><td><span class="err-cd">ERR-103</span></td><td>기록 삭제 실패</td><td>네트워크 확인 후 재시도</td></tr>
+        <tr><td><span class="err-cd">ERR-201</span></td><td>데이터 불러오기 실패</td><td>앱 새로고침 후 재시도</td></tr>
+        <tr><td><span class="err-cd">ERR-301</span></td><td>파일 업로드 실패</td><td>사진 크기·형식 확인</td></tr>
+        <tr><td><span class="err-cd">ERR-302</span></td><td>파일 용량 초과</td><td>10MB 이하 사진만 가능</td></tr>
+        <tr><td><span class="err-cd">ERR-303</span></td><td>지원 안 되는 형식</td><td>JPG·PNG·HEIC만 가능</td></tr>
+        <tr><td><span class="err-cd">ERR-401</span></td><td>지점 미배정</td><td>대표에게 지점 배정 요청</td></tr>
+      </table>
+    </div>
+
+    <div>
+      <!-- 오류 문의 모달 -->
+      <div class="browser" style="margin-bottom:16px;">
+        <div class="browser-frame">
+          <div class="browser-bar">
+            <div class="browser-dots"><span class="rd"></span><span class="yw"></span><span class="gr"></span></div>
+            <div class="browser-url">bewithus.app/teacher/payment</div>
+          </div>
+          <div class="browser-screen">
+            <div class="modal-wrap">
+              <div style="padding:12px 14px;opacity:.25;">
+                <div style="background:#fff;border-radius:10px;height:40px;border:1px solid #eee;margin-bottom:8px;"></div>
+                <div style="background:#fff;border-radius:10px;height:40px;border:1px solid #eee;"></div>
+              </div>
+              <div class="modal-bg">
+                <div class="modal-box">
+                  <div class="modal-hd"><span>문의하기</span><span class="x">×</span></div>
+                  <div class="err-badge">
+                    <span class="err-code">ERR-101</span>
+                    <span class="err-copy">코드 복사</span>
+                  </div>
+                  <div style="font-size:9px;color:#666;margin-bottom:8px;">건수 저장에 실패했습니다.</div>
+                  <div style="font-size:8.5px;color:#aaa;margin-bottom:3px;">문의 내용</div>
+                  <div class="modal-txt">[ERR-101] 홍길동 건수 저장하다 오류났어요</div>
+                  <div class="modal-btns">
+                    <div class="m-cancel">취소</div>
+                    <div class="m-send">전송</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="browser-caption">오류 시 자동으로 뜨는 문의하기 창</div>
+      </div>
+
+      <!-- 문의함 -->
+      <div class="browser">
+        <div class="browser-frame">
+          <div class="browser-bar">
+            <div class="browser-dots"><span class="rd"></span><span class="yw"></span><span class="gr"></span></div>
+            <div class="browser-url">bewithus.app/director/inquiries</div>
+          </div>
+          <div class="browser-screen">
+            <div class="app-topbar"><div class="app-topbar-inner"><div class="topbar-title">문의함</div></div></div>
+            <div class="app-content" style="padding-top:10px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                <span style="font-size:10px;color:#888;">미확인 2건</span>
+                <span style="font-size:9px;color:#00b4d8;background:#e8f7fb;padding:4px 10px;border-radius:7px;font-weight:600;">모두 읽음</span>
+              </div>
+              <div class="inq-row">
+                <div class="inq-hd">
+                  <div class="inq-left"><div class="inq-dot"></div><span class="inq-name">김민지</span><span class="inq-err">ERR-101</span></div>
+                  <span class="inq-time">5분 전</span>
+                </div>
+                <div class="inq-msg">[ERR-101] 홍길동 건수 저장하다 오류났어요</div>
+              </div>
+              <div class="inq-row">
+                <div class="inq-hd">
+                  <div class="inq-left"><div class="inq-dot"></div><span class="inq-name">이수진</span></div>
+                  <span class="inq-time">1시간 전</span>
+                </div>
+                <div class="inq-msg">영수증 첨부가 안 됩니다. 확인 부탁드려요.</div>
+              </div>
+              <div class="inq-row read">
+                <div class="inq-hd">
+                  <div class="inq-left"><span class="inq-name">박서현</span></div>
+                  <span class="inq-time">1일 전</span>
+                </div>
+                <div class="inq-msg">수가표 추가 부탁드립니다.</div>
+              </div>
+            </div>
+            <div class="bottom-nav">
+              <div class="bottom-nav-inner">
+                <div class="nav-item">대시보드</div>
+                <div class="nav-item">건수현황</div>
+                <div class="nav-item">직원관리</div>
+                <div class="nav-item on">문의함</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="browser-caption">담당자 문의함 — 미확인 파란 테두리, 읽음 처리</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:36px;background:#f7f8fc;border-radius:12px;padding:18px;text-align:center;">
+    <p style="font-size:11px;color:#aaa;margin:0;">앱 내 오류 발생 시 문의하기 기능을 이용해 주세요 &nbsp;|&nbsp; 비위더스 EMR v1.9 · 2026</p>
+  </div>
+</div>
+
+</body>
+</html>
