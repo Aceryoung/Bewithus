@@ -160,7 +160,7 @@ export default function TeacherDashboard() {
             ))}
           </div>
           <div className="flex justify-between items-center bg-slate-50 rounded-xl px-3 py-2.5">
-            <span className="text-sm text-slate-500">이달 자부담 합계</span>
+            <span className="text-sm text-slate-500">이달 총 금액</span>
             <span className="text-base font-bold text-slate-900">{formatKRW(monthSummary.amount)}</span>
           </div>
         </div>

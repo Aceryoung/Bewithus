@@ -158,6 +158,7 @@ export default function DirectorRecordsPage() {
                     teacherName: s.teacher.name,
                     records: s.records as import('@/types').Record[],
                     pendingMakeups: pendingMakeups[s.teacher.id] ?? {},
+                    branchName: branches.find((b) => b.id === s.teacher.branch_id)?.name,
                   })),
                   year, month,
                 )
@@ -320,6 +321,7 @@ export default function DirectorRecordsPage() {
                                 records: s.records as import('@/types').Record[],
                                 year, month,
                                 pendingMakeups: pendingMakeups[s.teacher.id] ?? {},
+                                branchName: branches.find((b) => b.id === s.teacher.branch_id)?.name,
                               })
                             )}
                             className="flex items-center gap-1 text-xs text-[#00b4d8] bg-[#e8f7fb] px-2.5 py-1.5 rounded-lg active:bg-[#d0eff7] transition-colors shrink-0 mt-0.5"

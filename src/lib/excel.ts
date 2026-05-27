@@ -33,6 +33,12 @@ const VOUCHER_COLUMN_LABELS: Record<string, string> = {
 
 const PRIMARY_METHODS = new Set(['card', 'cash', 'bank_transfer', 'other'])
 
+function colLetter(n: number): string {
+  let s = ''
+  while (n > 0) { const r = (n - 1) % 26; s = String.fromCharCode(65 + r) + s; n = Math.floor((n - 1) / 26) }
+  return s
+}
+
 /** 한 환자의 월 집계 */
 interface PatientRow {
   name: string
@@ -45,11 +51,13 @@ interface PatientRow {
   vouchers: Record<string, number>
   remainingSupport: number
   primaryMethod: string
+  note: string
 }
 
 function buildPatientRows(
   records: SessionRecord[],
   pendingMakeups: { [name: string]: number } = {},
+  branchName?: string,
 ): PatientRow[] {
   const groups: Record<string, SessionRecord[]> = {}
   for (const r of records) {
@@ -59,6 +67,7 @@ function buildPatientRows(
 
   return Object.entries(groups).map(([name, rows]) => {
     const present = rows.filter((r) => r.attendance === 'present')
+    const absent  = rows.filter((r) => r.attendance === 'absent')
     const makeup  = rows.filter((r) => r.attendance === 'makeup')
 
     const methodCount: Record<string, number> = {}
@@ -89,7 +98,7 @@ function buildPatientRows(
 
     return {
       name,
-      pendingMakeup: pendingMakeups[name] ?? '',
+      pendingMakeup: branchName === '2호점' ? absent.length : (pendingMakeups[name] ?? ''),
       makeupDone:   makeup.length,
       count:        present.length,
       totalAmount:  rows.reduce((a, r) => a + r.total_amount, 0),
@@ -98,6 +107,7 @@ function buildPatientRows(
       vouchers,
       remainingSupport,
       primaryMethod,
+      note:         remainingSupport > 0 ? '남은지원금 사용' : '',
     }
   })
 }
@@ -118,9 +128,10 @@ function buildSummarySheet(
   _year: number,
   month: number,
   pendingMakeups: { [name: string]: number } = {},
+  branchName?: string,
 ) {
   const ws = wb.addWorksheet(sheetName)
-  const patientRows = buildPatientRows(records, pendingMakeups)
+  const patientRows = buildPatientRows(records, pendingMakeups, branchName)
 
   /* 이 시트의 기록에서 실제 사용된 바우처만 표시 */
   const usedVouchers = VOUCHER_COLUMN_ORDER.filter((v) =>
@@ -128,7 +139,7 @@ function buildSummarySheet(
   )
 
   const totalCols = 7 + usedVouchers.length + 2 // 고정 7 + 바우처 + 남은지원금 + 비고
-  const lastColLetter = String.fromCharCode(64 + totalCols)
+  const lastColLetter = colLetter(totalCols)
 
   /* 월 제목 행 */
   ws.mergeCells(`A1:${lastColLetter}1`)
@@ -182,7 +193,7 @@ function buildSummarySheet(
       p.lastDate,
       ...voucherValues,
       p.remainingSupport || '',
-      '',
+      p.note,
     ])
 
     /* 금액 셀 포맷: totalAmount(5), selfPayment(6), voucher cols, remaining */
@@ -216,6 +227,92 @@ function buildSummarySheet(
     '', '', '', '', '', ...usedVouchers.map(() => ''), '', '',
   ])
   grandRow.font = { bold: true, color: { argb: 'FF007A93' } }
+
+  return ws
+}
+
+/** 환자별 출석표 시트: 행=환자, 열=날짜, 셀=○/×/△ */
+function buildAttendanceSheet(
+  wb: ExcelJS.Workbook,
+  sheetName: string,
+  teacherName: string,
+  records: SessionRecord[],
+  year: number,
+  month: number,
+) {
+  const ws = wb.addWorksheet(sheetName)
+
+  /* 해당 월의 날짜 목록 */
+  const daysInMonth = new Date(year, month, 0).getDate()
+  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1)
+
+  /* 환자 이름 목록 (알파벳/가나다순) */
+  const patientNames = [...new Set(records.map((r) => r.patient_name))].sort((a, b) =>
+    a.localeCompare(b, 'ko'),
+  )
+
+  /* 날짜×환자 인덱스 */
+  const index: Record<string, Record<string, 'present' | 'absent' | 'makeup'>> = {}
+  for (const r of records) {
+    const day = parseInt(r.date.split('-')[2])
+    if (!index[r.patient_name]) index[r.patient_name] = {}
+    index[r.patient_name][day] = r.attendance
+  }
+
+  /* 열 정의: 이름 열 + 날짜 열들 */
+  ws.columns = [
+    { key: 'name', width: 10 },
+    ...days.map((d) => ({ key: `d${d}`, width: 4.5 })),
+    { key: 'present', width: 6 },
+    { key: 'absent', width: 6 },
+    { key: 'makeup', width: 6 },
+  ] as ExcelJS.Column[]
+
+  /* 제목 행 */
+  const totalCols = 1 + days.length + 3
+  const lastLetter = colLetter(totalCols)
+  ws.mergeCells(`A1:${lastLetter}1`)
+  const titleCell = ws.getCell('A1')
+  titleCell.value = `${teacherName} — ${year}년 ${month}월 출석표`
+  titleCell.font = { bold: true, size: 13 }
+  titleCell.alignment = { horizontal: 'center', vertical: 'middle' }
+  titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF00B4D8' } }
+  titleCell.font = { bold: true, size: 13, color: { argb: 'FFFFFFFF' } }
+  ws.getRow(1).height = 22
+
+  /* 헤더 행 */
+  const headerRow = ws.addRow(['이름', ...days.map(String), '출석', '결석', '보강'])
+  headerRow.eachCell((cell) => {
+    cell.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF007A93' } }
+    cell.alignment = { horizontal: 'center', vertical: 'middle' }
+  })
+  headerRow.height = 16
+
+  /* 환자 행 */
+  for (const name of patientNames) {
+    const dayAttendance = index[name] ?? {}
+    const symbols = days.map((d) => {
+      const att = dayAttendance[d]
+      return att === 'present' ? '○' : att === 'absent' ? '×' : att === 'makeup' ? '△' : ''
+    })
+    const presentCount = Object.values(dayAttendance).filter((v) => v === 'present').length
+    const absentCount  = Object.values(dayAttendance).filter((v) => v === 'absent').length
+    const makeupCount  = Object.values(dayAttendance).filter((v) => v === 'makeup').length
+
+    const row = ws.addRow([name, ...symbols, presentCount || '', absentCount || '', makeupCount || ''])
+    row.alignment = { horizontal: 'center', vertical: 'middle' }
+    row.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' }
+
+    /* 셀 색상 */
+    for (let col = 2; col <= 1 + days.length; col++) {
+      const cell = row.getCell(col)
+      if (cell.value === '○') cell.font = { color: { argb: 'FF0096B8' }, bold: true }
+      else if (cell.value === '×') cell.font = { color: { argb: 'FFE85B8A' }, bold: true }
+      else if (cell.value === '△') cell.font = { color: { argb: 'FF7DB83A' }, bold: true }
+    }
+    row.height = 15
+  }
 
   return ws
 }
@@ -262,23 +359,26 @@ export async function exportTeacherMonthly({
   year,
   month,
   pendingMakeups = {},
+  branchName,
 }: {
   teacherName: string
   records: SessionRecord[]
   year: number
   month: number
   pendingMakeups?: Record<string, number>
+  branchName?: string
 }) {
   const wb = new ExcelJS.Workbook()
   wb.creator = '비위더스 EMR'
-  buildSummarySheet(wb, `${month}월 건수`, teacherName, records, year, month, pendingMakeups)
+  buildSummarySheet(wb, `${month}월 건수`, teacherName, records, year, month, pendingMakeups, branchName)
+  buildAttendanceSheet(wb, `${month}월 출석표`, teacherName, records, year, month)
   addLegendSheet(wb)
   await download(wb, `${teacherName}_${year}년${month}월_건수.xlsx`)
 }
 
 /** 전체 선생님 통합 엑셀 (선생님별 시트 + 전체 요약) */
 export async function exportAllTeachersMonthly(
-  teachers: { teacherName: string; records: SessionRecord[]; pendingMakeups?: Record<string, number> }[],
+  teachers: { teacherName: string; records: SessionRecord[]; pendingMakeups?: Record<string, number>; branchName?: string }[],
   year: number,
   month: number,
 ) {
@@ -302,7 +402,7 @@ export async function exportAllTeachersMonthly(
   hRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF007A93' } }
   hRow.alignment = { horizontal: 'center', vertical: 'middle' }
 
-  for (const { teacherName, records } of teachers) {
+  for (const { teacherName, records, pendingMakeups, branchName } of teachers) {
     const row = summaryWs.addRow({
       name:    teacherName,
       count:   records.length,
@@ -314,8 +414,13 @@ export async function exportAllTeachersMonthly(
     })
     ;[5, 6, 7].forEach((c) => { row.getCell(c).numFmt = '₩#,##0' })
 
-    buildSummarySheet(wb, teacherName, teacherName, records, year, month, teachers.find((t) => t.teacherName === teacherName)?.pendingMakeups ?? {})
+    buildSummarySheet(wb, teacherName, teacherName, records, year, month, pendingMakeups ?? {}, branchName)
+    buildAttendanceSheet(wb, `${teacherName} 출석표`, teacherName, records, year, month)
   }
+
+  /* 전체 통합 출석표: 1·2호점 환자 전원 */
+  const allRecords = teachers.flatMap((t) => t.records)
+  buildAttendanceSheet(wb, '전체 통합 출석표', '전체', allRecords, year, month)
 
   addLegendSheet(wb)
   await download(wb, `비위더스_${year}년${month}월_전체건수.xlsx`)

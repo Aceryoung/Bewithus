@@ -12,7 +12,7 @@ import type { User, FeeTable } from '@/types'
 
 interface TeacherWithStats extends User {
   monthCount: number
-  monthSelf: number
+  monthTotal: number
 }
 
 export default function AccountsPage() {
@@ -41,7 +41,7 @@ export default function AccountsPage() {
     return {
       ...t,
       monthCount: tRecords.length,
-      monthSelf: tRecords.reduce((acc, r) => acc + r.self_payment, 0),
+      monthTotal: tRecords.reduce((acc, r) => acc + r.total_amount, 0),
     }
   })
 
@@ -237,7 +237,7 @@ export default function AccountsPage() {
                           )}
                         </div>
                         <p className="text-xs text-gray-400 mt-0.5">
-                          이달 {t.monthCount}건 · 자부담 {formatKRW(t.monthSelf)}
+                          이달 {t.monthCount}건 · 총액 {formatKRW(t.monthTotal)}
                         </p>
                       </div>
                       <div className="flex gap-1.5">

@@ -118,7 +118,7 @@ export function useMonthSummary(teacherId: string | null, monthStart: string, to
     queryFn: async () => {
       const { data, error } = await supabase
         .from('records')
-        .select('attendance, self_payment')
+        .select('attendance, self_payment, total_amount')
         .eq('teacher_id', teacherId!)
         .gte('date', monthStart)
         .lte('date', today)
@@ -130,7 +130,7 @@ export function useMonthSummary(teacherId: string | null, monthStart: string, to
         present: records.filter((r) => r.attendance === 'present').length,
         absent: records.filter((r) => r.attendance === 'absent').length,
         makeup: records.filter((r) => r.attendance === 'makeup').length,
-        amount: records.reduce((acc, r) => acc + r.self_payment, 0),
+        amount: records.reduce((acc, r) => acc + r.total_amount, 0),
       }
     },
     enabled: !!teacherId,
@@ -335,7 +335,7 @@ export function useAccountsData(monthStart: string, today: string) {
       const [branchRes, userRes, recordRes, feeRes] = await Promise.all([
         supabase.from('branches').select('id, name'),
         supabase.from('users').select('*').in('role', ['teacher', 'admin', 'director']).order('name'),
-        supabase.from('records').select('teacher_id, self_payment').gte('date', monthStart).lte('date', today),
+        supabase.from('records').select('teacher_id, total_amount, self_payment').gte('date', monthStart).lte('date', today),
         supabase.from('fee_tables').select('*').eq('is_active', true).order('fee_type'),
       ])
       if (branchRes.error) throw branchRes.error
@@ -345,7 +345,7 @@ export function useAccountsData(monthStart: string, today: string) {
       return {
         branches: (branchRes.data ?? []) as { id: string; name: string }[],
         users: (userRes.data ?? []) as User[],
-        records: (recordRes.data ?? []) as { teacher_id: string; self_payment: number }[],
+        records: (recordRes.data ?? []) as { teacher_id: string; total_amount: number; self_payment: number }[],
         feeTables: (feeRes.data ?? []) as FeeTable[],
       }
     },

@@ -97,7 +97,7 @@ export default function DirectorDashboard() {
     const branchRecords = records.filter((r) => r.branch_id === branch.id)
     const teacherStats = branchTeachers.map((teacher) => {
       const tr = branchRecords.filter((r) => r.teacher_id === teacher.id)
-      return { teacher, count: tr.length, amount: tr.reduce((acc, r) => acc + r.self_payment, 0) }
+      return { teacher, count: tr.length, amount: tr.reduce((acc, r) => acc + r.total_amount, 0) }
     }).sort((a, b) => b.count - a.count)
     return {
       branch,
