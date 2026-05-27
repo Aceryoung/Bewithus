@@ -60,7 +60,10 @@ export function useMonthlyUsed(teacherId: string | null, date: string) {
         .lte('date', date)
       if (error) throw error
 
-      const voucherTypes = new Set(['education', 'sports_voucher', 'after_school'])
+      const voucherTypes = new Set<string>([
+        'education', 'sports_voucher', 'after_school',
+        'developmental', 'disabled_sports', 'senior_voucher', 'sci_rehab', 'after_school_fee',
+      ])
       const used: Record<string, Record<PaymentMethod, number>> = {}
       for (const r of data ?? []) {
         const name = r.patient_name
@@ -68,19 +71,17 @@ export function useMonthlyUsed(teacherId: string | null, date: string) {
           used[name] = {
             education: 0, sports_voucher: 0, after_school: 0,
             card: 0, cash: 0, bank_transfer: 0, other: 0,
+            developmental: 0, disabled_sports: 0, senior_voucher: 0, sci_rehab: 0, after_school_fee: 0,
           }
         }
         const secSupport = r.secondary_support ?? 0
         const terSupport = r.tertiary_support ?? 0
-        // 구형 기록: payment_method가 바우처 → primary 지원금만 누적
         if (voucherTypes.has(r.payment_method)) {
           used[name][r.payment_method as PaymentMethod] += Math.max(0, r.support_amount - secSupport)
         }
-        // secondary 바우처
         if (r.secondary_method && voucherTypes.has(r.secondary_method)) {
           used[name][r.secondary_method as PaymentMethod] += secSupport
         }
-        // tertiary 바우처 (신형)
         if (r.tertiary_method && voucherTypes.has(r.tertiary_method)) {
           used[name][r.tertiary_method as PaymentMethod] += terSupport
         }

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/auth'
+import { pinToPassword } from '@/lib/supabase'
 import { PIN_MAX_ATTEMPTS, PIN_LOCKOUT_SECONDS } from '@/constants'
 import type { User } from '@/types'
 import logo from '@/assets/logo.png'
@@ -28,6 +29,11 @@ export default function LoginPage() {
   const [lockedUntil, setLockedUntil] = useState<number | null>(null)
   const [countdown, setCountdown] = useState(0)
   const [loginLoading, setLoginLoading] = useState(false)
+  const [pinChangeModal, setPinChangeModal] = useState(false)
+  const [newPin, setNewPin] = useState('')
+  const [newPinConfirm, setNewPinConfirm] = useState('')
+  const [pinChangeError, setPinChangeError] = useState('')
+  const [pinChangePending, setPinChangePending] = useState(false)
 
   useEffect(() => {
     Promise.all([
@@ -96,13 +102,40 @@ export default function LoginPage() {
         setError(`PIN이 올바르지 않습니다. (${newAttempts}/${PIN_MAX_ATTEMPTS})`)
       }
     } else {
-      navigate(selectedUser.role === 'director' || selectedUser.role === 'admin' ? '/director' : '/teacher')
+      const storeUser = useAuthStore.getState().user
+      if (storeUser?.pin_must_change) {
+        setPinChangeModal(true)
+      } else {
+        navigate(selectedUser.role === 'director' || selectedUser.role === 'admin' ? '/director' : '/teacher')
+      }
     }
   }, [pin, selectedUser, lockedUntil, attempts, login, navigate, loginLoading])
 
   useEffect(() => {
     if (pin.length === 4) handlePinSubmit()
   }, [pin, handlePinSubmit])
+
+  const handlePinChange = async () => {
+    if (newPin.length !== 4) { setPinChangeError('새 PIN은 4자리여야 합니다.'); return }
+    if (newPin === '0000') { setPinChangeError('0000은 사용할 수 없습니다.'); return }
+    if (newPin !== newPinConfirm) { setPinChangeError('PIN이 일치하지 않습니다.'); return }
+    setPinChangePending(true)
+    setPinChangeError('')
+    const { error: authError } = await supabase.auth.updateUser({ password: pinToPassword(newPin) })
+    if (authError) {
+      setPinChangePending(false)
+      setPinChangeError(`변경 실패: ${authError.message}`)
+      return
+    }
+    const userId = useAuthStore.getState().user?.id
+    if (userId) {
+      await supabase.from('users').update({ pin_must_change: false }).eq('id', userId)
+      useAuthStore.setState((s) => ({ user: s.user ? { ...s.user, pin_must_change: false } : null }))
+    }
+    setPinChangePending(false)
+    setPinChangeModal(false)
+    navigate(selectedUser?.role === 'director' || selectedUser?.role === 'admin' ? '/director' : '/teacher')
+  }
 
   // 선택된 지점의 사용자 목록
   const branchUsers = selectedBranch
@@ -117,6 +150,52 @@ export default function LoginPage() {
 
   return (
     <div className="flex flex-col min-h-dvh bg-[#f7f8fc] md:items-center md:justify-center">
+      {/* PIN 변경 모달 */}
+      {pinChangeModal && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center px-5">
+          <div className="absolute inset-0 bg-black/50" />
+          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+            <p className="font-bold text-gray-900 text-base">PIN 변경 필요</p>
+            <p className="text-sm text-gray-500">초기 PIN(0000)을 변경해야 합니다.</p>
+            <div className="space-y-3">
+              <div>
+                <p className="text-xs text-gray-400 mb-1.5">새 PIN (4자리)</p>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={4}
+                  value={newPin}
+                  onChange={(e) => { setNewPin(e.target.value.replace(/\D/g, '').slice(0, 4)); setPinChangeError('') }}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#00b4d8] text-center tracking-widest text-xl"
+                  placeholder="● ● ● ●"
+                />
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 mb-1.5">새 PIN 확인</p>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={4}
+                  value={newPinConfirm}
+                  onChange={(e) => { setNewPinConfirm(e.target.value.replace(/\D/g, '').slice(0, 4)); setPinChangeError('') }}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#00b4d8] text-center tracking-widest text-xl"
+                  placeholder="● ● ● ●"
+                />
+              </div>
+              {pinChangeError && (
+                <p className="text-xs text-red-400 text-center">{pinChangeError}</p>
+              )}
+            </div>
+            <button
+              onClick={() => void handlePinChange()}
+              disabled={pinChangePending || newPin.length !== 4 || newPinConfirm.length !== 4}
+              className="w-full py-3 bg-[#00b4d8] text-white rounded-xl font-bold text-sm active:bg-[#0096b8] disabled:opacity-40 transition-colors"
+            >
+              {pinChangePending ? '변경 중...' : 'PIN 변경하기'}
+            </button>
+          </div>
+        </div>
+      )}
       <div className="md:w-full md:max-w-sm md:mx-auto md:bg-white md:rounded-2xl md:shadow-lg md:p-8">
       {/* 브랜드 */}
       <div className="flex flex-col items-center pt-10 pb-5 px-6 md:pt-0">

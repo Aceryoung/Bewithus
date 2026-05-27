@@ -1,7 +1,10 @@
 export type Role = 'director' | 'teacher' | 'admin'
 export type BranchId = 'branch1' | 'branch2'
 export type Attendance = 'present' | 'absent' | 'makeup'
-export type PaymentMethod = 'education' | 'sports_voucher' | 'after_school' | 'card' | 'cash' | 'bank_transfer' | 'other'
+export type PaymentMethod =
+  | 'education' | 'sports_voucher' | 'after_school'
+  | 'card' | 'cash' | 'bank_transfer' | 'other'
+  | 'developmental' | 'disabled_sports' | 'senior_voucher' | 'sci_rehab' | 'after_school_fee'
 export type MakeupStatus = 'pending' | 'completed'
 
 export interface Branch {
@@ -14,8 +17,11 @@ export interface User {
   id: string
   name: string
   role: Role
+  job_title: string | null
   branch_id: string | null
+  branch_name: string | null
   is_active: boolean
+  pin_must_change: boolean
   created_at: string
 }
 
@@ -32,6 +38,7 @@ export interface Record {
   branch_id: string
   date: string
   patient_name: string
+  birth_year: string | null
   attendance: Attendance
   fee_type: string
   session_count: number

@@ -117,12 +117,13 @@ export const useAuthStore = create<AuthState>()(
         // auth.uid() 로 users 테이블 조회
         const { data: profile } = await supabase
           .from('users')
-          .select('id, name, role, branch_id, is_active')
+          .select('id, name, role, job_title, branch_id, is_active, pin_must_change, branch:branches(name)')
           .eq('auth_id', session.user.id)
           .single()
 
         if (profile?.is_active) {
-          set({ user: profile as User })
+          const branch_name = (profile.branch as unknown as { name: string } | null)?.name ?? null
+          set({ user: { ...profile, job_title: profile.job_title ?? null, branch_name, pin_must_change: profile.pin_must_change ?? false, created_at: '' } as User })
         } else {
           await supabase.auth.signOut()
           set({ user: null })
@@ -144,7 +145,7 @@ async function finishLogin(
 ): Promise<{ error: string | null }> {
   const { data: profile, error } = await supabase
     .from('users')
-    .select('id, name, role, branch_id, is_active, auth_id')
+    .select('id, name, role, job_title, branch_id, is_active, auth_id, pin_must_change, branch:branches(name)')
     .eq('id', userId)
     .single()
 
@@ -163,7 +164,8 @@ async function finishLogin(
     }
   }
 
-  const { id, name, role, branch_id, is_active } = profile
-  set({ user: { id, name, role, branch_id, is_active, created_at: '' } as User })
+  const { id, name, role, job_title, branch_id, is_active, pin_must_change } = profile
+  const branch_name = (profile.branch as unknown as { name: string } | null)?.name ?? null
+  set({ user: { id, name, role, job_title: job_title ?? null, branch_id, branch_name, is_active, pin_must_change: pin_must_change ?? false, created_at: '' } as User })
   return { error: null }
 }

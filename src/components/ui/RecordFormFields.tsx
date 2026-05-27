@@ -1,19 +1,20 @@
 import type { PaymentMethod, FeeTable } from '@/types'
 import { formatKRW } from '@/lib/utils'
-import { PAYMENT_METHOD_LABELS, MONTHLY_SUPPORT_LIMITS } from '@/constants'
+import { PAYMENT_METHOD_LABELS, BRANCH_VOUCHER_CONFIG, MONTHLY_SUPPORT_LIMITS } from '@/constants'
 
 export interface RecordFieldState {
   fee_type: string
   unit_price: number
   session_count: number
-  payment_method: PaymentMethod        // card | cash | bank_transfer | other
-  secondary_methods: PaymentMethod[]   // education | sports_voucher | after_school (multi)
+  payment_method: PaymentMethod
+  secondary_methods: PaymentMethod[]
   secondary_overrides: Partial<Record<PaymentMethod, number>>
   payment_note?: string
 }
 
 const PRIMARY_METHODS: PaymentMethod[] = ['card', 'cash', 'bank_transfer', 'other']
-const VOUCHER_METHODS: PaymentMethod[] = ['education', 'sports_voucher', 'after_school']
+const PRIMARY_SET = new Set<PaymentMethod>(PRIMARY_METHODS)
+const DEFAULT_VOUCHER_METHODS: PaymentMethod[] = ['education', 'sports_voucher', 'after_school']
 
 interface Props {
   state: RecordFieldState
@@ -23,12 +24,21 @@ interface Props {
   remainingSupport: number
   selfPayment: number
   onChange: (updates: Partial<RecordFieldState>) => void
+  branchName?: string
 }
 
 export default function RecordFormFields({
-  state, feeTables, total, voucherSupports, remainingSupport, selfPayment, onChange,
+  state, feeTables, total, voucherSupports, remainingSupport, selfPayment, onChange, branchName,
 }: Props) {
   const totalSupport = Object.values(voucherSupports).reduce((a, b) => a + (b ?? 0), 0)
+
+  const branchConfig = branchName ? BRANCH_VOUCHER_CONFIG[branchName] : undefined
+  const dynamicVoucherMethods: PaymentMethod[] = branchConfig
+    ? branchConfig.methods.filter((m) => !PRIMARY_SET.has(m))
+    : DEFAULT_VOUCHER_METHODS
+  const branchLimits = branchConfig?.limits ?? MONTHLY_SUPPORT_LIMITS
+
+  const gridCols = dynamicVoucherMethods.length <= 3 ? 'grid-cols-3' : 'grid-cols-4'
 
   const toggleVoucher = (method: PaymentMethod) => {
     const current = state.secondary_methods
@@ -102,7 +112,7 @@ export default function RecordFormFields({
         />
       </div>
 
-      {/* 결제 방식 (카드/현금/계좌이체/직접입력) */}
+      {/* 결제 방식 */}
       <div>
         <p className="text-xs text-gray-400 mb-1.5">결제 방식</p>
         <div className="grid grid-cols-4 gap-1.5">
@@ -130,17 +140,17 @@ export default function RecordFormFields({
         />
       )}
 
-      {/* 지원금 바우처 (복수 선택) */}
+      {/* 지원금 바우처 */}
       <div>
         <p className="text-xs text-gray-400 mb-1.5">
           지원금 바우처 <span className="text-gray-300">(복수 선택 가능)</span>
         </p>
-        <div className="flex gap-1.5">
-          {VOUCHER_METHODS.map((key) => (
+        <div className={`grid ${gridCols} gap-1.5`}>
+          {dynamicVoucherMethods.map((key) => (
             <button
               key={key}
               onClick={() => toggleVoucher(key)}
-              className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors
+              className={`py-2 rounded-lg text-xs font-medium transition-colors
                 ${state.secondary_methods.includes(key) ? 'bg-[#7db83a] text-white' : 'bg-gray-100 text-gray-600'}`}
             >
               {PAYMENT_METHOD_LABELS[key]}
@@ -149,31 +159,35 @@ export default function RecordFormFields({
         </div>
       </div>
 
-      {/* 선택된 바우처별 직접입력 */}
-      {state.secondary_methods.map((method) => (
-        <div key={method}>
-          <p className="text-xs text-gray-400 mb-1.5">
-            {PAYMENT_METHOD_LABELS[method]} 지원금 직접입력
-            <span className="text-gray-300 ml-1">
-              (빈 칸이면 월 {formatKRW(MONTHLY_SUPPORT_LIMITS[method]!)} 자동계산)
-            </span>
-          </p>
-          <input
-            type="number"
-            inputMode="numeric"
-            placeholder={`0 ~ ${((MONTHLY_SUPPORT_LIMITS[method]! / 10000).toFixed(0))}만원`}
-            value={state.secondary_overrides[method] ?? ''}
-            onKeyDown={(e) => { if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault() }}
-            onChange={(e) => {
-              const val = e.target.value === '' ? undefined : Math.max(0, Number(e.target.value))
-              onChange({
-                secondary_overrides: { ...state.secondary_overrides, [method]: val },
-              })
-            }}
-            className="w-full border border-[#7db83a]/40 bg-[#f0f9e8] rounded-lg px-3 py-2 text-sm outline-none focus:border-[#7db83a]"
-          />
-        </div>
-      ))}
+      {/* 선택된 바우처별 입력 */}
+      {state.secondary_methods.map((method) => {
+        const limit = branchLimits[method]
+        const hasLimit = !!limit
+        return (
+          <div key={method}>
+            <p className="text-xs text-gray-400 mb-1.5">
+              {PAYMENT_METHOD_LABELS[method]} 지원금
+              {hasLimit ? (
+                <span className="text-gray-300 ml-1">(빈 칸이면 월 {formatKRW(limit!)} 자동계산)</span>
+              ) : (
+                <span className="text-red-400 ml-1">직접입력 필수</span>
+              )}
+            </p>
+            <input
+              type="number"
+              inputMode="numeric"
+              placeholder={hasLimit ? `0 ~ ${(limit! / 10000).toFixed(0)}만원` : '지원금액 입력 (원)'}
+              value={state.secondary_overrides[method] ?? ''}
+              onKeyDown={(e) => { if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault() }}
+              onChange={(e) => {
+                const val = e.target.value === '' ? undefined : Math.max(0, Number(e.target.value))
+                onChange({ secondary_overrides: { ...state.secondary_overrides, [method]: val } })
+              }}
+              className="w-full border border-[#7db83a]/40 bg-[#f0f9e8] rounded-lg px-3 py-2 text-sm outline-none focus:border-[#7db83a]"
+            />
+          </div>
+        )
+      })}
 
       {/* 금액 미리보기 */}
       {total > 0 && (
@@ -182,7 +196,7 @@ export default function RecordFormFields({
             <span className="text-gray-500">총 요금</span>
             <span className="font-medium">{formatKRW(total)}</span>
           </div>
-          {(VOUCHER_METHODS as PaymentMethod[]).map((method) => {
+          {state.secondary_methods.map((method) => {
             const amt = voucherSupports[method] ?? 0
             if (amt <= 0) return null
             return (

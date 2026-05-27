@@ -67,7 +67,9 @@ export function useDeleteFee(monthStart: string, today: string) {
 export function useAddTeacher(monthStart: string, today: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ name, branchId, pin }: { name: string; branchId: string; pin: string }) => {
+    mutationFn: async ({
+      name, branchId, pin, jobTitle, role,
+    }: { name: string; branchId: string; pin: string; jobTitle: string; role: string }) => {
       const userId = crypto.randomUUID()
       const tmp = createTempClient()
       const { data: signUpData, error: signUpError } = await tmp.auth.signUp({
@@ -85,9 +87,11 @@ export function useAddTeacher(monthStart: string, today: string) {
         id: userId,
         auth_id: signUpData.user.id,
         name: name.trim(),
-        role: 'teacher',
+        role: role === 'director' ? 'director' : 'teacher',
+        job_title: jobTitle.trim() || null,
         branch_id: branchId,
         is_active: true,
+        pin_must_change: pin === '0000',
       })
       if (insertError) throw insertError
     },

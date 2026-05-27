@@ -29,14 +29,16 @@ export function calcSupport(
   paymentMethod: PaymentMethod,
   usedSupportThisMonth: number,
   manualOverride?: number,
+  branchLimits?: Partial<Record<PaymentMethod, number>>,
 ): { support: number; selfPayment: number } {
-  // 방과후/스포츠바우처 직접입력이 있는 경우 override 우선 적용
-  if ((paymentMethod === 'after_school' || paymentMethod === 'sports_voucher') && manualOverride !== undefined) {
+  // 직접입력 값이 있으면 우선 적용 (모든 바우처 타입)
+  if (manualOverride !== undefined) {
     const support = Math.min(manualOverride, totalAmount)
     return { support, selfPayment: Math.max(0, totalAmount - support) }
   }
 
-  const limit = MONTHLY_SUPPORT_LIMITS[paymentMethod]
+  const limits = branchLimits ?? MONTHLY_SUPPORT_LIMITS
+  const limit = limits[paymentMethod]
   if (!limit) {
     return { support: 0, selfPayment: totalAmount }
   }

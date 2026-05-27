@@ -3,14 +3,35 @@ import type { Record as SessionRecord } from '@/types'
 
 /* ── 결제방식별 행 배경색 ── */
 const ROW_COLORS: Record<string, string> = {
-  card:          'FFD6EEF8', // 파랑 (카드결제)
-  cash:          'FFFFFF99', // 노랑 (현금)
-  bank_transfer: 'FFFFFF99', // 노랑 (현금이체)
-  after_school:  'FFD5E8C8', // 초록 (방과후)
-  education:     'FFE0D5ED', // 보라 (교육청카드)
-  sports_voucher:'FFFFD5D5', // 분홍 (바우처)
-  other:         'FFFFFFFF', // 흰색
+  card:          'FFD6EEF8',
+  cash:          'FFFFFF99',
+  bank_transfer: 'FFFFFF99',
+  after_school:  'FFD5E8C8',
+  education:     'FFE0D5ED',
+  sports_voucher:'FFFFD5D5',
+  developmental: 'FFDDEEFF',
+  disabled_sports:'FFE8DDFF',
+  other:         'FFFFFFFF',
 }
+
+/* ── 바우처 열 정의 ── */
+const VOUCHER_COLUMN_ORDER = [
+  'education', 'sports_voucher', 'after_school',
+  'developmental', 'disabled_sports', 'senior_voucher', 'sci_rehab', 'after_school_fee',
+] as const
+
+const VOUCHER_COLUMN_LABELS: Record<string, string> = {
+  education:      '교육청',
+  sports_voucher: '바우처',
+  after_school:   '방과후',
+  developmental:  '발달바우처',
+  disabled_sports:'장애인스포츠',
+  senior_voucher: '노인바우처',
+  sci_rehab:      'SCI재활',
+  after_school_fee:'방과후수강료',
+}
+
+const PRIMARY_METHODS = new Set(['card', 'cash', 'bank_transfer', 'other'])
 
 /** 한 환자의 월 집계 */
 interface PatientRow {
@@ -21,9 +42,7 @@ interface PatientRow {
   totalAmount: number
   selfPayment: number
   lastDate: string
-  education: number
-  afterSchool: number
-  sportsVoucher: number
+  vouchers: Record<string, number>
   remainingSupport: number
   primaryMethod: string
 }
@@ -32,7 +51,6 @@ function buildPatientRows(
   records: SessionRecord[],
   pendingMakeups: { [name: string]: number } = {},
 ): PatientRow[] {
-  /* 환자별 그룹화 */
   const groups: Record<string, SessionRecord[]> = {}
   for (const r of records) {
     if (!groups[r.patient_name]) groups[r.patient_name] = []
@@ -43,34 +61,28 @@ function buildPatientRows(
     const present = rows.filter((r) => r.attendance === 'present')
     const makeup  = rows.filter((r) => r.attendance === 'makeup')
 
-    /* 가장 많이 쓴 결제방식 */
     const methodCount: Record<string, number> = {}
     for (const r of rows) methodCount[r.payment_method] = (methodCount[r.payment_method] ?? 0) + 1
     const primaryMethod = Object.entries(methodCount).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'other'
 
-    /* 바우처별 지원금 합산 (구형: payment_method=바우처, 신형: secondary/tertiary_method) */
-    let education = 0
-    let afterSchool = 0
-    let sportsVoucher = 0
+    /* 바우처별 지원금 집계 */
+    const vouchers: Record<string, number> = {}
     for (const r of rows) {
-      // 구형 기록: payment_method가 바우처 타입
-      if (r.payment_method === 'education')     education    += r.support_amount - (r.secondary_support ?? 0)
-      if (r.payment_method === 'after_school')  afterSchool  += r.support_amount - (r.secondary_support ?? 0)
-      if (r.payment_method === 'sports_voucher') sportsVoucher += r.support_amount - (r.secondary_support ?? 0)
-      // secondary 바우처
-      if (r.secondary_method === 'education')     education    += r.secondary_support ?? 0
-      if (r.secondary_method === 'after_school')  afterSchool  += r.secondary_support ?? 0
-      if (r.secondary_method === 'sports_voucher') sportsVoucher += r.secondary_support ?? 0
-      // tertiary 바우처 (신형)
-      if (r.tertiary_method === 'education')     education    += r.tertiary_support ?? 0
-      if (r.tertiary_method === 'after_school')  afterSchool  += r.tertiary_support ?? 0
-      if (r.tertiary_method === 'sports_voucher') sportsVoucher += r.tertiary_support ?? 0
+      const slots: [string | null, number][] = [
+        // 구형: payment_method가 바우처인 경우
+        !PRIMARY_METHODS.has(r.payment_method)
+          ? [r.payment_method, r.support_amount - (r.secondary_support ?? 0) - (r.tertiary_support ?? 0)]
+          : [null, 0],
+        [r.secondary_method, r.secondary_support ?? 0],
+        [r.tertiary_method, r.tertiary_support ?? 0],
+      ]
+      for (const [method, amount] of slots) {
+        if (method && amount > 0) vouchers[method] = (vouchers[method] ?? 0) + amount
+      }
     }
 
-    /* 남은지원금: 이달 마지막 기록의 remaining_support */
     const sorted = [...rows].sort((a, b) => b.date.localeCompare(a.date))
     const remainingSupport = sorted[0]?.remaining_support ?? 0
-
     const lastDate = sorted[0]?.date ?? ''
     const [, m, d] = lastDate.split('-')
     const dateLabel = lastDate ? `${parseInt(m)}월 ${parseInt(d)}일` : ''
@@ -83,9 +95,7 @@ function buildPatientRows(
       totalAmount:  rows.reduce((a, r) => a + r.total_amount, 0),
       selfPayment:  rows.reduce((a, r) => a + r.self_payment, 0),
       lastDate:     dateLabel,
-      education,
-      afterSchool,
-      sportsVoucher,
+      vouchers,
       remainingSupport,
       primaryMethod,
     }
@@ -110,9 +120,18 @@ function buildSummarySheet(
   pendingMakeups: { [name: string]: number } = {},
 ) {
   const ws = wb.addWorksheet(sheetName)
+  const patientRows = buildPatientRows(records, pendingMakeups)
+
+  /* 이 시트의 기록에서 실제 사용된 바우처만 표시 */
+  const usedVouchers = VOUCHER_COLUMN_ORDER.filter((v) =>
+    patientRows.some((p) => (p.vouchers[v] ?? 0) > 0)
+  )
+
+  const totalCols = 7 + usedVouchers.length + 2 // 고정 7 + 바우처 + 남은지원금 + 비고
+  const lastColLetter = String.fromCharCode(64 + totalCols)
 
   /* 월 제목 행 */
-  ws.mergeCells('A1:L1')
+  ws.mergeCells(`A1:${lastColLetter}1`)
   const titleCell = ws.getCell('A1')
   titleCell.value = `${month}월`
   titleCell.font = { bold: true, size: 13 }
@@ -120,8 +139,8 @@ function buildSummarySheet(
   titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } }
   ws.getRow(1).height = 22
 
-  /* 헤더 행 */
-  ws.columns = [
+  /* 컬럼 정의 */
+  const columns: ExcelJS.Column[] = [
     { key: 'name',          width: 10 },
     { key: 'pendingMakeup', width: 9  },
     { key: 'makeupDone',    width: 7  },
@@ -129,29 +148,30 @@ function buildSummarySheet(
     { key: 'totalAmount',   width: 12 },
     { key: 'selfPayment',   width: 12 },
     { key: 'lastDate',      width: 11 },
-    { key: 'education',     width: 11 },
-    { key: 'afterSchool',   width: 9  },
-    { key: 'sportsVoucher', width: 9  },
+    ...usedVouchers.map((v) => ({ key: v, width: 11 })),
     { key: 'remaining',     width: 11 },
     { key: 'note',          width: 20 },
   ] as ExcelJS.Column[]
+  ws.columns = columns
 
-  const headers = ['이름', '남은보강', '보강', '건수', '건수금액', '결제금액', '날짜', '교육청', '방과후', '바우처', '남은지원금', '비고']
+  const headers = [
+    '이름', '남은보강', '보강', '건수', '건수금액', '결제금액', '날짜',
+    ...usedVouchers.map((v) => VOUCHER_COLUMN_LABELS[v]),
+    '남은지원금', '비고',
+  ]
   const headerRow = ws.addRow(headers)
   headerRow.font = { bold: true }
   headerRow.eachCell((cell) => {
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF00B4D8' } }
     cell.font = { bold: true, color: { argb: 'FFFFFFFF' } }
     cell.alignment = { horizontal: 'center', vertical: 'middle' }
-    cell.border = {
-      bottom: { style: 'thin', color: { argb: 'FF007A93' } },
-    }
+    cell.border = { bottom: { style: 'thin', color: { argb: 'FF007A93' } } }
   })
   headerRow.height = 18
 
   /* 환자 행 */
-  const patientRows = buildPatientRows(records, pendingMakeups)
   for (const p of patientRows) {
+    const voucherValues = usedVouchers.map((v) => p.vouchers[v] || '')
     const row = ws.addRow([
       p.name,
       p.pendingMakeup,
@@ -160,19 +180,16 @@ function buildSummarySheet(
       p.totalAmount || '',
       p.selfPayment === 0 ? '₩0' : p.selfPayment,
       p.lastDate,
-      p.education      || '',
-      p.afterSchool    || '',
-      p.sportsVoucher  || '',
+      ...voucherValues,
       p.remainingSupport || '',
       '',
     ])
 
-    /* 금액 셀 포맷 */
-    ;[5, 6, 8, 9, 10, 11].forEach((col) => {
+    /* 금액 셀 포맷: totalAmount(5), selfPayment(6), voucher cols, remaining */
+    const amountColIndices = [5, 6, ...usedVouchers.map((_, i) => 8 + i), 8 + usedVouchers.length]
+    amountColIndices.forEach((col) => {
       const cell = row.getCell(col)
-      if (typeof cell.value === 'number' && cell.value !== 0) {
-        cell.numFmt = '₩#,##0'
-      }
+      if (typeof cell.value === 'number' && cell.value !== 0) cell.numFmt = '₩#,##0'
     })
 
     row.alignment = { vertical: 'middle' }
@@ -180,29 +197,23 @@ function buildSummarySheet(
   }
 
   /* 총합 행 */
-  const makeupTotal  = patientRows.reduce((a, r) => a + r.makeupDone, 0)
-  const countTotal   = patientRows.reduce((a, r) => a + r.count, 0)
-  const amountTotal  = patientRows.reduce((a, r) => a + r.totalAmount, 0)
+  const makeupTotal = patientRows.reduce((a, r) => a + r.makeupDone, 0)
+  const countTotal  = patientRows.reduce((a, r) => a + r.count, 0)
+  const amountTotal = patientRows.reduce((a, r) => a + r.totalAmount, 0)
 
-  ws.addRow([]) // 빈 행
+  ws.addRow([])
 
   const totalRow = ws.addRow([
-    '총합',
-    `보강총합`,
-    makeupTotal,
-    `실적총합`,
-    countTotal,
-    amountTotal,
-    '', '', '', '', '', '',
+    '총합', `보강총합`, makeupTotal, `실적총합`, countTotal, amountTotal,
+    '', ...usedVouchers.map(() => ''), '', '',
   ])
   totalRow.font = { bold: true }
   totalRow.getCell(6).numFmt = '₩#,##0'
   totalRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD5F0F5' } }
 
   const grandRow = ws.addRow([
-    `${teacherName} 총실적`,
-    makeupTotal + countTotal,
-    '', '', '', '', '', '', '', '', '', '',
+    `${teacherName} 총실적`, makeupTotal + countTotal,
+    '', '', '', '', '', ...usedVouchers.map(() => ''), '', '',
   ])
   grandRow.font = { bold: true, color: { argb: 'FF007A93' } }
 
@@ -214,11 +225,13 @@ function addLegendSheet(wb: ExcelJS.Workbook) {
   const ws = wb.addWorksheet('범례')
   ws.columns = [{ key: 'label', width: 16 }, { key: 'desc', width: 20 }] as ExcelJS.Column[]
   const legend = [
-    { argb: ROW_COLORS.card,          label: '카드결제' },
+    { argb: ROW_COLORS.card,           label: '카드결제' },
     { argb: ROW_COLORS.bank_transfer,  label: '현금이체' },
     { argb: ROW_COLORS.after_school,   label: '방과후결제' },
     { argb: ROW_COLORS.education,      label: '교육청카드결제' },
     { argb: ROW_COLORS.sports_voucher, label: '바우처결제' },
+    { argb: ROW_COLORS.developmental,  label: '발달바우처' },
+    { argb: ROW_COLORS.disabled_sports,label: '장애인스포츠' },
     { argb: 'FFFFFFFF',                label: '현금영수증/기타' },
   ]
   for (const item of legend) {
@@ -301,7 +314,6 @@ export async function exportAllTeachersMonthly(
     })
     ;[5, 6, 7].forEach((c) => { row.getCell(c).numFmt = '₩#,##0' })
 
-    /* 선생님별 시트 */
     buildSummarySheet(wb, teacherName, teacherName, records, year, month, teachers.find((t) => t.teacherName === teacherName)?.pendingMakeups ?? {})
   }
 

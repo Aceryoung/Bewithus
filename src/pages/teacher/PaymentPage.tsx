@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/auth'
 import { todayStr, formatKRW, calcSupport } from '@/lib/utils'
-import { ATTENDANCE_LABELS } from '@/constants'
+import { ATTENDANCE_LABELS, BRANCH_VOUCHER_CONFIG } from '@/constants'
 import { uploadReceipt } from '@/lib/storage'
 import PageHeader from '@/components/ui/PageHeader'
 import BottomNav from '@/components/ui/BottomNav'
@@ -25,6 +25,7 @@ interface CountRow {
   patient_name: string
   attendance: Attendance
   session_count: number
+  birth_year?: string
 }
 
 function newCountRow(): CountRow {
@@ -35,6 +36,7 @@ function newCountRow(): CountRow {
 interface PayRow {
   id: string
   patient_name: string
+  birth_year?: string
   fee_type: string
   unit_price: number
   session_count: number
@@ -75,6 +77,7 @@ function newPayRow(): PayRow {
 function recalcPayRows(
   rows: PayRow[],
   monthlyUsed: Record<string, Record<PaymentMethod, number>>,
+  branchLimits?: Partial<Record<PaymentMethod, number>>,
 ): PayRow[] {
   const inFormAccum: Record<string, Partial<Record<PaymentMethod, number>>> = {}
   return rows.map((row) => {
@@ -89,7 +92,7 @@ function recalcPayRows(
       const override = row.secondary_overrides[method]
       const dbUsed = name ? (monthlyUsed[name]?.[method] ?? 0) : 0
       const formUsed = name ? (inFormAccum[name]?.[method] ?? 0) : 0
-      capacities[method] = calcSupport(total, method, dbUsed + formUsed, override).support
+      capacities[method] = calcSupport(total, method, dbUsed + formUsed, override, branchLimits).support
     }
 
     // cascade: 각 바우처가 순서대로 남은 금액 충당
@@ -132,6 +135,10 @@ export default function PaymentPage() {
   const [tab, setTab] = useState<ActiveTab>('count')
   const [date, setDate] = useState(todayStr())
 
+  const branchLimits = user?.branch_name
+    ? BRANCH_VOUCHER_CONFIG[user.branch_name]?.limits
+    : undefined
+
   /* 건수 탭 상태 */
   const [countRows, setCountRows] = useState<CountRow[]>(() => {
     if (!user) return [newCountRow()]
@@ -156,9 +163,27 @@ export default function PaymentPage() {
   const { data: monthlyUsed = {} } = useMonthlyUsed(user?.id ?? null, date)
   const { data: recentPatients = [] } = useRecentPatients(user?.id ?? null)
 
+  const countDupNames = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const row of countRows) {
+      const name = row.patient_name.trim()
+      if (name) counts[name] = (counts[name] ?? 0) + 1
+    }
+    return new Set(Object.keys(counts).filter((n) => counts[n] > 1))
+  }, [countRows])
+
+  const payDupNames = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const row of payRows) {
+      const name = row.patient_name.trim()
+      if (name) counts[name] = (counts[name] ?? 0) + 1
+    }
+    return new Set(Object.keys(counts).filter((n) => counts[n] > 1))
+  }, [payRows])
+
   useEffect(() => {
-    setPayRows((prev) => recalcPayRows(prev, monthlyUsed))
-  }, [monthlyUsed])
+    setPayRows((prev) => recalcPayRows(prev, monthlyUsed, branchLimits))
+  }, [monthlyUsed, branchLimits])
 
   /* ── 임시저장 (변경될 때마다) ── */
   useEffect(() => {
@@ -174,7 +199,7 @@ export default function PaymentPage() {
   const updatePayRow = (id: string, updates: Partial<PayRow>) => {
     setPayRows((prev) => {
       const patched = prev.map((r) => (r.id === id ? { ...r, ...updates } : r))
-      return recalcPayRows(patched, monthlyUsed)
+      return recalcPayRows(patched, monthlyUsed, branchLimits)
     })
   }
 
@@ -204,6 +229,7 @@ export default function PaymentPage() {
         branch_id: user.branch_id,
         date,
         patient_name: r.patient_name.trim(),
+        birth_year: r.birth_year?.trim() || null,
         attendance: r.attendance,
         fee_type: '금액없음',
         session_count: r.session_count,
@@ -253,6 +279,7 @@ export default function PaymentPage() {
         branch_id: user.branch_id,
         date,
         patient_name: r.patient_name.trim(),
+        birth_year: r.birth_year?.trim() || null,
         attendance: 'present',
         fee_type: r.fee_type || '직접입력',
         session_count: r.session_count,
@@ -380,6 +407,19 @@ export default function PaymentPage() {
                 onChange={(v) => setCountRows((prev) => prev.map((r) => r.id === row.id ? { ...r, patient_name: v } : r))}
               />
 
+              {countDupNames.has(row.patient_name.trim()) && (
+                <div>
+                  <p className="text-xs text-gray-400 mb-1.5">생년 <span className="text-orange-400 font-medium">(동명이인 구분)</span></p>
+                  <input
+                    type="text"
+                    placeholder="예: 2010 또는 20100101"
+                    value={row.birth_year ?? ''}
+                    onChange={(e) => setCountRows((prev) => prev.map((r) => r.id === row.id ? { ...r, birth_year: e.target.value } : r))}
+                    className="w-full border border-orange-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400 bg-orange-50/40"
+                  />
+                </div>
+              )}
+
               {/* 출결 */}
               <div className="flex gap-2">
                 {(['present', 'absent', 'makeup'] as Attendance[]).map((a) => (
@@ -437,7 +477,7 @@ export default function PaymentPage() {
                 {payRows.length > 1 && (
                   <button
                     onClick={() =>
-                      setPayRows((prev) => recalcPayRows(prev.filter((r) => r.id !== row.id), monthlyUsed))
+                      setPayRows((prev) => recalcPayRows(prev.filter((r) => r.id !== row.id), monthlyUsed, branchLimits))
                     }
                     className="text-red-400 text-xs"
                   >
@@ -451,6 +491,19 @@ export default function PaymentPage() {
                 suggestions={recentPatients}
                 onChange={(v) => updatePayRow(row.id, { patient_name: v })}
               />
+
+              {payDupNames.has(row.patient_name.trim()) && (
+                <div>
+                  <p className="text-xs text-gray-400 mb-1.5">생년 <span className="text-orange-400 font-medium">(동명이인 구분)</span></p>
+                  <input
+                    type="text"
+                    placeholder="예: 2010 또는 20100101"
+                    value={row.birth_year ?? ''}
+                    onChange={(e) => updatePayRow(row.id, { birth_year: e.target.value })}
+                    className="w-full border border-orange-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400 bg-orange-50/40"
+                  />
+                </div>
+              )}
 
               <RecordFormFields
                 state={{
@@ -468,6 +521,7 @@ export default function PaymentPage() {
                 remainingSupport={row.remaining_support}
                 selfPayment={row.self_payment}
                 onChange={(updates) => updatePayRow(row.id, updates as Partial<PayRow>)}
+                branchName={user?.branch_name ?? undefined}
               />
 
               {/* 영수증 첨부 */}

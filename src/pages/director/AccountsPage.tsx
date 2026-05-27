@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { formatKRW, todayStr } from '@/lib/utils'
+import { JOB_TITLE_OPTIONS } from '@/constants'
 import PageHeader from '@/components/ui/PageHeader'
 import BottomNav from '@/components/ui/BottomNav'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
@@ -28,7 +29,7 @@ export default function AccountsPage() {
 
 
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ name: '', branch_id: '', pin: '' })
+  const [form, setForm] = useState({ name: '', branch_id: '', pin: '0000', jobTitle: '', role: 'teacher' })
   const [feeOpenBranch, setFeeOpenBranch] = useState<string | null>(null)
   const [feeForm, setFeeForm] = useState({ fee_type: '', unit_price: '' })
 
@@ -65,9 +66,15 @@ export default function AccountsPage() {
   const handleAddTeacher = async () => {
     if (!form.name.trim() || !form.branch_id || form.pin.length !== 4) return
     try {
-      await addTeacher.mutateAsync({ name: form.name, branchId: form.branch_id, pin: form.pin })
+      await addTeacher.mutateAsync({
+        name: form.name,
+        branchId: form.branch_id,
+        pin: form.pin,
+        jobTitle: form.jobTitle,
+        role: form.role,
+      })
       setShowForm(false)
-      setForm({ name: '', branch_id: '', pin: '' })
+      setForm({ name: '', branch_id: '', pin: '0000', jobTitle: '', role: 'teacher' })
     } catch (e) {
       alert(`계정 생성 실패: ${(e as Error).message}`)
     }
@@ -119,12 +126,12 @@ export default function AccountsPage() {
           onClick={() => setShowForm((v) => !v)}
           className="w-full py-3 bg-[#00b4d8] text-white rounded-xl font-semibold active:bg-[#0096b8] transition-colors"
         >
-          + 선생님 추가
+          + 직원 추가
         </button>
 
         {showForm && (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
-            <h2 className="text-sm font-semibold text-gray-700">선생님 정보 입력</h2>
+            <h2 className="text-sm font-semibold text-gray-700">직원 정보 입력</h2>
             <input
               type="text"
               placeholder="이름"
@@ -132,6 +139,36 @@ export default function AccountsPage() {
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#00b4d8]"
             />
+            <div>
+              <p className="text-xs text-gray-400 mb-1.5">직급</p>
+              <div className="grid grid-cols-3 gap-1.5">
+                {JOB_TITLE_OPTIONS.map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setForm((f) => ({ ...f, jobTitle: t }))}
+                    className={`py-2 rounded-lg text-sm font-medium transition-colors
+                      ${form.jobTitle === t ? 'bg-[#00b4d8] text-white' : 'bg-gray-100 text-gray-600'}`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 mb-1.5">역할</p>
+              <div className="flex gap-2">
+                {(['teacher', 'director'] as const).map((r) => (
+                  <button
+                    key={r}
+                    onClick={() => setForm((f) => ({ ...f, role: r }))}
+                    className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors
+                      ${form.role === r ? 'bg-[#00b4d8] text-white' : 'bg-gray-100 text-gray-600'}`}
+                  >
+                    {r === 'director' ? '대표' : '선생님'}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div>
               <p className="text-xs text-gray-400 mb-1.5">호점 배정</p>
               <div className="flex gap-2">
@@ -147,18 +184,21 @@ export default function AccountsPage() {
                 ))}
               </div>
             </div>
-            <input
-              type="password"
-              inputMode="numeric"
-              placeholder="초기 PIN 4자리"
-              maxLength={4}
-              value={form.pin}
-              onChange={(e) => setForm((f) => ({ ...f, pin: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#00b4d8]"
-            />
+            <div>
+              <p className="text-xs text-gray-400 mb-1.5">초기 PIN <span className="text-gray-300">(기본값 0000, 변경 가능)</span></p>
+              <input
+                type="password"
+                inputMode="numeric"
+                placeholder="초기 PIN 4자리"
+                maxLength={4}
+                value={form.pin}
+                onChange={(e) => setForm((f) => ({ ...f, pin: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#00b4d8]"
+              />
+            </div>
             <div className="flex gap-2">
               <button
-                onClick={() => { setShowForm(false); setForm({ name: '', branch_id: '', pin: '' }) }}
+                onClick={() => { setShowForm(false); setForm({ name: '', branch_id: '', pin: '0000', jobTitle: '', role: 'teacher' }) }}
                 className="flex-1 py-2 border border-gray-200 rounded-lg text-gray-500 text-sm"
               >취소</button>
               <button
@@ -184,8 +224,11 @@ export default function AccountsPage() {
                   <div key={t.id} className="py-2 border-b border-gray-50 last:border-0">
                     <div className="flex justify-between items-start">
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <p className="font-medium text-gray-900">{t.name}</p>
+                          {t.job_title && (
+                            <span className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">{t.job_title}</span>
+                          )}
                           {t.role === 'director' && (
                             <span className="text-xs bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded font-medium">대표</span>
                           )}
