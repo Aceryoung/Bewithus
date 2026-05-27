@@ -46,9 +46,10 @@ BEGIN
       );
 
       -- auth.identities 없으면 signInWithPassword가 실패하므로 반드시 삽입
-      INSERT INTO auth.identities (id, user_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
+      INSERT INTO auth.identities (id, provider_id, user_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
       VALUES (
         gen_random_uuid(),
+        'user_' || v_uid::text || '@bewithus.internal',
         v_auth_id,
         jsonb_build_object('sub', v_auth_id::text, 'email', 'user_' || v_uid::text || '@bewithus.internal'),
         'email',
