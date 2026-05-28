@@ -296,7 +296,7 @@ export default function PaymentPage() {
         billing_month: r.billing_month ?? date.slice(0, 7),
         patient_name: r.patient_name.trim(),
         birth_year: r.birth_year?.trim() || null,
-        attendance: r.attendance,
+        attendance: 'payment' as const,
         fee_type: r.fee_type || '직접입력',
         session_count: r.session_count,
         unit_price: r.unit_price,
