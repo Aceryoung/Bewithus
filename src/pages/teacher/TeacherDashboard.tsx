@@ -175,9 +175,9 @@ export default function TeacherDashboard() {
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="flex justify-between items-center px-4 pt-4 pb-3">
             <h2 className="text-sm font-semibold text-slate-700">오늘 입력 내역</h2>
-            {todayRecords.length > 0 && (
+            {todayRecords.filter((r) => r.attendance !== 'payment').length > 0 && (
               <span className="text-xs font-semibold text-[#00b4d8] bg-[#e8f7fb] px-2.5 py-0.5 rounded-full">
-                {todayRecords.length}건
+                {todayRecords.filter((r) => r.attendance !== 'payment').reduce((acc, r) => acc + (r.session_count ?? 1), 0)}건
               </span>
             )}
           </div>

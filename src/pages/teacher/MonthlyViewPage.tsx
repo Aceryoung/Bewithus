@@ -39,10 +39,12 @@ export default function MonthlyViewPage() {
     )
   }
 
-  const totalCount = records.length
-  const presentCount = records.filter((r) => r.attendance === 'present').length
-  const absentCount = records.filter((r) => r.attendance === 'absent').length
-  const makeupCount = records.filter((r) => r.attendance === 'makeup').length
+  const countable = records.filter((r) => r.attendance !== 'payment')
+  const sumSessions = (arr: SessionRecord[]) => arr.reduce((acc, r) => acc + (r.session_count ?? 1), 0)
+  const totalCount = sumSessions(countable)
+  const presentCount = sumSessions(countable.filter((r) => r.attendance === 'present'))
+  const absentCount = sumSessions(countable.filter((r) => r.attendance === 'absent'))
+  const makeupCount = sumSessions(countable.filter((r) => r.attendance === 'makeup'))
   const totalAmount = records.reduce((acc, r) => acc + r.total_amount, 0)
   const totalSupport = records.reduce((acc, r) => acc + r.support_amount, 0)
   const totalSelf = records.reduce((acc, r) => acc + r.self_payment, 0)

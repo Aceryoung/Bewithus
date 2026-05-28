@@ -50,12 +50,14 @@ export default function DirectorMonthlyPage() {
 
   const buildSummary = (recs: typeof records, teacher: User): TeacherSummary => {
     const tr = recs.filter((r) => r.teacher_id === teacher.id)
+    const countable = tr.filter((r) => r.attendance !== 'payment')
+    const sumSessions = (arr: typeof tr) => arr.reduce((acc, r) => acc + (r.session_count ?? 1), 0)
     return {
       teacher, records: tr,
-      totalCount:    tr.length,
-      presentCount:  tr.filter((r) => r.attendance === 'present').length,
-      absentCount:   tr.filter((r) => r.attendance === 'absent').length,
-      makeupCount:   tr.filter((r) => r.attendance === 'makeup').length,
+      totalCount:    sumSessions(countable),
+      presentCount:  sumSessions(countable.filter((r) => r.attendance === 'present')),
+      absentCount:   sumSessions(countable.filter((r) => r.attendance === 'absent')),
+      makeupCount:   sumSessions(countable.filter((r) => r.attendance === 'makeup')),
       totalAmount:   tr.reduce((acc, r) => acc + r.total_amount, 0),
       supportAmount: tr.reduce((acc, r) => acc + r.support_amount, 0),
       selfPayment:   tr.reduce((acc, r) => acc + r.self_payment, 0),
