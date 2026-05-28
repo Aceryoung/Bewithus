@@ -51,7 +51,7 @@ export default function DirectorMonthlyPage() {
   const buildSummary = (recs: typeof records, teacher: User): TeacherSummary => {
     const tr = recs.filter((r) => r.teacher_id === teacher.id)
     const countable = tr.filter((r) => r.attendance !== 'payment')
-    const sumSessions = (arr: typeof tr) => arr.reduce((acc, r) => acc + (r.session_count ?? 1), 0)
+    const sumSessions = (arr: typeof tr) => arr.reduce((acc, r) => acc + Number(r.session_count ?? 1), 0)
     return {
       teacher, records: tr,
       totalCount:    sumSessions(countable),

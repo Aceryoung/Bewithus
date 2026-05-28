@@ -40,7 +40,7 @@ export default function MonthlyViewPage() {
   }
 
   const countable = records.filter((r) => r.attendance !== 'payment')
-  const sumSessions = (arr: SessionRecord[]) => arr.reduce((acc, r) => acc + (r.session_count ?? 1), 0)
+  const sumSessions = (arr: SessionRecord[]) => arr.reduce((acc, r) => acc + Number(r.session_count ?? 1), 0)
   const totalCount = sumSessions(countable)
   const presentCount = sumSessions(countable.filter((r) => r.attendance === 'present'))
   const absentCount = sumSessions(countable.filter((r) => r.attendance === 'absent'))

@@ -69,7 +69,7 @@ function buildPatientRows(
     const present = rows.filter((r) => r.attendance === 'present')
     const absent  = rows.filter((r) => r.attendance === 'absent')
     const makeup  = rows.filter((r) => r.attendance === 'makeup')
-    const sumSessions = (arr: SessionRecord[]) => arr.reduce((a, r) => a + (r.session_count ?? 1), 0)
+    const sumSessions = (arr: SessionRecord[]) => arr.reduce((a, r) => a + Number(r.session_count ?? 1), 0)
 
     const methodCount: Record<string, number> = {}
     for (const r of rows) methodCount[r.payment_method] = (methodCount[r.payment_method] ?? 0) + 1
@@ -406,9 +406,9 @@ export async function exportAllTeachersMonthly(
   for (const { teacherName, records } of teachers) {
     const row = summaryWs.addRow({
       name:    teacherName,
-      count:   records.filter((r) => r.attendance !== 'payment').reduce((a, r) => a + (r.session_count ?? 1), 0),
-      present: records.filter((r) => r.attendance === 'present').reduce((a, r) => a + (r.session_count ?? 1), 0),
-      makeup:  records.filter((r) => r.attendance === 'makeup').reduce((a, r) => a + (r.session_count ?? 1), 0),
+      count:   records.filter((r) => r.attendance !== 'payment').reduce((a, r) => a + Number(r.session_count ?? 1), 0),
+      present: records.filter((r) => r.attendance === 'present').reduce((a, r) => a + Number(r.session_count ?? 1), 0),
+      makeup:  records.filter((r) => r.attendance === 'makeup').reduce((a, r) => a + Number(r.session_count ?? 1), 0),
       amount:  records.reduce((a, r) => a + r.total_amount, 0),
       support: records.reduce((a, r) => a + r.support_amount, 0),
       self:    records.reduce((a, r) => a + r.self_payment, 0),

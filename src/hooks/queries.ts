@@ -128,7 +128,7 @@ export function useMonthSummary(teacherId: string | null, monthStart: string, to
 
       const records = data ?? []
       const countable = records.filter((r) => r.attendance !== 'payment')
-      const sumCount = (arr: typeof records) => arr.reduce((acc, r) => acc + (r.session_count ?? 1), 0)
+      const sumCount = (arr: typeof records) => arr.reduce((acc, r) => acc + Number(r.session_count ?? 1), 0)
       return {
         total: sumCount(countable),
         present: sumCount(countable.filter((r) => r.attendance === 'present')),
