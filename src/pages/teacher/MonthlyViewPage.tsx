@@ -50,7 +50,11 @@ export default function MonthlyViewPage() {
   const totalSelf = records.reduce((acc, r) => acc + r.self_payment, 0)
 
   // 결제방식별: primary는 total/self 집계, 바우처별로 support 별도 집계
-  const byPayment: Partial<{ [K in PaymentMethod]: { amount: number; support: number; self: number } }> = {}
+  const byPayment: Partial<{ [K in PaymentMethod]: { amount: number; support: number; self: number } }> = {
+    card: { amount: 0, support: 0, self: 0 },
+    cash: { amount: 0, support: 0, self: 0 },
+    bank_transfer: { amount: 0, support: 0, self: 0 },
+  }
   const byVoucher: Partial<{ [K in PaymentMethod]: number }> = {}
   for (const r of records) {
     if (!byPayment[r.payment_method]) {
