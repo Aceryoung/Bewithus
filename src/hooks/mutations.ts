@@ -114,3 +114,41 @@ export function useDeleteUser(monthStart: string, today: string) {
     },
   })
 }
+
+// ── 지원금 설정 추가/수정 ─────────────────────────────────────
+export function useUpsertVoucherConfig(monthStart: string, today: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      branchId, paymentMethod, monthlyLimit,
+    }: { branchId: string; paymentMethod: string; monthlyLimit: number }) => {
+      const { error } = await supabase
+        .from('branch_voucher_config')
+        .upsert(
+          { branch_id: branchId, payment_method: paymentMethod, monthly_limit: monthlyLimit, is_active: true },
+          { onConflict: 'branch_id,payment_method' },
+        )
+      if (error) throw error
+    },
+    onSuccess: (_data, { branchId }) => {
+      queryClient.invalidateQueries({ queryKey: qk.accountsData(monthStart, today) })
+      queryClient.invalidateQueries({ queryKey: qk.voucherConfig(branchId) })
+    },
+  })
+}
+
+// ── 지원금 설정 삭제 ─────────────────────────────────────────
+export function useDeleteVoucherConfig(monthStart: string, today: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, branchId }: { id: string; branchId: string }) => {
+      const { error } = await supabase.from('branch_voucher_config').delete().eq('id', id)
+      if (error) throw error
+      return branchId
+    },
+    onSuccess: (_data, { branchId }) => {
+      queryClient.invalidateQueries({ queryKey: qk.accountsData(monthStart, today) })
+      queryClient.invalidateQueries({ queryKey: qk.voucherConfig(branchId) })
+    },
+  })
+}

@@ -13,7 +13,7 @@ import ErrorModal from '@/components/ui/ErrorModal'
 import PatientInput from '@/components/ui/PatientInput'
 import { isAppError } from '@/lib/appErrors'
 import { saveDraft, loadDraft, clearDraft } from '@/lib/draft'
-import { useFeeTables, useMonthlyUsed, useRecentPatients } from '@/hooks/queries'
+import { useFeeTables, useMonthlyUsed, useRecentPatients, useBranchVoucherConfig } from '@/hooks/queries'
 import type { Attendance, PaymentMethod } from '@/types'
 import type { AppErrorCode } from '@/lib/appErrors'
 
@@ -138,10 +138,6 @@ export default function PaymentPage() {
   const [tab, setTab] = useState<ActiveTab>('count')
   const [date, setDate] = useState(todayStr())
 
-  const branchLimits = user?.branch_name
-    ? BRANCH_VOUCHER_CONFIG[user.branch_name]?.limits
-    : undefined
-
   /* 건수 탭 상태 */
   const [countRows, setCountRows] = useState<CountRow[]>(() => {
     if (!user) return [newCountRow()]
@@ -165,6 +161,14 @@ export default function PaymentPage() {
   const { data: feeTables = [] } = useFeeTables(user?.branch_id ?? null)
   const { data: monthlyUsed = {} } = useMonthlyUsed(user?.id ?? null, date)
   const { data: recentPatients = [] } = useRecentPatients(user?.id ?? null)
+  const { data: voucherConfig } = useBranchVoucherConfig(user?.branch_id ?? null)
+
+  const branchLimits = voucherConfig && voucherConfig.length > 0
+    ? voucherConfig.reduce<Partial<Record<PaymentMethod, number>>>(
+        (acc, c) => c.monthly_limit > 0 ? { ...acc, [c.payment_method]: c.monthly_limit } : acc,
+        {},
+      )
+    : (user?.branch_name ? BRANCH_VOUCHER_CONFIG[user.branch_name]?.limits : undefined)
 
   const countDupNames = useMemo(() => {
     const counts: Record<string, number> = {}
@@ -587,6 +591,7 @@ export default function PaymentPage() {
                 selfPayment={row.self_payment}
                 onChange={(updates) => updatePayRow(row.id, updates as Partial<PayRow>)}
                 branchName={user?.branch_name ?? undefined}
+                voucherConfig={voucherConfig}
                 allowHalfSession={user?.branch_id === '22222222-0000-0000-0000-000000000002'}
               />
 

@@ -32,6 +32,14 @@ export interface FeeTable {
   unit_price: number
 }
 
+export interface BranchVoucherConfig {
+  id: string
+  branch_id: string
+  payment_method: PaymentMethod
+  monthly_limit: number
+  is_active: boolean
+}
+
 export interface Record {
   id: string
   teacher_id: string

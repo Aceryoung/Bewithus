@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import type { FeeTable, Record as SessionRecord, User, PaymentMethod } from '@/types'
+import type { BranchVoucherConfig, FeeTable, Record as SessionRecord, User, PaymentMethod } from '@/types'
 
 // ── Query Key 팩토리 ─────────────────────────────────────────
 export const qk = {
@@ -24,6 +24,8 @@ export const qk = {
   pendingMakeups: () => ['makeupSessions', 'pending'] as const,
   accountsData: (monthStart: string, today: string) =>
     ['director', 'accounts', monthStart, today] as const,
+  voucherConfig: (branchId: string) => ['voucherConfig', branchId] as const,
+  allVoucherConfigs: () => ['voucherConfig', 'all'] as const,
 }
 
 // ── 지점 요금표 ──────────────────────────────────────────────
@@ -327,26 +329,48 @@ export function useRecentPatients(teacherId: string | null) {
   })
 }
 
+// ── 지점별 지원금(바우처) 설정 ────────────────────────────────
+export function useBranchVoucherConfig(branchId: string | null) {
+  return useQuery({
+    queryKey: qk.voucherConfig(branchId ?? ''),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('branch_voucher_config')
+        .select('*')
+        .eq('branch_id', branchId!)
+        .eq('is_active', true)
+        .order('payment_method')
+      if (error) throw error
+      return (data ?? []) as BranchVoucherConfig[]
+    },
+    enabled: !!branchId,
+    staleTime: 1000 * 60 * 10,
+  })
+}
+
 // ── AccountsPage 데이터 ───────────────────────────────────────
 export function useAccountsData(monthStart: string, today: string) {
   return useQuery({
     queryKey: qk.accountsData(monthStart, today),
     queryFn: async () => {
-      const [branchRes, userRes, recordRes, feeRes] = await Promise.all([
+      const [branchRes, userRes, recordRes, feeRes, voucherRes] = await Promise.all([
         supabase.from('branches').select('id, name'),
         supabase.from('users').select('*').in('role', ['teacher', 'admin', 'director']).order('name'),
         supabase.from('records').select('teacher_id, total_amount, self_payment').gte('date', monthStart).lte('date', today),
         supabase.from('fee_tables').select('*').eq('is_active', true).order('fee_type'),
+        supabase.from('branch_voucher_config').select('*').eq('is_active', true).order('payment_method'),
       ])
       if (branchRes.error) throw branchRes.error
       if (userRes.error) throw userRes.error
       if (recordRes.error) throw recordRes.error
       if (feeRes.error) throw feeRes.error
+      if (voucherRes.error) throw voucherRes.error
       return {
         branches: (branchRes.data ?? []) as { id: string; name: string }[],
         users: (userRes.data ?? []) as User[],
         records: (recordRes.data ?? []) as { teacher_id: string; total_amount: number; self_payment: number }[],
         feeTables: (feeRes.data ?? []) as FeeTable[],
+        voucherConfigs: (voucherRes.data ?? []) as BranchVoucherConfig[],
       }
     },
     staleTime: 1000 * 30,

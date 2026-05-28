@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import type { PaymentMethod, FeeTable } from '@/types'
+import type { BranchVoucherConfig, PaymentMethod, FeeTable } from '@/types'
 import { formatKRW } from '@/lib/utils'
 import { PAYMENT_METHOD_LABELS, BRANCH_VOUCHER_CONFIG, MONTHLY_SUPPORT_LIMITS } from '@/constants'
 
@@ -26,21 +26,24 @@ interface Props {
   selfPayment: number
   onChange: (updates: Partial<RecordFieldState>) => void
   branchName?: string
+  voucherConfig?: BranchVoucherConfig[]
   allowHalfSession?: boolean
 }
 
 export default function RecordFormFields({
-  state, feeTables, total, voucherSupports, remainingSupport, selfPayment, onChange, branchName, allowHalfSession = false,
+  state, feeTables, total, voucherSupports, remainingSupport, selfPayment, onChange, branchName, voucherConfig, allowHalfSession = false,
 }: Props) {
   const totalSupport = Object.values(voucherSupports).reduce((a, b) => a + (b ?? 0), 0)
   const [countDisplay, setCountDisplay] = useState(String(state.session_count))
   useEffect(() => { setCountDisplay(String(state.session_count)) }, [state.session_count])
 
   const branchConfig = branchName ? BRANCH_VOUCHER_CONFIG[branchName] : undefined
-  const dynamicVoucherMethods: PaymentMethod[] = branchConfig
-    ? branchConfig.methods.filter((m) => !PRIMARY_SET.has(m))
-    : DEFAULT_VOUCHER_METHODS
-  const branchLimits = branchConfig?.limits ?? MONTHLY_SUPPORT_LIMITS
+  const dynamicVoucherMethods: PaymentMethod[] = voucherConfig
+    ? voucherConfig.map((c) => c.payment_method).filter((m) => !PRIMARY_SET.has(m as PaymentMethod)) as PaymentMethod[]
+    : (branchConfig?.methods.filter((m) => !PRIMARY_SET.has(m)) ?? DEFAULT_VOUCHER_METHODS)
+  const branchLimits: Partial<Record<PaymentMethod, number>> = voucherConfig
+    ? voucherConfig.reduce((acc, c) => c.monthly_limit > 0 ? { ...acc, [c.payment_method]: c.monthly_limit } : acc, {})
+    : (branchConfig?.limits ?? MONTHLY_SUPPORT_LIMITS)
 
   const gridCols = dynamicVoucherMethods.length <= 3 ? 'grid-cols-3' : 'grid-cols-4'
 
