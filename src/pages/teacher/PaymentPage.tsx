@@ -319,7 +319,7 @@ export default function PaymentPage() {
       if (!file) continue
       try {
         const url = await uploadReceipt(file, user.id, inserted[i].id)
-        if (url) await supabase.from('records').update({ receipt_url: url }).eq('id', inserted[i].id)
+        await supabase.from('records').update({ receipt_url: url }).eq('id', inserted[i].id)
       } catch (e) {
         const code: AppErrorCode = isAppError(e) ? e.appCode : 'ERR-301'
         setErrorModal({ code, detail: e instanceof Error ? e.message : undefined })

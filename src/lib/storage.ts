@@ -65,7 +65,7 @@ export async function uploadReceipt(
   file: File,
   teacherId: string,
   recordId: string,
-): Promise<string | null> {
+): Promise<string> {
   if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
     throw createAppError('ERR-302')
   }
@@ -77,7 +77,7 @@ export async function uploadReceipt(
   try {
     blob = await compressImage(file)
   } catch {
-    return null
+    throw createAppError('ERR-301')
   }
   const path = `${teacherId}/${recordId}.jpg`
 
@@ -85,7 +85,7 @@ export async function uploadReceipt(
     .from('receipts')
     .upload(path, blob, { contentType: 'image/jpeg', upsert: true })
 
-  if (error) return null
+  if (error) throw createAppError('ERR-301', error.message)
 
   return supabase.storage.from('receipts').getPublicUrl(path).data.publicUrl
 }
