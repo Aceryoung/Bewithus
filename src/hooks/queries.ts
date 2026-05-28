@@ -120,18 +120,19 @@ export function useMonthSummary(teacherId: string | null, monthStart: string, to
     queryFn: async () => {
       const { data, error } = await supabase
         .from('records')
-        .select('attendance, self_payment, total_amount')
+        .select('attendance, self_payment, total_amount, session_count')
         .eq('teacher_id', teacherId!)
         .gte('date', monthStart)
         .lte('date', today)
       if (error) throw error
 
       const records = data ?? []
+      const sumCount = (arr: typeof records) => arr.reduce((acc, r) => acc + (r.session_count ?? 1), 0)
       return {
-        total: records.length,
-        present: records.filter((r) => r.attendance === 'present').length,
-        absent: records.filter((r) => r.attendance === 'absent').length,
-        makeup: records.filter((r) => r.attendance === 'makeup').length,
+        total: sumCount(records),
+        present: sumCount(records.filter((r) => r.attendance === 'present')),
+        absent: sumCount(records.filter((r) => r.attendance === 'absent')),
+        makeup: sumCount(records.filter((r) => r.attendance === 'makeup')),
         amount: records.reduce((acc, r) => acc + r.total_amount, 0),
       }
     },
@@ -356,7 +357,7 @@ export function useAccountsData(monthStart: string, today: string) {
       const [branchRes, userRes, recordRes, feeRes] = await Promise.all([
         supabase.from('branches').select('id, name'),
         supabase.from('users').select('*').in('role', ['teacher', 'admin', 'director']).order('name'),
-        supabase.from('records').select('teacher_id, total_amount, self_payment').gte('date', monthStart).lte('date', today),
+        supabase.from('records').select('teacher_id, total_amount, self_payment, session_count').gte('date', monthStart).lte('date', today),
         supabase.from('fee_tables').select('*').eq('is_active', true).order('fee_type'),
       ])
       if (branchRes.error) throw branchRes.error
@@ -369,7 +370,7 @@ export function useAccountsData(monthStart: string, today: string) {
       return {
         branches: (branchRes.data ?? []) as { id: string; name: string }[],
         users: (userRes.data ?? []) as User[],
-        records: (recordRes.data ?? []) as { teacher_id: string; total_amount: number; self_payment: number }[],
+        records: (recordRes.data ?? []) as { teacher_id: string; total_amount: number; self_payment: number; session_count: number }[],
         feeTables: (feeRes.data ?? []) as FeeTable[],
         voucherConfigs: (voucherRes.error ? [] : voucherRes.data ?? []) as BranchVoucherConfig[],
       }

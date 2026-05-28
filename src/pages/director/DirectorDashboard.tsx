@@ -95,15 +95,16 @@ export default function DirectorDashboard() {
   const stats: BranchStats[] = branches.map((branch) => {
     const branchTeachers = users.filter((u) => u.branch_id === branch.id)
     const branchRecords = records.filter((r) => r.branch_id === branch.id)
+    const sumSessions = (arr: SessionRecord[]) => arr.reduce((acc, r) => acc + (r.session_count ?? 1), 0)
     const teacherStats = branchTeachers.map((teacher) => {
       const tr = branchRecords.filter((r) => r.teacher_id === teacher.id)
-      return { teacher, count: tr.length, amount: tr.reduce((acc, r) => acc + r.total_amount, 0) }
+      return { teacher, count: sumSessions(tr), amount: tr.reduce((acc, r) => acc + r.total_amount, 0) }
     }).sort((a, b) => b.count - a.count)
     return {
       branch,
       teachers: branchTeachers,
-      totalCount: branchRecords.length,
-      presentCount: branchRecords.filter((r: SessionRecord) => r.attendance === 'present').length,
+      totalCount: sumSessions(branchRecords),
+      presentCount: sumSessions(branchRecords.filter((r: SessionRecord) => r.attendance === 'present')),
       totalAmount: branchRecords.reduce((acc, r) => acc + r.total_amount, 0),
       supportAmount: branchRecords.reduce((acc, r) => acc + r.support_amount, 0),
       selfPayment: branchRecords.reduce((acc, r) => acc + r.self_payment, 0),
