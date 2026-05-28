@@ -14,6 +14,7 @@ import type { AppErrorCode } from '@/lib/appErrors'
 const VOUCHER_METHODS: PaymentMethod[] = ['education', 'sports_voucher', 'after_school']
 
 interface EditState {
+  date: string
   attendance: Attendance
   fee_type: string
   unit_price: number
@@ -53,6 +54,7 @@ function initFromRecord(record: SessionRecord): EditState {
   }
 
   return {
+    date: record.date,
     attendance: record.attendance,
     fee_type: record.fee_type,
     unit_price: record.unit_price,
@@ -161,6 +163,7 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
     const tertiarySupport = voucherSupports[state.secondary_methods[1]] ?? 0
 
     const updatePayload: Record<string, unknown> = {
+      date: state.date,
       attendance: state.attendance,
       billing_month: state.billing_month,
       fee_type: state.attendance === 'absent' ? record.fee_type : state.fee_type || '직접입력',
@@ -234,14 +237,28 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
           <div className="flex justify-between items-center pt-1">
             <div>
               <h2 className="font-bold text-gray-900 text-base">{record.patient_name}</h2>
-              <p className="text-xs text-gray-400 mt-0.5">{record.date} 기록 수정</p>
+              <p className="text-xs text-gray-400 mt-0.5">기록 수정</p>
             </div>
             <button onClick={onClose} className="text-gray-400 text-xl px-1">×</button>
           </div>
 
+          {/* 날짜 */}
+          <div>
+            <p className="text-xs text-gray-400 mb-1.5">날짜</p>
+            <input
+              type="date"
+              value={state.date}
+              onChange={(e) => update({ date: e.target.value })}
+              className={`w-full border rounded-lg px-3 py-2 text-sm outline-none transition-colors
+                ${state.date !== record.date
+                  ? 'border-orange-300 bg-orange-50 text-orange-700 focus:border-orange-400'
+                  : 'border-gray-200 focus:border-[#00b4d8]'}`}
+            />
+          </div>
+
           {/* 출결 */}
           <div className="flex gap-2">
-            {(['present', 'absent', 'makeup'] as Attendance[]).map((a) => (
+            {(['present', 'absent', 'makeup', 'payment'] as Attendance[]).map((a) => (
               <button
                 key={a}
                 onClick={() => update({ attendance: a })}
@@ -252,6 +269,8 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
                         ? 'bg-[#e85b8a] text-white'
                         : a === 'makeup'
                         ? 'bg-[#7db83a] text-white'
+                        : a === 'payment'
+                        ? 'bg-orange-400 text-white'
                         : 'bg-[#00b4d8] text-white'
                       : 'bg-gray-100 text-gray-500'
                   }`}
