@@ -220,10 +220,10 @@ export default function AccountsPage() {
                 <div>
                   <p className="text-xs text-gray-400 mb-1.5">역할</p>
                   <div className="flex gap-2">
-                    {(['teacher', 'director'] as const).map((r) => (
+                    {(['teacher', 'admin', 'director'] as const).map((r) => (
                       <button key={r} onClick={() => setForm((f) => ({ ...f, role: r }))}
                         className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${form.role === r ? 'bg-[#00b4d8] text-white' : 'bg-gray-100 text-gray-600'}`}
-                      >{r === 'director' ? '대표' : '선생님'}</button>
+                      >{r === 'director' ? '대표' : r === 'admin' ? '관리자' : '선생님'}</button>
                     ))}
                   </div>
                 </div>
