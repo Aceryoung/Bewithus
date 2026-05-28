@@ -5,14 +5,15 @@ import { useAuthStore } from '@/store/auth'
 import OfflineBanner from '@/components/ui/OfflineBanner'
 import ErrorBoundary from '@/components/ui/ErrorBoundary'
 
-const LoginPage         = lazy(() => import('@/pages/auth/LoginPage'))
-const TeacherDashboard  = lazy(() => import('@/pages/teacher/TeacherDashboard'))
-const MonthlyViewPage   = lazy(() => import('@/pages/teacher/MonthlyViewPage'))
-const PaymentPage       = lazy(() => import('@/pages/teacher/PaymentPage'))
-const DirectorDashboard = lazy(() => import('@/pages/director/DirectorDashboard'))
+import TeacherDashboard  from '@/pages/teacher/TeacherDashboard'
+import MonthlyViewPage   from '@/pages/teacher/MonthlyViewPage'
+import PaymentPage       from '@/pages/teacher/PaymentPage'
+
+const LoginPage           = lazy(() => import('@/pages/auth/LoginPage'))
+const DirectorDashboard   = lazy(() => import('@/pages/director/DirectorDashboard'))
 const DirectorRecordsPage = lazy(() => import('@/pages/director/DirectorRecordsPage'))
-const AccountsPage      = lazy(() => import('@/pages/director/AccountsPage'))
-const InquiryPage       = lazy(() => import('@/pages/director/InquiryPage'))
+const AccountsPage        = lazy(() => import('@/pages/director/AccountsPage'))
+const InquiryPage         = lazy(() => import('@/pages/director/InquiryPage'))
 
 function PageLoader() {
   return (
