@@ -62,7 +62,7 @@ function newPayRow(): PayRow {
   return {
     id: crypto.randomUUID(),
     patient_name: '',
-    attendance: 'present',
+    attendance: 'payment',
     fee_type: '',
     unit_price: 0,
     session_count: 1,
@@ -547,25 +547,6 @@ export default function PaymentPage() {
                 suggestions={recentPatients}
                 onChange={(v) => updatePayRow(row.id, { patient_name: v })}
               />
-
-              {/* 출결 */}
-              <div className="flex gap-2">
-                {(['present', 'absent', 'makeup', 'payment'] as Attendance[]).map((a) => (
-                  <button
-                    key={a}
-                    onClick={() => updatePayRow(row.id, { attendance: a })}
-                    className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors
-                      ${row.attendance === a
-                        ? a === 'absent' ? 'bg-[#e85b8a] text-white'
-                        : a === 'makeup' ? 'bg-[#7db83a] text-white'
-                        : a === 'payment' ? 'bg-orange-400 text-white'
-                        : 'bg-[#00b4d8] text-white'
-                        : 'bg-gray-100 text-gray-500'}`}
-                  >
-                    {ATTENDANCE_LABELS[a]}
-                  </button>
-                ))}
-              </div>
 
               {payDupNames.has(row.patient_name.trim()) && (
                 <div>
