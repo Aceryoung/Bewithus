@@ -439,7 +439,7 @@ export default function PaymentPage() {
 
               {/* 출결 */}
               <div className="flex gap-2">
-                {(['present', 'absent', 'makeup', 'payment'] as Attendance[]).map((a) => (
+                {(['present', 'absent', 'makeup'] as Attendance[]).map((a) => (
                   <button
                     key={a}
                     onClick={() => setCountRows((prev) => prev.map((r) => r.id === row.id ? { ...r, attendance: a } : r))}
@@ -447,7 +447,6 @@ export default function PaymentPage() {
                       ${row.attendance === a
                         ? a === 'absent' ? 'bg-[#e85b8a] text-white'
                         : a === 'makeup' ? 'bg-[#7db83a] text-white'
-                        : a === 'payment' ? 'bg-orange-400 text-white'
                         : 'bg-[#00b4d8] text-white'
                         : 'bg-gray-100 text-gray-500'}`}
                   >
