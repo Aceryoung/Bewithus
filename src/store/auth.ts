@@ -125,7 +125,8 @@ export const useAuthStore = create<AuthState>()(
           const branch_name = (profile.branch as unknown as { name: string } | null)?.name ?? null
           set({ user: { ...profile, job_title: profile.job_title ?? null, branch_name, pin_must_change: profile.pin_must_change ?? false, created_at: '' } as User })
         } else {
-          await supabase.auth.signOut()
+          // signOut 대신 user만 초기화 — signOut이 SIGNED_OUT 이벤트를 발생시켜
+          // 로그인 진행 중인 LoginPage를 리마운트시키는 race condition 방지
           set({ user: null })
         }
       },

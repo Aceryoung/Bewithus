@@ -54,8 +54,10 @@ export default function App() {
     } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT') {
         useAuthStore.setState({ user: null })
-      } else if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') {
-        restoreSession()
+      } else if (event === 'TOKEN_REFRESHED') {
+        // SIGNED_IN은 제외 — 활성 로그인 플로우(finishLogin)가 직접 처리함
+        // SIGNED_IN 시 restoreSession 호출하면 LoginPage 리마운트 race condition 발생
+        void restoreSession()
       }
     })
 
