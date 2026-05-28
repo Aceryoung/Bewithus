@@ -265,6 +265,7 @@ export default function PaymentPage() {
     setTimeout(() => setSavedCountN(0), 3000)
     void queryClient.invalidateQueries({ queryKey: ['records', 'today', user.id] })
     void queryClient.invalidateQueries({ queryKey: ['records', 'monthSummary', user.id] })
+    void queryClient.invalidateQueries({ queryKey: ['records', 'monthly', user.id] })
   }
 
   /* ── 결제 저장 ── */
@@ -330,6 +331,7 @@ export default function PaymentPage() {
     setTimeout(() => setSavedPayN(0), 3000)
     void queryClient.invalidateQueries({ queryKey: ['records', 'today', user.id] })
     void queryClient.invalidateQueries({ queryKey: ['records', 'monthSummary', user.id] })
+    void queryClient.invalidateQueries({ queryKey: ['records', 'monthly', user.id] })
     void queryClient.invalidateQueries({ queryKey: ['monthlyUsed', user.id] })
   }
 
