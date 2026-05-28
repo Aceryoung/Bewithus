@@ -163,12 +163,15 @@ export default function PaymentPage() {
   const { data: recentPatients = [] } = useRecentPatients(user?.id ?? null)
   const { data: voucherConfig } = useBranchVoucherConfig(user?.branch_id ?? null)
 
-  const branchLimits = voucherConfig && voucherConfig.length > 0
-    ? voucherConfig.reduce<Partial<Record<PaymentMethod, number>>>(
+  const branchLimits = useMemo(() => {
+    if (voucherConfig && voucherConfig.length > 0) {
+      return voucherConfig.reduce<Partial<Record<PaymentMethod, number>>>(
         (acc, c) => c.monthly_limit > 0 ? { ...acc, [c.payment_method]: c.monthly_limit } : acc,
         {},
       )
-    : (user?.branch_name ? BRANCH_VOUCHER_CONFIG[user.branch_name]?.limits : undefined)
+    }
+    return user?.branch_name ? BRANCH_VOUCHER_CONFIG[user.branch_name]?.limits : undefined
+  }, [voucherConfig, user?.branch_name])
 
   const countDupNames = useMemo(() => {
     const counts: Record<string, number> = {}
