@@ -33,7 +33,8 @@ export default function DirectorRecordsPage() {
   const now = new Date()
   const queryClient = useQueryClient()
   const user = useAuthStore((s) => s.user)
-  const canEdit = (teacherId: string) => user?.role !== 'admin' && user?.id === teacherId
+  const canEdit = (teacherId: string) =>
+    user?.role === 'director' || user?.role === 'admin' || user?.id === teacherId
   const [tab, setTab] = useState<ViewTab>('daily')
   const [selectedBranch, setSelectedBranch] = useState('all')
   const [selectedTeacher, setSelectedTeacher] = useState('all')

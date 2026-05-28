@@ -353,24 +353,25 @@ export function useAccountsData(monthStart: string, today: string) {
   return useQuery({
     queryKey: qk.accountsData(monthStart, today),
     queryFn: async () => {
-      const [branchRes, userRes, recordRes, feeRes, voucherRes] = await Promise.all([
+      const [branchRes, userRes, recordRes, feeRes] = await Promise.all([
         supabase.from('branches').select('id, name'),
         supabase.from('users').select('*').in('role', ['teacher', 'admin', 'director']).order('name'),
         supabase.from('records').select('teacher_id, total_amount, self_payment').gte('date', monthStart).lte('date', today),
         supabase.from('fee_tables').select('*').eq('is_active', true).order('fee_type'),
-        supabase.from('branch_voucher_config').select('*').eq('is_active', true).order('payment_method'),
       ])
       if (branchRes.error) throw branchRes.error
       if (userRes.error) throw userRes.error
       if (recordRes.error) throw recordRes.error
       if (feeRes.error) throw feeRes.error
-      if (voucherRes.error) throw voucherRes.error
+      // branch_voucher_config: migration 미실행 시 빈 배열로 fallback
+      const voucherRes = await supabase
+        .from('branch_voucher_config').select('*').eq('is_active', true).order('payment_method')
       return {
         branches: (branchRes.data ?? []) as { id: string; name: string }[],
         users: (userRes.data ?? []) as User[],
         records: (recordRes.data ?? []) as { teacher_id: string; total_amount: number; self_payment: number }[],
         feeTables: (feeRes.data ?? []) as FeeTable[],
-        voucherConfigs: (voucherRes.data ?? []) as BranchVoucherConfig[],
+        voucherConfigs: (voucherRes.error ? [] : voucherRes.data ?? []) as BranchVoucherConfig[],
       }
     },
     staleTime: 1000 * 30,

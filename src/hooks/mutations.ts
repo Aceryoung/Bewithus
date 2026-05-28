@@ -1,6 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { supabase } from '@/lib/supabase'
-import { createTempClient, userEmail, pinToPassword } from '@/lib/supabase'
+import { supabase, createTempClient, userEmail, pinToPassword } from '@/lib/supabase'
 import { qk } from './queries'
 
 // ── 기록 삭제 ────────────────────────────────────────────────
@@ -87,13 +86,17 @@ export function useAddTeacher(monthStart: string, today: string) {
         id: userId,
         auth_id: signUpData.user.id,
         name: name.trim(),
-        role: role === 'director' ? 'director' : 'teacher',
+        role: role === 'director' ? 'director' : role === 'admin' ? 'admin' : 'teacher',
         job_title: jobTitle.trim() || null,
         branch_id: branchId,
         is_active: true,
         pin_must_change: pin === '0000',
       })
-      if (insertError) throw insertError
+      if (insertError) {
+        // public.users 실패 시 고아 auth 계정 정리
+        await supabase.rpc('delete_auth_user_by_id', { p_auth_id: signUpData.user.id })
+        throw insertError
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: qk.accountsData(monthStart, today) })
