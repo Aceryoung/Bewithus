@@ -252,7 +252,7 @@ function buildAttendanceSheet(
   )
 
   /* 날짜×환자 인덱스 */
-  const index: Record<string, Record<string, 'present' | 'absent' | 'makeup'>> = {}
+  const index: Record<string, Record<string, 'present' | 'absent' | 'makeup' | 'payment'>> = {}
   for (const r of records) {
     const day = parseInt(r.date.split('-')[2])
     if (!index[r.patient_name]) index[r.patient_name] = {}

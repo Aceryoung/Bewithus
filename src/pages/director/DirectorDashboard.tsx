@@ -95,16 +95,17 @@ export default function DirectorDashboard() {
   const stats: BranchStats[] = branches.map((branch) => {
     const branchTeachers = users.filter((u) => u.branch_id === branch.id)
     const branchRecords = records.filter((r) => r.branch_id === branch.id)
+    const countable = branchRecords.filter((r: SessionRecord) => r.attendance !== 'payment')
     const sumSessions = (arr: SessionRecord[]) => arr.reduce((acc, r) => acc + (r.session_count ?? 1), 0)
     const teacherStats = branchTeachers.map((teacher) => {
-      const tr = branchRecords.filter((r) => r.teacher_id === teacher.id)
-      return { teacher, count: sumSessions(tr), amount: tr.reduce((acc, r) => acc + r.total_amount, 0) }
+      const tr = countable.filter((r) => r.teacher_id === teacher.id)
+      return { teacher, count: sumSessions(tr), amount: branchRecords.filter((r) => r.teacher_id === teacher.id).reduce((acc, r) => acc + r.total_amount, 0) }
     }).sort((a, b) => b.count - a.count)
     return {
       branch,
       teachers: branchTeachers,
-      totalCount: sumSessions(branchRecords),
-      presentCount: sumSessions(branchRecords.filter((r: SessionRecord) => r.attendance === 'present')),
+      totalCount: sumSessions(countable),
+      presentCount: sumSessions(countable.filter((r: SessionRecord) => r.attendance === 'present')),
       totalAmount: branchRecords.reduce((acc, r) => acc + r.total_amount, 0),
       supportAmount: branchRecords.reduce((acc, r) => acc + r.support_amount, 0),
       selfPayment: branchRecords.reduce((acc, r) => acc + r.self_payment, 0),

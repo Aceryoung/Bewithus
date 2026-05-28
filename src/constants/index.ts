@@ -4,6 +4,7 @@ export const ATTENDANCE_LABELS: Record<string, string> = {
   present: '출석',
   absent: '결석',
   makeup: '보강',
+  payment: '결제',
 }
 
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {

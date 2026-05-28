@@ -56,7 +56,7 @@ export default function AccountsPage() {
     const tRecords = (data?.records ?? []).filter((r) => r.teacher_id === t.id)
     return {
       ...t,
-      monthCount: tRecords.reduce((acc, r) => acc + (r.session_count ?? 1), 0),
+      monthCount: tRecords.filter((r) => r.attendance !== 'payment').reduce((acc, r) => acc + (r.session_count ?? 1), 0),
       monthTotal: tRecords.reduce((acc, r) => acc + r.total_amount, 0),
     }
   })
