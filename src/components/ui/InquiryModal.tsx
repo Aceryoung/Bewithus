@@ -4,10 +4,11 @@ import { useAuthStore } from '@/store/auth'
 
 interface Props {
   errorCode?: string
+  detail?: string
   onClose: () => void
 }
 
-export default function InquiryModal({ errorCode, onClose }: Props) {
+export default function InquiryModal({ errorCode, detail, onClose }: Props) {
   const user = useAuthStore((s) => s.user)
   const [message, setMessage] = useState(errorCode ? `[${errorCode}] ` : '')
   const [sending, setSending] = useState(false)
@@ -56,9 +57,14 @@ export default function InquiryModal({ errorCode, onClose }: Props) {
             </div>
 
             {errorCode && (
-              <div className="flex items-center gap-2 bg-red-50 rounded-xl px-4 py-2">
-                <span className="text-xs text-gray-400">에러코드</span>
-                <span className="font-bold text-red-500 tracking-widest text-sm">{errorCode}</span>
+              <div className="bg-red-50 rounded-xl px-4 py-2 space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-400">에러코드</span>
+                  <span className="font-bold text-red-500 tracking-widest text-sm">{errorCode}</span>
+                </div>
+                {detail && (
+                  <p className="text-xs text-red-400 break-all">{detail}</p>
+                )}
               </div>
             )}
 

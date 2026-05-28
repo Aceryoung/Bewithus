@@ -7,6 +7,6 @@ interface Props {
   onClose: () => void
 }
 
-export default function ErrorModal({ code, onClose }: Props) {
-  return <InquiryModal errorCode={code} onClose={onClose} />
+export default function ErrorModal({ code, detail, onClose }: Props) {
+  return <InquiryModal errorCode={code} detail={detail} onClose={onClose} />
 }
