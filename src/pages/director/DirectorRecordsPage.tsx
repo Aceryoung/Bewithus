@@ -69,10 +69,12 @@ export default function DirectorRecordsPage() {
   const switchTab = (t: ViewTab) => { setTab(t); setExpandedTeacher(null) }
 
   /* ── 일별 집계 ── */
-  const dTotal   = dailyRecords.length
-  const dPresent = dailyRecords.filter((r) => r.attendance === 'present').length
-  const dAbsent  = dailyRecords.filter((r) => r.attendance === 'absent').length
-  const dMakeup  = dailyRecords.filter((r) => r.attendance === 'makeup').length
+  const dCountable = dailyRecords.filter((r) => r.attendance !== 'payment')
+  const dSumSessions = (arr: typeof dailyRecords) => arr.reduce((acc, r) => acc + (r.session_count ?? 1), 0)
+  const dTotal   = dSumSessions(dCountable)
+  const dPresent = dSumSessions(dCountable.filter((r) => r.attendance === 'present'))
+  const dAbsent  = dSumSessions(dCountable.filter((r) => r.attendance === 'absent'))
+  const dMakeup  = dSumSessions(dCountable.filter((r) => r.attendance === 'makeup'))
   const dAmount  = dailyRecords.reduce((a, r) => a + r.total_amount, 0)
   const dSupport = dailyRecords.reduce((a, r) => a + r.support_amount, 0)
   const dSelf    = dailyRecords.reduce((a, r) => a + r.self_payment, 0)
@@ -82,12 +84,14 @@ export default function DirectorRecordsPage() {
 
   const buildSummary = (recs: typeof monthlyRecords, teacher: User): TeacherSummary => {
     const tr = recs.filter((r) => r.teacher_id === teacher.id)
+    const countable = tr.filter((r) => r.attendance !== 'payment')
+    const sumSessions = (arr: typeof tr) => arr.reduce((acc, r) => acc + (r.session_count ?? 1), 0)
     return {
       teacher, records: tr,
-      totalCount:    tr.length,
-      presentCount:  tr.filter((r) => r.attendance === 'present').length,
-      absentCount:   tr.filter((r) => r.attendance === 'absent').length,
-      makeupCount:   tr.filter((r) => r.attendance === 'makeup').length,
+      totalCount:    sumSessions(countable),
+      presentCount:  sumSessions(countable.filter((r) => r.attendance === 'present')),
+      absentCount:   sumSessions(countable.filter((r) => r.attendance === 'absent')),
+      makeupCount:   sumSessions(countable.filter((r) => r.attendance === 'makeup')),
       totalAmount:   tr.reduce((a, r) => a + r.total_amount, 0),
       supportAmount: tr.reduce((a, r) => a + r.support_amount, 0),
       selfPayment:   tr.reduce((a, r) => a + r.self_payment, 0),

@@ -198,7 +198,7 @@ export default function TeacherDashboard() {
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-slate-900 truncate">{r.patient_name}</p>
                       <p className="text-xs text-slate-400 mt-0.5">
-                        {ATTENDANCE_LABELS[r.attendance]} · {r.fee_type} {r.session_count}회 · {paymentLabel(r.payment_method, r.payment_note, r.secondary_method, r.tertiary_method, PAYMENT_METHOD_LABELS)}
+                        {ATTENDANCE_LABELS[r.attendance]}{r.attendance !== 'absent' && r.total_amount > 0 && ` · ${r.fee_type} ${r.session_count}회 · ${paymentLabel(r.payment_method, r.payment_note, r.secondary_method, r.tertiary_method, PAYMENT_METHOD_LABELS)}`}
                         {r.billing_month && r.billing_month !== r.date.slice(0, 7) && (
                           <span className="text-orange-500 font-semibold"> · {r.billing_month.slice(5, 7)}월 청구건</span>
                         )}
