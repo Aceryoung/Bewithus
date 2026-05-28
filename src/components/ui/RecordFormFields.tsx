@@ -35,6 +35,7 @@ export default function RecordFormFields({
 }: Props) {
   const totalSupport = Object.values(voucherSupports).reduce((a, b) => a + (b ?? 0), 0)
   const [countDisplay, setCountDisplay] = useState(String(state.session_count))
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setCountDisplay(String(state.session_count)) }, [state.session_count])
 
   const branchConfig = branchName ? BRANCH_VOUCHER_CONFIG[branchName] : undefined

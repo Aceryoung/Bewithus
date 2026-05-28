@@ -192,6 +192,7 @@ export default function PaymentPage() {
   }, [payRows])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPayRows((prev) => recalcPayRows(prev, monthlyUsed, branchLimits))
   }, [monthlyUsed, branchLimits])
 

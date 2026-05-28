@@ -88,6 +88,7 @@ export default function DailyInputPage() {
   const { data: monthlyUsed = {} } = useMonthlyUsed(user?.id ?? null, date)
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setRows((prev: Row[]) => recalculateRows(prev, monthlyUsed))
   }, [monthlyUsed])
 

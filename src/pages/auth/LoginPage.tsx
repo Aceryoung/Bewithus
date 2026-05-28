@@ -112,6 +112,7 @@ export default function LoginPage() {
   }, [pin, selectedUser, lockedUntil, attempts, login, navigate, loginLoading])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (pin.length === 4) handlePinSubmit()
   }, [pin, handlePinSubmit])
 

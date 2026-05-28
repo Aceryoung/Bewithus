@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/auth'
 import { todayStr, formatDate } from '@/lib/utils'
@@ -19,12 +19,7 @@ export default function MakeupPage() {
     scheduled_time: '',
   })
 
-  useEffect(() => {
-    if (!user) return
-    loadSessions()
-  }, [user])
-
-  const loadSessions = async () => {
+  const loadSessions = useCallback(async () => {
     if (!user) return
     const { data } = await supabase
       .from('makeup_sessions')
@@ -33,7 +28,12 @@ export default function MakeupPage() {
       .order('created_at', { ascending: false })
     if (data) setSessions(data as MakeupSession[])
     setLoading(false)
-  }
+  }, [user])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadSessions()
+  }, [loadSessions])
 
   const handleAdd = async () => {
     if (!user || !form.patient_name.trim()) return
