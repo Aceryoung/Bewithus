@@ -278,36 +278,37 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
             ))}
           </div>
 
-          {/* 청구 월 */}
-          <div>
-            <p className="text-xs text-gray-400 mb-1.5">청구 월 <span className="text-gray-300">(다른 달 청구건인 경우 변경)</span></p>
-            <input
-              type="month"
-              value={state.billing_month}
-              onChange={(e) => update({ billing_month: e.target.value })}
-              className={`w-full border rounded-lg px-3 py-2 text-sm outline-none transition-colors
-                ${state.billing_month !== record.date.slice(0, 7)
-                  ? 'border-orange-300 bg-orange-50 text-orange-700 focus:border-orange-400'
-                  : 'border-gray-200 focus:border-[#00b4d8]'}`}
-            />
-          </div>
+          {/* 결제 기록일 때만 결제 관련 항목 표시 */}
+          {state.attendance === 'payment' && (
+            <>
+              <div>
+                <p className="text-xs text-gray-400 mb-1.5">청구 월 <span className="text-gray-300">(다른 달 청구건인 경우 변경)</span></p>
+                <input
+                  type="month"
+                  value={state.billing_month}
+                  onChange={(e) => update({ billing_month: e.target.value })}
+                  className={`w-full border rounded-lg px-3 py-2 text-sm outline-none transition-colors
+                    ${state.billing_month !== record.date.slice(0, 7)
+                      ? 'border-orange-300 bg-orange-50 text-orange-700 focus:border-orange-400'
+                      : 'border-gray-200 focus:border-[#00b4d8]'}`}
+                />
+              </div>
 
-          {/* 출석·보강 시에만 아래 항목 표시 */}
-          {state.attendance !== 'absent' && (
-            <RecordFormFields
-              state={state}
-              feeTables={feeTables}
-              total={total}
-              voucherSupports={voucherSupports}
-              remainingSupport={autoRemainingSupport}
-              selfPayment={selfPayment}
-              onChange={update}
-              allowHalfSession={record.branch_id === '22222222-0000-0000-0000-000000000002'}
-            />
+              <RecordFormFields
+                state={state}
+                feeTables={feeTables}
+                total={total}
+                voucherSupports={voucherSupports}
+                remainingSupport={autoRemainingSupport}
+                selfPayment={selfPayment}
+                onChange={update}
+                allowHalfSession={record.branch_id === '22222222-0000-0000-0000-000000000002'}
+              />
+            </>
           )}
 
-          {/* 영수증 */}
-          <div>
+          {/* 영수증 — 결제 기록일 때만 */}
+          {state.attendance === 'payment' && <div>
             <p className="text-xs text-gray-400 mb-1.5">영수증 사진</p>
             {receiptPreview ? (
               <div className="relative">
@@ -348,7 +349,7 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
                 />
               </label>
             )}
-          </div>
+          </div>}
 
           {/* 액션 버튼 */}
           <div className="flex gap-2 pt-2">
