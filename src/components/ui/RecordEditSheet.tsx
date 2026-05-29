@@ -2,7 +2,7 @@ import { useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/auth'
 import { calcSupport } from '@/lib/utils'
-import { ATTENDANCE_LABELS } from '@/constants'
+import { ATTENDANCE_LABELS, MONTHLY_SUPPORT_LIMITS } from '@/constants'
 import { uploadReceipt, deleteReceipt } from '@/lib/storage'
 import RecordFormFields from '@/components/ui/RecordFormFields'
 import ErrorModal from '@/components/ui/ErrorModal'
@@ -142,8 +142,10 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
   }
 
   const totalSupportUsed = Object.values(voucherSupports).reduce((a, b) => a + (b ?? 0), 0)
-  const totalCapacity = Object.values(capacities).reduce((a, b) => a + (b ?? 0), 0)
-  const autoRemainingSupport = Math.max(0, totalCapacity - total)
+  const autoRemainingSupport = state.secondary_methods.reduce((acc, method) => {
+    const limit = MONTHLY_SUPPORT_LIMITS[method] ?? 0
+    return acc + Math.max(0, limit - (monthlyUsed[method] ?? 0) - (voucherSupports[method] ?? 0))
+  }, 0)
   const selfPayment = Math.max(0, total - totalSupportUsed)
 
   const handleSave = async () => {

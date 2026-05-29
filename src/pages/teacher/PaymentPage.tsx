@@ -113,8 +113,13 @@ function recalcPayRows(
     }
 
     const totalSupportUsed = Object.values(actualSupports).reduce((a, b) => a + (b ?? 0), 0)
-    const totalCapacity = Object.values(capacities).reduce((a, b) => a + (b ?? 0), 0)
-    const autoRemaining = Math.max(0, totalCapacity - total)
+    const limits = branchLimits ?? MONTHLY_SUPPORT_LIMITS
+    const autoRemaining = row.secondary_methods.reduce((acc, method) => {
+      const limit = limits[method] ?? 0
+      const dbUsed = name ? (monthlyUsed[name]?.[method] ?? 0) : 0
+      const formUsed = name ? (inFormAccum[name]?.[method] ?? 0) : 0
+      return acc + Math.max(0, limit - dbUsed - formUsed - (actualSupports[method] ?? 0))
+    }, 0)
 
     // 동일 환자 이후 행을 위한 누적
     if (name) {
