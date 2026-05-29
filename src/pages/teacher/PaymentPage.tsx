@@ -189,7 +189,7 @@ export default function PaymentPage() {
   const fileRef = useRef<HTMLInputElement>(null)
 
   const { data: feeTables = [] } = useFeeTables(user?.branch_id ?? null)
-  const { data: monthlyUsed = {} } = useMonthlyUsed(user?.id ?? null, date)
+  const { data: monthlyUsed = {} } = useMonthlyUsed(user?.id ?? null, date.slice(0, 7))
   const { data: recentPatients = [] } = useRecentPatients(user?.id ?? null)
   const { data: voucherConfig } = useBranchVoucherConfig(user?.branch_id ?? null)
   const { data: patientLastVouchers = {} } = usePatientLastVouchers(user?.id ?? null)

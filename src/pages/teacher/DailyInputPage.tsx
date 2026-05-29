@@ -89,7 +89,7 @@ export default function DailyInputPage() {
   const fileRef = useRef<HTMLInputElement>(null)
 
   const { data: feeTables = [] } = useFeeTables(user?.branch_id ?? null)
-  const { data: monthlyUsed = {} } = useMonthlyUsed(user?.id ?? null, date)
+  const { data: monthlyUsed = {} } = useMonthlyUsed(user?.id ?? null, date.slice(0, 7))
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect

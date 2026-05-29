@@ -11,7 +11,10 @@ import { useFeeTables, useMonthlyUsed, useBranchVoucherConfig } from '@/hooks/qu
 import type { Record as SessionRecord, Attendance, PaymentMethod } from '@/types'
 import type { AppErrorCode } from '@/lib/appErrors'
 
-const VOUCHER_METHODS: PaymentMethod[] = ['education', 'sports_voucher', 'after_school']
+const VOUCHER_METHODS: PaymentMethod[] = [
+  'education', 'sports_voucher', 'after_school',
+  'developmental', 'disabled_sports', 'senior_voucher', 'sci_rehab', 'after_school_fee',
+]
 
 interface EditState {
   date: string
@@ -55,6 +58,28 @@ function initFromRecord(record: SessionRecord): EditState {
     }
   }
 
+  // 기존 바우처 지원금을 단가 × 횟수로 역산하여 복원
+  const sessionCount = record.session_count || 1
+  const secondaryOverrides: Partial<Record<PaymentMethod, number>> = {}
+  const secondaryUnitPrices: Partial<Record<PaymentMethod, number>> = {}
+  const secondarySessionCounts: Partial<Record<PaymentMethod, number>> = {}
+
+  const restoreVoucher = (method: PaymentMethod, support: number) => {
+    if (support <= 0) return
+    secondaryOverrides[method] = support
+    const up = support % sessionCount === 0 ? support / sessionCount : support
+    const sc = support % sessionCount === 0 ? sessionCount : 1
+    secondaryUnitPrices[method] = up
+    secondarySessionCounts[method] = sc
+  }
+
+  if (record.secondary_method && (VOUCHER_METHODS as string[]).includes(record.secondary_method)) {
+    restoreVoucher(record.secondary_method as PaymentMethod, record.secondary_support ?? 0)
+  }
+  if (record.tertiary_method && (VOUCHER_METHODS as string[]).includes(record.tertiary_method)) {
+    restoreVoucher(record.tertiary_method as PaymentMethod, record.tertiary_support ?? 0)
+  }
+
   return {
     date: record.date,
     attendance: record.attendance,
@@ -63,7 +88,9 @@ function initFromRecord(record: SessionRecord): EditState {
     session_count: record.session_count,
     payment_method: primaryMethod,
     secondary_methods: secondaryMethods,
-    secondary_overrides: {},
+    secondary_overrides: secondaryOverrides,
+    secondary_unit_prices: secondaryUnitPrices,
+    secondary_session_counts: secondarySessionCounts,
     payment_note: record.payment_note ?? undefined,
     billing_month: record.billing_month ?? record.date.slice(0, 7),
   }
@@ -89,11 +116,8 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
 
   const { data: feeTables = [] } = useFeeTables(record.branch_id)
   const { data: voucherConfig = [] } = useBranchVoucherConfig(record.branch_id)
-  // record.date가 아닌 해당 월 말일로 조회해야 이후 기록까지 반영됨
-  const recordYM = record.date.slice(0, 7)
-  const [ry, rm] = recordYM.split('-').map(Number)
-  const endOfRecordMonth = new Date(ry, rm, 0).toISOString().slice(0, 10)
-  const { data: allMonthlyUsed = {} } = useMonthlyUsed(record.teacher_id, endOfRecordMonth)
+  const recordBillingMonth = (record.billing_month ?? record.date).slice(0, 7)
+  const { data: allMonthlyUsed = {} } = useMonthlyUsed(record.teacher_id, recordBillingMonth)
 
   // 현재 레코드를 제외한 이달 지원금 사용량
   const monthlyUsed: Record<PaymentMethod, number> = {

@@ -47,19 +47,16 @@ export function useFeeTables(branchId: string | null) {
 }
 
 // ── 이달 지원금 사용량 (PaymentPage 금액 계산용) ────────────
-export function useMonthlyUsed(teacherId: string | null, date: string) {
+export function useMonthlyUsed(teacherId: string | null, billingMonth: string) {
+  // billingMonth: 'YYYY-MM' 형식 — billing_month 필드를 기준으로 조회
   return useQuery({
-    queryKey: qk.monthlyUsed(teacherId ?? '', date),
+    queryKey: qk.monthlyUsed(teacherId ?? '', billingMonth),
     queryFn: async () => {
-      const now = new Date(date)
-      const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
-
       const { data, error } = await supabase
         .from('records')
         .select('patient_name, payment_method, support_amount, secondary_method, secondary_support, tertiary_method, tertiary_support')
         .eq('teacher_id', teacherId!)
-        .gte('date', monthStart)
-        .lte('date', date)
+        .like('billing_month', `%${billingMonth}%`)
       if (error) throw error
 
       const voucherTypes = new Set<string>([
@@ -90,7 +87,7 @@ export function useMonthlyUsed(teacherId: string | null, date: string) {
       }
       return used
     },
-    enabled: !!teacherId && !!date,
+    enabled: !!teacherId && !!billingMonth,
   })
 }
 
