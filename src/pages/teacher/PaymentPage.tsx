@@ -54,11 +54,12 @@ interface PayRow {
   self_payment: number
   total_amount: number
   payment_note?: string
-  billing_month?: string
+  billing_months: string[]
   receiptFile?: File
 }
 
 function newPayRow(): PayRow {
+  const thisMonth = new Date().toISOString().slice(0, 7)
   return {
     id: crypto.randomUUID(),
     patient_name: '',
@@ -76,6 +77,7 @@ function newPayRow(): PayRow {
     remaining_support: 0,
     self_payment: 0,
     total_amount: 0,
+    billing_months: [thisMonth],
   }
 }
 
@@ -193,6 +195,14 @@ export default function PaymentPage() {
     return new Set(Object.keys(counts).filter((n) => counts[n] > 1))
   }, [payRows])
 
+  const recentMonths = useMemo(() => {
+    const now = new Date()
+    return Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1)
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    })
+  }, [])
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setPayRows((prev) => recalcPayRows(prev, monthlyUsed, branchLimits))
@@ -288,12 +298,14 @@ export default function PaymentPage() {
     }
 
     setSavingPay(true)
-    const { data: inserted, error } = await supabase.from('records').insert(
-      valid.map((r) => ({
+    // 청구월이 여러 개면 월별로 레코드 하나씩 생성
+    const insertRows = valid.flatMap((r) => {
+      const months = r.billing_months.length > 0 ? r.billing_months : [date.slice(0, 7)]
+      return months.map((bm) => ({
         teacher_id: user.id,
         branch_id: user.branch_id,
         date,
-        billing_month: r.billing_month ?? date.slice(0, 7),
+        billing_month: bm,
         patient_name: r.patient_name.trim(),
         birth_year: r.birth_year?.trim() || null,
         attendance: 'payment' as const,
@@ -310,23 +322,30 @@ export default function PaymentPage() {
         tertiary_support: r.tertiary_support,
         remaining_support: r.remaining_support,
         self_payment: r.self_payment,
-      })),
-    ).select('id')
+      }))
+    })
+    const { data: inserted, error } = await supabase.from('records').insert(insertRows).select('id')
     setSavingPay(false)
     if (error || !inserted) { setErrorModal({ code: 'ERR-101', detail: error?.message }); return }
-    for (let i = 0; i < inserted.length; i++) {
-      const file = valid[i].receiptFile
-      if (!file) continue
-      try {
-        const url = await uploadReceipt(file, user.id, inserted[i].id)
-        await supabase.from('records').update({ receipt_url: url }).eq('id', inserted[i].id)
-      } catch (e) {
-        const code: AppErrorCode = isAppError(e) ? e.appCode : 'ERR-301'
-        setErrorModal({ code, detail: e instanceof Error ? e.message : undefined })
+
+    // 영수증: 각 환자의 첫 번째 삽입 레코드에만 업로드
+    let offset = 0
+    for (const r of valid) {
+      const monthCount = r.billing_months.length > 0 ? r.billing_months.length : 1
+      const firstId = inserted[offset]?.id
+      if (firstId && r.receiptFile) {
+        try {
+          const url = await uploadReceipt(r.receiptFile, user.id, firstId)
+          await supabase.from('records').update({ receipt_url: url }).eq('id', firstId)
+        } catch (e) {
+          const code: AppErrorCode = isAppError(e) ? e.appCode : 'ERR-301'
+          setErrorModal({ code, detail: e instanceof Error ? e.message : undefined })
+        }
       }
+      offset += monthCount
     }
     clearDraft(user.id, 'payRows')
-    setSavedPayN(valid.length)
+    setSavedPayN(inserted.length)
     setPayRows([newPayRow()])
     setTimeout(() => setSavedPayN(0), 3000)
     void queryClient.invalidateQueries({ queryKey: ['records', 'today', user.id] })
@@ -638,18 +657,40 @@ export default function PaymentPage() {
                 )}
               </div>
 
-              {/* 청구 월 */}
+              {/* 청구 월 (복수 선택 가능) */}
               <div>
-                <p className="text-xs text-gray-400 mb-1.5">청구 월 <span className="text-gray-300">(다른 달 청구건인 경우 변경)</span></p>
-                <input
-                  type="month"
-                  value={row.billing_month ?? date.slice(0, 7)}
-                  onChange={(e) => updatePayRow(row.id, { billing_month: e.target.value })}
-                  className={`w-full border rounded-lg px-3 py-2 text-sm outline-none transition-colors
-                    ${(row.billing_month ?? date.slice(0, 7)) !== date.slice(0, 7)
-                      ? 'border-orange-300 bg-orange-50 text-orange-700 focus:border-orange-400'
-                      : 'border-gray-200 focus:border-[#00b4d8]'}`}
-                />
+                <p className="text-xs text-gray-400 mb-1.5">
+                  청구 월 <span className="text-gray-300">(여러 달 선택 가능)</span>
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {recentMonths.map((m) => {
+                    const selected = row.billing_months.includes(m)
+                    const isCurrentMonth = m === date.slice(0, 7)
+                    return (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => {
+                          const next = selected
+                            ? row.billing_months.filter((bm) => bm !== m)
+                            : [...row.billing_months, m].sort()
+                          updatePayRow(row.id, { billing_months: next })
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
+                          ${selected
+                            ? isCurrentMonth
+                              ? 'bg-[#00b4d8] text-white'
+                              : 'bg-orange-400 text-white'
+                            : 'bg-gray-100 text-gray-500'}`}
+                      >
+                        {m.slice(0, 4)}년 {m.slice(5)}월
+                      </button>
+                    )
+                  })}
+                </div>
+                {row.billing_months.length === 0 && (
+                  <p className="text-xs text-red-400 mt-1">청구 월을 1개 이상 선택해주세요</p>
+                )}
               </div>
             </div>
           ))}
@@ -692,7 +733,7 @@ export default function PaymentPage() {
           )}
           <button
             onClick={() => void handleSavePay()}
-            disabled={savingPay || payRows.every((r) => !r.patient_name.trim())}
+            disabled={savingPay || payRows.every((r) => !r.patient_name.trim()) || payRows.some((r) => r.patient_name.trim() && r.billing_months.length === 0)}
             className="w-full py-4 bg-[#00b4d8] text-white rounded-xl font-bold text-base active:bg-[#0096b8] disabled:opacity-40 transition-colors"
           >
             {savingPay ? '저장 중...' : '결제 저장하기'}
