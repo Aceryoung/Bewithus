@@ -144,7 +144,7 @@ export default function MonthlyViewPage() {
                 <h2 className="text-sm font-semibold text-gray-500 mb-3">결제방식별 금액</h2>
                 {(Object.entries(byPayment) as [PaymentMethod, { amount: number; self: number }][]).map(([method, data]) => (
                   <div key={method} className="flex justify-between items-center py-2 border-b border-gray-50 last:border-0">
-                    <span className="text-sm text-gray-700">{PAYMENT_METHOD_LABELS[method]}</span>
+                    <span className="text-sm text-gray-700">{PAYMENT_METHOD_LABELS[method] ?? method}</span>
                     <div className="text-right">
                       <p className="text-sm font-medium">{formatKRW(data.self)} <span className="text-xs text-gray-400">자부담</span></p>
                     </div>
@@ -152,7 +152,7 @@ export default function MonthlyViewPage() {
                 ))}
                 {(Object.entries(byVoucher) as [PaymentMethod, number][]).filter(([, v]) => v > 0).map(([method, amount]) => (
                   <div key={`v-${method}`} className="flex justify-between items-center py-2 border-b border-gray-50 last:border-0">
-                    <span className="text-sm text-[#7db83a]">{PAYMENT_METHOD_LABELS[method]} 지원금</span>
+                    <span className="text-sm text-[#7db83a]">{PAYMENT_METHOD_LABELS[method] ?? method} 지원금</span>
                     <p className="text-sm text-[#7db83a]">{formatKRW(amount)}</p>
                   </div>
                 ))}

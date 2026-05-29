@@ -154,7 +154,7 @@ export default function RecordFormFields({
               className={`py-2 rounded-lg text-xs font-medium transition-colors
                 ${state.payment_method === key ? 'bg-[#00b4d8] text-white' : 'bg-gray-100 text-gray-600'}`}
             >
-              {PAYMENT_METHOD_LABELS[key]}
+              {PAYMENT_METHOD_LABELS[key as keyof typeof PAYMENT_METHOD_LABELS] ?? key}
             </button>
           ))}
         </div>
@@ -184,7 +184,7 @@ export default function RecordFormFields({
               className={`py-2 rounded-lg text-xs font-medium transition-colors
                 ${state.secondary_methods.includes(key) ? 'bg-[#7db83a] text-white' : 'bg-gray-100 text-gray-600'}`}
             >
-              {PAYMENT_METHOD_LABELS[key]}
+              {PAYMENT_METHOD_LABELS[key as keyof typeof PAYMENT_METHOD_LABELS] ?? key}
             </button>
           ))}
         </div>
@@ -197,7 +197,7 @@ export default function RecordFormFields({
         return (
           <div key={method}>
             <p className="text-xs text-gray-400 mb-1.5">
-              {PAYMENT_METHOD_LABELS[method]} 지원금
+              {PAYMENT_METHOD_LABELS[method as keyof typeof PAYMENT_METHOD_LABELS] ?? method} 지원금
               {hasLimit ? (
                 <span className="text-gray-300 ml-1">(빈 칸이면 월 {formatKRW(limit!)} 자동계산)</span>
               ) : (
@@ -232,7 +232,7 @@ export default function RecordFormFields({
             if (amt <= 0) return null
             return (
               <div key={method} className="flex justify-between">
-                <span className="text-[#7db83a]">{PAYMENT_METHOD_LABELS[method]} 지원금</span>
+                <span className="text-[#7db83a]">{PAYMENT_METHOD_LABELS[method as keyof typeof PAYMENT_METHOD_LABELS] ?? method} 지원금</span>
                 <span className="text-[#7db83a]">−{formatKRW(amt)}</span>
               </div>
             )

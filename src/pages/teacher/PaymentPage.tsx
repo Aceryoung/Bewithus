@@ -574,7 +574,7 @@ export default function PaymentPage() {
                   <div className="flex flex-wrap gap-1.5">
                     {badges.map(({ m, remaining }) => (
                       <div key={m} className="flex items-center gap-1.5 bg-sky-50 border border-sky-100 rounded-lg px-2.5 py-1.5">
-                        <span className="text-xs text-gray-400">{PAYMENT_METHOD_LABELS[m]}</span>
+                        <span className="text-xs text-gray-400">{PAYMENT_METHOD_LABELS[m] ?? m}</span>
                         <span className="text-xs font-bold text-[#00b4d8]">{formatKRW(remaining)} 남음</span>
                       </div>
                     ))}

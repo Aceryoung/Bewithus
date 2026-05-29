@@ -8,14 +8,10 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner'
 import ErrorState from '@/components/ui/ErrorState'
 import { useAccountsData } from '@/hooks/queries'
 import { useAddFee, useDeleteFee, useAddTeacher, useUpsertVoucherConfig, useDeleteVoucherConfig } from '@/hooks/mutations'
-import type { BranchVoucherConfig, FeeTable, PaymentMethod, User } from '@/types'
+import type { BranchVoucherConfig, FeeTable, User } from '@/types'
 
 type Tab = 'staff' | 'fee' | 'voucher'
 
-const VOUCHER_METHODS: PaymentMethod[] = [
-  'education', 'sports_voucher', 'after_school',
-  'developmental', 'disabled_sports', 'senior_voucher', 'sci_rehab', 'after_school_fee',
-]
 
 interface TeacherWithStats extends User {
   monthCount: number
@@ -45,7 +41,7 @@ export default function AccountsPage() {
 
   // 지원금 관리 상태
   const [voucherOpenBranch, setVoucherOpenBranch] = useState<string | null>(null)
-  const [voucherForm, setVoucherForm] = useState({ payment_method: '' as PaymentMethod | '', monthly_limit: '' })
+  const [voucherForm, setVoucherForm] = useState({ name: '', monthly_limit: '' })
   const [editingVoucher, setEditingVoucher] = useState<{ id: string; limit: string } | null>(null)
 
   const branches = data?.branches ?? []
@@ -111,14 +107,14 @@ export default function AccountsPage() {
 
   /* ── 지원금 핸들러 ───────────────────────────────────────── */
   const handleAddVoucher = async (branchId: string) => {
-    if (!voucherForm.payment_method || voucherForm.monthly_limit === '') return
+    if (!voucherForm.name.trim() || voucherForm.monthly_limit === '') return
     try {
       await upsertVoucher.mutateAsync({
         branchId,
-        paymentMethod: voucherForm.payment_method,
+        paymentMethod: voucherForm.name.trim(),
         monthlyLimit: Number(voucherForm.monthly_limit),
       })
-      setVoucherForm({ payment_method: '', monthly_limit: '' })
+      setVoucherForm({ name: '', monthly_limit: '' })
     } catch (e) { alert(`추가 실패: ${(e as Error).message}`) }
   }
 
@@ -366,13 +362,11 @@ export default function AccountsPage() {
             <p className="text-xs text-gray-400 px-1">지점별 지원금(바우처) 종류와 월 한도를 설정합니다. 한도 0원은 한도 없음을 의미합니다.</p>
             {byBranch.map(({ branch, vouchers }) => {
               const vOpen = voucherOpenBranch === branch.id
-              const usedMethods = new Set(vouchers.map((v) => v.payment_method))
-              const availableMethods = VOUCHER_METHODS.filter((m) => !usedMethods.has(m))
 
               return (
                 <div key={branch.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
                   <button
-                    onClick={() => { setVoucherOpenBranch(vOpen ? null : branch.id); setVoucherForm({ payment_method: '', monthly_limit: '' }); setEditingVoucher(null) }}
+                    onClick={() => { setVoucherOpenBranch(vOpen ? null : branch.id); setVoucherForm({ name: '', monthly_limit: '' }); setEditingVoucher(null) }}
                     className="w-full flex items-center justify-between"
                   >
                     <h2 className="text-sm font-bold text-gray-700">{branch.name}</h2>
@@ -430,32 +424,26 @@ export default function AccountsPage() {
                       )}
 
                       {/* 새 지원금 추가 */}
-                      {availableMethods.length > 0 && (
-                        <div className="flex gap-2 pt-1 border-t border-gray-100">
-                          <select
-                            value={voucherForm.payment_method}
-                            onChange={(e) => setVoucherForm((f) => ({ ...f, payment_method: e.target.value as PaymentMethod }))}
-                            className="flex-1 border border-gray-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:border-[#00b4d8] bg-white text-gray-700"
-                          >
-                            <option value="">지원금 종류 선택</option>
-                            {availableMethods.map((m) => (
-                              <option key={m} value={m}>{PAYMENT_METHOD_LABELS[m]}</option>
-                            ))}
-                          </select>
-                          <input
-                            type="number" inputMode="numeric" placeholder="월 한도(원, 0=없음)"
-                            value={voucherForm.monthly_limit}
-                            onKeyDown={(e) => { if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault() }}
-                            onChange={(e) => setVoucherForm((f) => ({ ...f, monthly_limit: e.target.value }))}
-                            className="w-28 border border-gray-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:border-[#00b4d8]"
-                          />
-                          <button
-                            onClick={() => handleAddVoucher(branch.id)}
-                            disabled={upsertVoucher.isPending || !voucherForm.payment_method || voucherForm.monthly_limit === ''}
-                            className="px-3 py-1.5 bg-[#00b4d8] text-white rounded-lg text-xs font-semibold disabled:opacity-40"
-                          >추가</button>
-                        </div>
-                      )}
+                      <div className="flex gap-2 pt-1 border-t border-gray-100">
+                        <input
+                          type="text" placeholder="지원금 이름 (예: 교육청)"
+                          value={voucherForm.name}
+                          onChange={(e) => setVoucherForm((f) => ({ ...f, name: e.target.value }))}
+                          className="flex-1 border border-gray-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:border-[#00b4d8]"
+                        />
+                        <input
+                          type="number" inputMode="numeric" placeholder="월 한도(원, 0=없음)"
+                          value={voucherForm.monthly_limit}
+                          onKeyDown={(e) => { if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault() }}
+                          onChange={(e) => setVoucherForm((f) => ({ ...f, monthly_limit: e.target.value }))}
+                          className="w-28 border border-gray-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:border-[#00b4d8]"
+                        />
+                        <button
+                          onClick={() => handleAddVoucher(branch.id)}
+                          disabled={upsertVoucher.isPending || !voucherForm.name.trim() || voucherForm.monthly_limit === ''}
+                          className="px-3 py-1.5 bg-[#00b4d8] text-white rounded-lg text-xs font-semibold disabled:opacity-40"
+                        >추가</button>
+                      </div>
                     </div>
                   )}
                 </div>
