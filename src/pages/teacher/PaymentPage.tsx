@@ -13,7 +13,7 @@ import ErrorModal from '@/components/ui/ErrorModal'
 import PatientInput from '@/components/ui/PatientInput'
 import { isAppError } from '@/lib/appErrors'
 import { saveDraft, loadDraft, clearDraft } from '@/lib/draft'
-import { useFeeTables, useMonthlyUsed, useRecentPatients, useBranchVoucherConfig, usePatientLastVouchers } from '@/hooks/queries'
+import { useFeeTables, useMonthlyUsed, useRecentPatients, useBranchVoucherConfig, usePatientLastVouchers, usePatientRemainingSupport } from '@/hooks/queries'
 import type { Attendance, PaymentMethod } from '@/types'
 import type { AppErrorCode } from '@/lib/appErrors'
 
@@ -58,6 +58,7 @@ interface PayRow {
   payment_note?: string
   billing_months: string[]
   receiptFile?: File
+  applied_remaining?: number
 }
 
 function newPayRow(): PayRow {
@@ -94,39 +95,41 @@ function recalcPayRows(
 
     const total = row.unit_price * row.session_count
 
-    // 바우처별 실제 지원금: 직접입력은 순서대로 처리, 자동계산은 잔여 금액을 비례 배분
+    // 바우처별 실제 지원금
+    // - 직접입력(override): 각각 입력한 금액 그대로 적용 (캐스케이드 없음)
+    // - 자동계산(auto): override 합계 초과분을 비례 배분
     const actualSupports: Partial<Record<PaymentMethod, number>> = {}
     const overrideMethods = row.secondary_methods.filter((m) => row.secondary_overrides[m] !== undefined)
     const autoMethods = row.secondary_methods.filter((m) => row.secondary_overrides[m] === undefined)
 
-    let remAfterOverride = total
+    let totalOverrideSupport = 0
     for (const method of overrideMethods) {
-      const dbUsed = name ? (monthlyUsed[name]?.[method] ?? 0) : 0
-      const formUsed = name ? (inFormAccum[name]?.[method] ?? 0) : 0
-      const cap = calcSupport(remAfterOverride, method, dbUsed + formUsed, row.secondary_overrides[method], branchLimits).support
-      actualSupports[method] = cap
-      remAfterOverride -= cap
+      const amt = row.secondary_overrides[method] ?? 0
+      actualSupports[method] = amt
+      totalOverrideSupport += amt
     }
 
+    // 자동계산 바우처는 override 합계를 초과하는 총 요금에서만 배분
+    const remForAuto = Math.max(0, total - totalOverrideSupport)
     const autoRawCaps: Partial<Record<PaymentMethod, number>> = {}
     for (const method of autoMethods) {
       const dbUsed = name ? (monthlyUsed[name]?.[method] ?? 0) : 0
       const formUsed = name ? (inFormAccum[name]?.[method] ?? 0) : 0
-      autoRawCaps[method] = calcSupport(remAfterOverride, method, dbUsed + formUsed, undefined, branchLimits).support
+      autoRawCaps[method] = calcSupport(remForAuto, method, dbUsed + formUsed, undefined, branchLimits).support
     }
     const totalAutoCap = Object.values(autoRawCaps).reduce((a, b) => a + (b ?? 0), 0)
     if (totalAutoCap <= 0) {
       for (const m of autoMethods) actualSupports[m] = 0
-    } else if (totalAutoCap <= remAfterOverride) {
+    } else if (totalAutoCap <= remForAuto) {
       for (const m of autoMethods) actualSupports[m] = autoRawCaps[m] ?? 0
     } else {
       let allocated = 0
       for (let i = 0; i < autoMethods.length; i++) {
         const m = autoMethods[i]
         if (i === autoMethods.length - 1) {
-          actualSupports[m] = Math.max(0, remAfterOverride - allocated)
+          actualSupports[m] = Math.max(0, remForAuto - allocated)
         } else {
-          const share = Math.floor(remAfterOverride * ((autoRawCaps[m] ?? 0) / totalAutoCap))
+          const share = Math.floor(remForAuto * ((autoRawCaps[m] ?? 0) / totalAutoCap))
           actualSupports[m] = Math.min(share, autoRawCaps[m] ?? 0)
           allocated += actualSupports[m]!
         }
@@ -134,13 +137,8 @@ function recalcPayRows(
     }
 
     const totalSupportUsed = Object.values(actualSupports).reduce((a, b) => a + (b ?? 0), 0)
-    const limits = branchLimits ?? MONTHLY_SUPPORT_LIMITS
-    const autoRemaining = row.secondary_methods.reduce((acc, method) => {
-      const limit = limits[method] ?? 0
-      const dbUsed = name ? (monthlyUsed[name]?.[method] ?? 0) : 0
-      const formUsed = name ? (inFormAccum[name]?.[method] ?? 0) : 0
-      return acc + Math.max(0, limit - dbUsed - formUsed - (actualSupports[method] ?? 0))
-    }, 0)
+    // 남은 지원금 = 바우처 합계가 총 요금을 초과하는 차액 (다음 결제 시 사용 가능)
+    const remainingCredit = Math.max(0, totalSupportUsed - total)
 
     // 동일 환자 이후 행을 위한 누적
     if (name) {
@@ -156,8 +154,8 @@ function recalcPayRows(
       support_amount: totalSupportUsed,
       secondary_support: actualSupports[row.secondary_methods[0]] ?? 0,
       tertiary_support: actualSupports[row.secondary_methods[1]] ?? 0,
-      remaining_support: autoRemaining,
-      self_payment: Math.max(0, total - totalSupportUsed),
+      remaining_support: remainingCredit,
+      self_payment: Math.max(0, total - totalSupportUsed - (row.applied_remaining ?? 0)),
     }
   })
 }
@@ -193,6 +191,7 @@ export default function PaymentPage() {
   const { data: recentPatients = [] } = useRecentPatients(user?.id ?? null)
   const { data: voucherConfig } = useBranchVoucherConfig(user?.branch_id ?? null)
   const { data: patientLastVouchers = {} } = usePatientLastVouchers(user?.id ?? null)
+  const { data: patientRemainingSupport = {} } = usePatientRemainingSupport(user?.id ?? null)
 
   const branchLimits = useMemo(() => {
     if (voucherConfig && voucherConfig.length > 0) {
@@ -259,9 +258,12 @@ export default function PaymentPage() {
         if (r.id !== id) return r
         const next = { ...r, ...updates }
         // 환자명이 입력되고 바우처가 선택되지 않은 상태 → 이전 기록에서 자동 적용
-        if ('patient_name' in updates && next.patient_name.trim() && next.secondary_methods.length === 0) {
-          const vouchers = patientLastVouchers[next.patient_name.trim()]
-          if (vouchers?.length) next.secondary_methods = vouchers
+        if ('patient_name' in updates) {
+          next.applied_remaining = undefined
+          if (next.patient_name.trim() && next.secondary_methods.length === 0) {
+            const vouchers = patientLastVouchers[next.patient_name.trim()]
+            if (vouchers?.length) next.secondary_methods = vouchers
+          }
         }
         return next
       })
@@ -380,6 +382,17 @@ export default function PaymentPage() {
         setErrorModal({ code, detail: e instanceof Error ? e.message : undefined })
       }
     }
+    // 이전 남은 지원금 사용 시 해당 레코드 차감
+    for (const r of valid) {
+      if ((r.applied_remaining ?? 0) > 0) {
+        const rs = patientRemainingSupport[r.patient_name.trim()]
+        if (rs) {
+          const newRemaining = Math.max(0, rs.amount - (r.applied_remaining ?? 0))
+          await supabase.from('records').update({ remaining_support: newRemaining }).eq('id', rs.recordId)
+        }
+      }
+    }
+
     setSavedPayN(inserted.length)
     setPayRows([newPayRow()])
     setTimeout(() => setSavedPayN(0), 3000)
@@ -388,6 +401,7 @@ export default function PaymentPage() {
     void queryClient.invalidateQueries({ queryKey: ['records', 'monthly', user.id] })
     void queryClient.invalidateQueries({ queryKey: ['monthlyUsed', user.id] })
     void queryClient.invalidateQueries({ queryKey: ['patientLastVouchers', user.id] })
+    void queryClient.invalidateQueries({ queryKey: ['patientRemainingSupport', user.id] })
   }
 
   const totalSelf    = payRows.reduce((acc, r) => acc + r.self_payment, 0)
@@ -641,6 +655,43 @@ export default function PaymentPage() {
                 )
               })()}
 
+              {/* 이전 남은 지원금 불러오기 */}
+              {(() => {
+                const name = row.patient_name.trim()
+                if (!name) return null
+                const rs = patientRemainingSupport[name]
+                if (!rs || rs.amount <= 0) return null
+                const applied = row.applied_remaining ?? 0
+                if (applied > 0) {
+                  return (
+                    <div className="flex items-center justify-between bg-[#e8f7fb] border border-[#00b4d8]/20 rounded-xl px-3 py-2.5">
+                      <div>
+                        <p className="text-xs text-[#007a93] font-medium">이전 남은 지원금 적용됨</p>
+                        <p className="text-xs text-[#00b4d8] font-bold">−{formatKRW(applied)}</p>
+                      </div>
+                      <button
+                        onClick={() => updatePayRow(row.id, { applied_remaining: undefined })}
+                        className="text-xs text-gray-400 underline"
+                      >
+                        취소
+                      </button>
+                    </div>
+                  )
+                }
+                return (
+                  <button
+                    onClick={() => updatePayRow(row.id, { applied_remaining: rs.amount })}
+                    className="w-full flex items-center justify-between bg-[#f0f9e8] border border-[#7db83a]/30 rounded-xl px-3 py-2.5 active:bg-[#e4f4d4] transition-colors"
+                  >
+                    <div className="text-left">
+                      <p className="text-xs text-[#5a8a28] font-medium">이전 남은 지원금</p>
+                      <p className="text-xs text-[#7db83a] font-bold">{formatKRW(rs.amount)}</p>
+                    </div>
+                    <span className="text-xs text-[#7db83a] font-semibold">적용하기 →</span>
+                  </button>
+                )
+              })()}
+
               <RecordFormFields
                 state={{
                   fee_type: row.fee_type,
@@ -657,6 +708,7 @@ export default function PaymentPage() {
                 total={row.total_amount}
                 voucherSupports={row.voucherSupports}
                 remainingSupport={row.remaining_support}
+                appliedRemaining={row.applied_remaining}
                 selfPayment={row.self_payment}
                 onChange={(updates) => updatePayRow(row.id, updates as Partial<PayRow>)}
                 branchName={user?.branch_name ?? undefined}

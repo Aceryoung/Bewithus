@@ -356,6 +356,32 @@ export function usePatientLastVouchers(teacherId: string | null) {
   })
 }
 
+// ── 환자별 이전 남은 지원금 (적립금 불러오기용) ──────────────────
+export function usePatientRemainingSupport(teacherId: string | null) {
+  return useQuery({
+    queryKey: ['patientRemainingSupport', teacherId] as const,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('records')
+        .select('id, patient_name, remaining_support')
+        .eq('teacher_id', teacherId!)
+        .eq('attendance', 'payment')
+        .gt('remaining_support', 0)
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      const map: Record<string, { amount: number; recordId: string }> = {}
+      for (const r of data ?? []) {
+        if (!map[r.patient_name]) {
+          map[r.patient_name] = { amount: r.remaining_support, recordId: r.id }
+        }
+      }
+      return map
+    },
+    enabled: !!teacherId,
+    staleTime: 1000 * 60 * 5,
+  })
+}
+
 // ── 지점별 지원금(바우처) 설정 ────────────────────────────────
 export function useBranchVoucherConfig(branchId: string | null) {
   return useQuery({

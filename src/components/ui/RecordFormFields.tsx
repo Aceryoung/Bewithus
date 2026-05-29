@@ -25,6 +25,7 @@ interface Props {
   total: number
   voucherSupports: Partial<Record<PaymentMethod, number>>
   remainingSupport: number
+  appliedRemaining?: number
   selfPayment: number
   onChange: (updates: Partial<RecordFieldState>) => void
   branchName?: string
@@ -33,7 +34,7 @@ interface Props {
 }
 
 export default function RecordFormFields({
-  state, feeTables, total, voucherSupports, remainingSupport, selfPayment, onChange, branchName, voucherConfig, allowHalfSession = false,
+  state, feeTables, total, voucherSupports, remainingSupport, appliedRemaining, selfPayment, onChange, branchName, voucherConfig, allowHalfSession = false,
 }: Props) {
   const totalSupport = Object.values(voucherSupports).reduce((a, b) => a + (b ?? 0), 0)
   const [countDisplay, setCountDisplay] = useState(String(state.session_count))
@@ -281,18 +282,20 @@ export default function RecordFormFields({
               <span className="text-gray-400">−{formatKRW(totalSupport)}</span>
             </div>
           )}
+          {(appliedRemaining ?? 0) > 0 && (
+            <div className="flex justify-between text-xs text-[#00b4d8]">
+              <span>이전 적립금 적용</span>
+              <span>−{formatKRW(appliedRemaining!)}</span>
+            </div>
+          )}
           <div className="flex justify-between font-semibold border-t border-gray-200 pt-1.5">
             <span className="text-gray-700">자부담</span>
             <span className="text-gray-900">{formatKRW(selfPayment)}</span>
           </div>
           {remainingSupport > 0 && (
-            <div className={`flex justify-between text-xs border-t pt-1.5 ${remainingSupport <= 20000 ? 'border-orange-200' : 'border-dashed border-gray-200'}`}>
-              <span className={remainingSupport <= 20000 ? 'text-orange-500 font-semibold' : 'text-gray-400'}>
-                남은지원금{remainingSupport <= 20000 ? ' ⚠︎' : ''}
-              </span>
-              <span className={remainingSupport <= 20000 ? 'text-orange-500 font-semibold' : 'text-gray-400'}>
-                {formatKRW(remainingSupport)}
-              </span>
+            <div className="flex justify-between text-xs text-[#7db83a] border-t border-dashed border-[#7db83a]/30 pt-1.5">
+              <span className="font-medium">남은 지원금 (적립)</span>
+              <span className="font-semibold">{formatKRW(remainingSupport)}</span>
             </div>
           )}
         </div>
