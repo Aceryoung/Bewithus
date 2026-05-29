@@ -46,6 +46,8 @@ interface PayRow {
   payment_method: PaymentMethod
   secondary_methods: PaymentMethod[]
   secondary_overrides: Partial<Record<PaymentMethod, number>>
+  secondary_unit_prices?: Partial<Record<PaymentMethod, number>>
+  secondary_session_counts?: Partial<Record<PaymentMethod, number>>
   voucherSupports: Partial<Record<PaymentMethod, number>>
   support_amount: number
   secondary_support: number
@@ -227,6 +229,24 @@ export default function PaymentPage() {
     setPayRows((prev) => recalcPayRows(prev, monthlyUsed, branchLimits))
   }, [monthlyUsed, branchLimits])
 
+  // patientLastVouchers 로드 완료 시 환자명이 있는 빈 행에 자동 적용
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPayRows((prev) => {
+      let changed = false
+      const updated = prev.map((row) => {
+        if (!row.patient_name.trim() || row.secondary_methods.length > 0) return row
+        const vouchers = patientLastVouchers[row.patient_name.trim()]
+        if (!vouchers?.length) return row
+        changed = true
+        return { ...row, secondary_methods: vouchers }
+      })
+      if (!changed) return prev
+      return recalcPayRows(updated, monthlyUsed, branchLimits)
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [patientLastVouchers])
+
   /* ── 임시저장 (변경될 때마다) ── */
   useEffect(() => {
     if (!user) return
@@ -368,6 +388,7 @@ export default function PaymentPage() {
     void queryClient.invalidateQueries({ queryKey: ['records', 'monthSummary', user.id] })
     void queryClient.invalidateQueries({ queryKey: ['records', 'monthly', user.id] })
     void queryClient.invalidateQueries({ queryKey: ['monthlyUsed', user.id] })
+    void queryClient.invalidateQueries({ queryKey: ['patientLastVouchers', user.id] })
   }
 
   const totalSelf    = payRows.reduce((acc, r) => acc + r.self_payment, 0)

@@ -10,6 +10,8 @@ export interface RecordFieldState {
   payment_method: PaymentMethod
   secondary_methods: PaymentMethod[]
   secondary_overrides: Partial<Record<PaymentMethod, number>>
+  secondary_unit_prices?: Partial<Record<PaymentMethod, number>>
+  secondary_session_counts?: Partial<Record<PaymentMethod, number>>
   payment_note?: string
 }
 
@@ -53,8 +55,12 @@ export default function RecordFormFields({
     if (current.includes(method)) {
       const next = current.filter((m) => m !== method)
       const nextOverrides = { ...state.secondary_overrides }
+      const nextUnitPrices = { ...(state.secondary_unit_prices ?? {}) }
+      const nextSessionCounts = { ...(state.secondary_session_counts ?? {}) }
       delete nextOverrides[method]
-      onChange({ secondary_methods: next, secondary_overrides: nextOverrides })
+      delete nextUnitPrices[method]
+      delete nextSessionCounts[method]
+      onChange({ secondary_methods: next, secondary_overrides: nextOverrides, secondary_unit_prices: nextUnitPrices, secondary_session_counts: nextSessionCounts })
     } else {
       onChange({ secondary_methods: [...current, method] })
     }
@@ -190,32 +196,64 @@ export default function RecordFormFields({
         </div>
       </div>
 
-      {/* 선택된 바우처별 입력 */}
+      {/* 선택된 바우처별 입력 (단가 × 횟수) */}
       {state.secondary_methods.map((method) => {
         const limit = branchLimits[method]
         const hasLimit = !!limit
+        const unitPrice = state.secondary_unit_prices?.[method]
+        const sessionCount = state.secondary_session_counts?.[method]
+        const computed = (unitPrice ?? 0) * (sessionCount ?? 0)
+        const blockKeys = (e: React.KeyboardEvent) => { if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault() }
         return (
           <div key={method}>
-            <p className="text-xs text-gray-400 mb-1.5">
-              {PAYMENT_METHOD_LABELS[method as keyof typeof PAYMENT_METHOD_LABELS] ?? method} 지원금
-              {hasLimit ? (
-                <span className="text-gray-300 ml-1">(빈 칸이면 월 {formatKRW(limit!)} 자동계산)</span>
-              ) : (
-                <span className="text-red-400 ml-1">직접입력 필수</span>
-              )}
-            </p>
-            <input
-              type="number"
-              inputMode="numeric"
-              placeholder={hasLimit ? `0 ~ ${(limit! / 10000).toFixed(0)}만원` : '지원금액 입력 (원)'}
-              value={state.secondary_overrides[method] ?? ''}
-              onKeyDown={(e) => { if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault() }}
-              onChange={(e) => {
-                const val = e.target.value === '' ? undefined : Math.max(0, Number(e.target.value))
-                onChange({ secondary_overrides: { ...state.secondary_overrides, [method]: val } })
-              }}
-              className="w-full border border-[#7db83a]/40 bg-[#f0f9e8] rounded-lg px-3 py-2 text-sm outline-none focus:border-[#7db83a]"
-            />
+            <div className="flex items-baseline justify-between mb-1.5">
+              <p className="text-xs text-gray-400">
+                {PAYMENT_METHOD_LABELS[method as keyof typeof PAYMENT_METHOD_LABELS] ?? method} 지원금
+              </p>
+              {!hasLimit && <span className="text-xs text-red-400">직접입력 필수</span>}
+              {hasLimit && <span className="text-xs text-gray-300">빈 칸이면 자동계산</span>}
+            </div>
+            <div className="flex gap-2 items-center">
+              <input
+                type="number"
+                inputMode="numeric"
+                placeholder="단가 (원)"
+                value={unitPrice ?? ''}
+                onKeyDown={blockKeys}
+                onChange={(e) => {
+                  const up = e.target.value === '' ? undefined : Math.max(0, Number(e.target.value))
+                  const sc = state.secondary_session_counts?.[method]
+                  const override = up !== undefined && sc !== undefined ? up * sc : undefined
+                  onChange({
+                    secondary_unit_prices: { ...(state.secondary_unit_prices ?? {}), [method]: up },
+                    secondary_overrides: { ...state.secondary_overrides, [method]: override },
+                  })
+                }}
+                className="flex-1 border border-[#7db83a]/40 bg-[#f0f9e8] rounded-lg px-3 py-2 text-sm outline-none focus:border-[#7db83a]"
+              />
+              <span className="text-gray-400 text-sm shrink-0">×</span>
+              <input
+                type="number"
+                inputMode="numeric"
+                placeholder="횟수"
+                value={sessionCount ?? ''}
+                onKeyDown={blockKeys}
+                onChange={(e) => {
+                  const sc = e.target.value === '' ? undefined : Math.max(1, Math.round(Number(e.target.value) || 1))
+                  const up = state.secondary_unit_prices?.[method]
+                  const override = up !== undefined && sc !== undefined ? up * sc : undefined
+                  onChange({
+                    secondary_session_counts: { ...(state.secondary_session_counts ?? {}), [method]: sc },
+                    secondary_overrides: { ...state.secondary_overrides, [method]: override },
+                  })
+                }}
+                className="w-16 border border-[#7db83a]/40 bg-[#f0f9e8] rounded-lg px-3 py-2 text-sm outline-none focus:border-[#7db83a]"
+              />
+              <span className="text-gray-400 text-xs shrink-0">회</span>
+            </div>
+            {computed > 0 && (
+              <p className="text-xs text-[#7db83a] mt-1 text-right">{formatKRW(computed)}</p>
+            )}
           </div>
         )
       })}

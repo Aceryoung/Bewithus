@@ -22,6 +22,8 @@ interface EditState {
   payment_method: PaymentMethod
   secondary_methods: PaymentMethod[]
   secondary_overrides: Partial<Record<PaymentMethod, number>>
+  secondary_unit_prices?: Partial<Record<PaymentMethod, number>>
+  secondary_session_counts?: Partial<Record<PaymentMethod, number>>
   payment_note?: string
   billing_month: string
 }
