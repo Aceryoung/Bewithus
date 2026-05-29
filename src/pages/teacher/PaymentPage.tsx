@@ -155,7 +155,8 @@ export default function PaymentPage() {
   const [payRows, setPayRows] = useState<PayRow[]>(() => {
     if (!user) return [newPayRow()]
     const draft = loadDraft<PayRow[]>(user.id, 'payRows')
-    return draft ? draft.data : [newPayRow()]
+    // receiptFile은 File 객체 → JSON 직렬화 불가 → 불러올 때 제거
+    return draft ? draft.data.map((r) => ({ ...r, receiptFile: undefined })) : [newPayRow()]
   })
   const [savingPay, setSavingPay] = useState(false)
   const [savedPayN, setSavedPayN] = useState(0)
@@ -213,7 +214,8 @@ export default function PaymentPage() {
 
   useEffect(() => {
     if (!user) return
-    saveDraft(user.id, 'payRows', payRows)
+    // receiptFile(File 객체)은 JSON 직렬화 불가 → 저장 시 제거
+    saveDraft(user.id, 'payRows', payRows.map(({ receiptFile: _, ...rest }) => rest))
   }, [payRows, user])
 
   const updatePayRow = (id: string, updates: Partial<PayRow>) => {
