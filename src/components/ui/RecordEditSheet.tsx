@@ -148,7 +148,13 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
 
   const total = state.attendance === 'absent' ? 0 : state.unit_price * state.session_count
 
-  // 바우처별 실제 지원금: 직접입력은 순서대로 처리, 자동계산은 잔여 금액을 비례 배분
+  const branchLimits: Partial<Record<PaymentMethod, number>> = voucherConfig.length > 0
+    ? voucherConfig.reduce<Partial<Record<PaymentMethod, number>>>(
+        (acc, c) => c.monthly_limit > 0 ? { ...acc, [c.payment_method]: c.monthly_limit } : acc, {},
+      )
+    : MONTHLY_SUPPORT_LIMITS
+
+  // 바우처별 실제 지원금: override는 각각 독립 적용(캐스케이드 없음), auto는 비례 배분
   const voucherSupports: Partial<Record<PaymentMethod, number>> = {}
   if (state.attendance === 'absent') {
     for (const m of state.secondary_methods) voucherSupports[m] = 0
@@ -156,30 +162,31 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
     const overrideMethods = state.secondary_methods.filter((m) => state.secondary_overrides[m] !== undefined)
     const autoMethods = state.secondary_methods.filter((m) => state.secondary_overrides[m] === undefined)
 
-    let remAfterOverride = total
+    let totalOverrideSupport = 0
     for (const method of overrideMethods) {
-      const cap = calcSupport(remAfterOverride, method, monthlyUsed[method] ?? 0, state.secondary_overrides[method]).support
-      voucherSupports[method] = cap
-      remAfterOverride -= cap
+      const amt = state.secondary_overrides[method] ?? 0
+      voucherSupports[method] = amt
+      totalOverrideSupport += amt
     }
 
+    const remForAuto = Math.max(0, total - totalOverrideSupport)
     const autoRawCaps: Partial<Record<PaymentMethod, number>> = {}
     for (const method of autoMethods) {
-      autoRawCaps[method] = calcSupport(remAfterOverride, method, monthlyUsed[method] ?? 0, undefined).support
+      autoRawCaps[method] = calcSupport(remForAuto, method, monthlyUsed[method] ?? 0, undefined, branchLimits).support
     }
     const totalAutoCap = Object.values(autoRawCaps).reduce((a, b) => a + (b ?? 0), 0)
     if (totalAutoCap <= 0) {
       for (const m of autoMethods) voucherSupports[m] = 0
-    } else if (totalAutoCap <= remAfterOverride) {
+    } else if (totalAutoCap <= remForAuto) {
       for (const m of autoMethods) voucherSupports[m] = autoRawCaps[m] ?? 0
     } else {
       let allocated = 0
       for (let i = 0; i < autoMethods.length; i++) {
         const m = autoMethods[i]
         if (i === autoMethods.length - 1) {
-          voucherSupports[m] = Math.max(0, remAfterOverride - allocated)
+          voucherSupports[m] = Math.max(0, remForAuto - allocated)
         } else {
-          const share = Math.floor(remAfterOverride * ((autoRawCaps[m] ?? 0) / totalAutoCap))
+          const share = Math.floor(remForAuto * ((autoRawCaps[m] ?? 0) / totalAutoCap))
           voucherSupports[m] = Math.min(share, autoRawCaps[m] ?? 0)
           allocated += voucherSupports[m]!
         }
@@ -188,10 +195,8 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
   }
 
   const totalSupportUsed = Object.values(voucherSupports).reduce((a, b) => a + (b ?? 0), 0)
-  const autoRemainingSupport = state.secondary_methods.reduce((acc, method) => {
-    const limit = MONTHLY_SUPPORT_LIMITS[method] ?? 0
-    return acc + Math.max(0, limit - (monthlyUsed[method] ?? 0) - (voucherSupports[method] ?? 0))
-  }, 0)
+  // 남은 지원금 = 바우처 합계가 총 요금을 초과하는 차액
+  const remainingCredit = Math.max(0, totalSupportUsed - total)
   const selfPayment = Math.max(0, total - totalSupportUsed)
 
   const handleSave = async () => {
@@ -230,7 +235,7 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
       secondary_support: secondarySupport,
       tertiary_method: state.secondary_methods[1] ?? null,
       tertiary_support: tertiarySupport,
-      remaining_support: autoRemainingSupport,
+      remaining_support: remainingCredit,
       self_payment: selfPayment,
       updated_by_name: user?.name ?? null,
     }
@@ -358,7 +363,7 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
                 feeTables={feeTables}
                 total={total}
                 voucherSupports={voucherSupports}
-                remainingSupport={autoRemainingSupport}
+                remainingSupport={remainingCredit}
                 selfPayment={selfPayment}
                 onChange={update}
                 voucherConfig={voucherConfig}
