@@ -688,14 +688,12 @@ export default function PaymentPage() {
                     )
                   })}
                 </div>
-                {row.billing_months.length === 0 ? (
-                  <p className="text-xs text-red-400 mt-1">청구 월을 1개 이상 선택해주세요</p>
-                ) : (
-                  <p className="text-xs text-gray-500 mt-1.5">
-                    선택: {row.billing_months.map((m) => `${m.slice(5)}월`).join(', ')}
-                    {row.billing_months.length > 1 && <span className="text-[#00b4d8] ml-1">({row.billing_months.length}개월)</span>}
-                  </p>
-                )}
+                <p className="text-xs text-gray-500 mt-1.5 min-h-[1rem]">
+                  {row.billing_months.length === 0
+                    ? <span className="text-red-400">청구 월을 1개 이상 선택해주세요</span>
+                    : <>선택: {row.billing_months.map((m) => `${m.slice(5)}월`).join(', ')}{row.billing_months.length > 1 && <span className="text-[#00b4d8]">({row.billing_months.length}개월)</span>}</>
+                  }
+                </p>
               </div>
             </div>
           ))}
