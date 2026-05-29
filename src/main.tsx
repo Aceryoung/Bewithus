@@ -16,7 +16,8 @@ const queryClient = new QueryClient({
     queries: {
       staleTime: 1000 * 60 * 3,       // 3분간 신선 → 탭 전환 시 불필요한 재요청 방지
       gcTime: 1000 * 60 * 10,          // 10분간 캐시 유지
-      retry: 1,
+      retry: 2,
+      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000), // 2초 → 4초
       refetchOnWindowFocus: false,
     },
   },
