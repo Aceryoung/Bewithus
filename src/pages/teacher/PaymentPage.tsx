@@ -13,7 +13,7 @@ import ErrorModal from '@/components/ui/ErrorModal'
 import PatientInput from '@/components/ui/PatientInput'
 import { isAppError } from '@/lib/appErrors'
 import { saveDraft, loadDraft, clearDraft } from '@/lib/draft'
-import { useFeeTables, useMonthlyUsed, useRecentPatients, useBranchVoucherConfig } from '@/hooks/queries'
+import { useFeeTables, useMonthlyUsed, useRecentPatients, useBranchVoucherConfig, usePatientLastVouchers } from '@/hooks/queries'
 import type { Attendance, PaymentMethod } from '@/types'
 import type { AppErrorCode } from '@/lib/appErrors'
 
@@ -171,6 +171,7 @@ export default function PaymentPage() {
   const { data: monthlyUsed = {} } = useMonthlyUsed(user?.id ?? null, date)
   const { data: recentPatients = [] } = useRecentPatients(user?.id ?? null)
   const { data: voucherConfig } = useBranchVoucherConfig(user?.branch_id ?? null)
+  const { data: patientLastVouchers = {} } = usePatientLastVouchers(user?.id ?? null)
 
   const branchLimits = useMemo(() => {
     if (voucherConfig && voucherConfig.length > 0) {
@@ -220,7 +221,16 @@ export default function PaymentPage() {
 
   const updatePayRow = (id: string, updates: Partial<PayRow>) => {
     setPayRows((prev) => {
-      const patched = prev.map((r) => (r.id === id ? { ...r, ...updates } : r))
+      const patched = prev.map((r) => {
+        if (r.id !== id) return r
+        const next = { ...r, ...updates }
+        // 환자명이 입력되고 바우처가 선택되지 않은 상태 → 이전 기록에서 자동 적용
+        if ('patient_name' in updates && next.patient_name.trim() && next.secondary_methods.length === 0) {
+          const vouchers = patientLastVouchers[next.patient_name.trim()]
+          if (vouchers?.length) next.secondary_methods = vouchers
+        }
+        return next
+      })
       return recalcPayRows(patched, monthlyUsed, branchLimits)
     })
   }
@@ -577,8 +587,12 @@ export default function PaymentPage() {
                 const name = row.patient_name.trim()
                 if (!name) return null
                 const used = monthlyUsed[name] ?? {}
-                const badges = (['education', 'sports_voucher', 'after_school'] as PaymentMethod[])
-                  .map((m) => ({ m, remaining: Math.max(0, (MONTHLY_SUPPORT_LIMITS[m] ?? 0) - (used[m] ?? 0)) }))
+                const limits = branchLimits ?? MONTHLY_SUPPORT_LIMITS
+                const voucherMethods = voucherConfig?.map((c) => c.payment_method as PaymentMethod)
+                  ?? (user?.branch_name ? BRANCH_VOUCHER_CONFIG[user.branch_name]?.methods?.filter((m) => !['card','cash','bank_transfer','other'].includes(m)) as PaymentMethod[] : undefined)
+                  ?? ['education', 'sports_voucher', 'after_school'] as PaymentMethod[]
+                const badges = voucherMethods
+                  .map((m) => ({ m, remaining: Math.max(0, (limits[m] ?? 0) - (used[m] ?? 0)) }))
                   .filter((b) => (used[b.m] ?? 0) > 0 && b.remaining > 0)
                 if (badges.length === 0) return null
                 return (

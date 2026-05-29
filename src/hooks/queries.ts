@@ -331,6 +331,34 @@ export function useRecentPatients(teacherId: string | null) {
   })
 }
 
+// ── 환자별 마지막 결제의 바우처 방식 (자동 적용용) ──────────────
+export function usePatientLastVouchers(teacherId: string | null) {
+  return useQuery({
+    queryKey: ['patientLastVouchers', teacherId] as const,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('records')
+        .select('patient_name, secondary_method, tertiary_method')
+        .eq('teacher_id', teacherId!)
+        .eq('attendance', 'payment')
+        .not('secondary_method', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(500)
+      if (error) throw error
+      const map: Record<string, PaymentMethod[]> = {}
+      for (const r of data ?? []) {
+        if (!map[r.patient_name]) {
+          map[r.patient_name] = [r.secondary_method, r.tertiary_method]
+            .filter((m): m is string => !!m) as PaymentMethod[]
+        }
+      }
+      return map
+    },
+    enabled: !!teacherId,
+    staleTime: 1000 * 60 * 5,
+  })
+}
+
 // ── 지점별 지원금(바우처) 설정 ────────────────────────────────
 export function useBranchVoucherConfig(branchId: string | null) {
   return useQuery({
