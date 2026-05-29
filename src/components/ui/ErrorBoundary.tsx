@@ -20,6 +20,15 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error('[ErrorBoundary]', error, info.componentStack)
+    // 새 배포 후 청크 해시 불일치 → 강제 리로드로 새 서비스워커 적용
+    if (
+      error.message.includes('Failed to fetch dynamically imported module') ||
+      error.message.includes('Importing a module script failed') ||
+      error.message.includes('Loading chunk') ||
+      error.message.includes('Loading CSS chunk')
+    ) {
+      window.location.reload()
+    }
   }
 
   render() {
