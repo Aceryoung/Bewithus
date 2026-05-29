@@ -291,14 +291,13 @@ export default function PaymentPage() {
     }
 
     setSavingPay(true)
-    // 청구월이 여러 개면 월별로 레코드 하나씩 생성
-    const insertRows = valid.flatMap((r) => {
-      const months = r.billing_months.length > 0 ? r.billing_months : [date.slice(0, 7)]
-      return months.map((bm) => ({
+    // 여러 달 선택 시 쉼표로 이어 1개 레코드에 저장 (4월+5월 동시 납부 등)
+    const { data: inserted, error } = await supabase.from('records').insert(
+      valid.map((r) => ({
         teacher_id: user.id,
         branch_id: user.branch_id,
         date,
-        billing_month: bm,
+        billing_month: r.billing_months.length > 0 ? r.billing_months.join(',') : date.slice(0, 7),
         patient_name: r.patient_name.trim(),
         birth_year: r.birth_year?.trim() || null,
         attendance: 'payment' as const,
@@ -315,27 +314,21 @@ export default function PaymentPage() {
         tertiary_support: r.tertiary_support,
         remaining_support: r.remaining_support,
         self_payment: r.self_payment,
-      }))
-    })
-    const { data: inserted, error } = await supabase.from('records').insert(insertRows).select('id')
+      })),
+    ).select('id')
     setSavingPay(false)
     if (error || !inserted) { setErrorModal({ code: 'ERR-101', detail: error?.message }); return }
 
-    // 영수증: 각 환자의 첫 번째 삽입 레코드에만 업로드
-    let offset = 0
-    for (const r of valid) {
-      const monthCount = r.billing_months.length > 0 ? r.billing_months.length : 1
-      const firstId = inserted[offset]?.id
-      if (firstId && r.receiptFile) {
-        try {
-          const url = await uploadReceipt(r.receiptFile, user.id, firstId)
-          await supabase.from('records').update({ receipt_url: url }).eq('id', firstId)
-        } catch (e) {
-          const code: AppErrorCode = isAppError(e) ? e.appCode : 'ERR-301'
-          setErrorModal({ code, detail: e instanceof Error ? e.message : undefined })
-        }
+    for (let i = 0; i < inserted.length; i++) {
+      const file = valid[i].receiptFile
+      if (!file) continue
+      try {
+        const url = await uploadReceipt(file, user.id, inserted[i].id)
+        await supabase.from('records').update({ receipt_url: url }).eq('id', inserted[i].id)
+      } catch (e) {
+        const code: AppErrorCode = isAppError(e) ? e.appCode : 'ERR-301'
+        setErrorModal({ code, detail: e instanceof Error ? e.message : undefined })
       }
-      offset += monthCount
     }
     clearDraft(user.id, 'payRows')
     setSavedPayN(inserted.length)
