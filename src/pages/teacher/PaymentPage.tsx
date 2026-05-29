@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/auth'
@@ -161,6 +161,10 @@ export default function PaymentPage() {
   const [savedPayN, setSavedPayN] = useState(0)
   const [errorModal, setErrorModal] = useState<{ code: AppErrorCode; detail?: string } | null>(null)
   const [dupWarning, setDupWarning] = useState<string[]>([])
+  const [receiptPickerCb, setReceiptPickerCb] = useState<((file: File) => void) | null>(null)
+  const cameraRef = useRef<HTMLInputElement>(null)
+  const galleryRef = useRef<HTMLInputElement>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   const { data: feeTables = [] } = useFeeTables(user?.branch_id ?? null)
   const { data: monthlyUsed = {} } = useMonthlyUsed(user?.id ?? null, date)
@@ -626,20 +630,12 @@ export default function PaymentPage() {
                     </button>
                   </div>
                 ) : (
-                  <label className="flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed border-gray-200 rounded-xl text-gray-400 text-sm cursor-pointer active:bg-gray-50 transition-colors">
-                    <span>사진 첨부</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0]
-                        if (file) updatePayRow(row.id, { receiptFile: file })
-                        e.target.value = ''
-                      }}
-                    />
-                  </label>
+                  <button
+                    onClick={() => setReceiptPickerCb(() => (file: File) => updatePayRow(row.id, { receiptFile: file }))}
+                    className="flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed border-gray-200 rounded-xl text-gray-400 text-sm active:bg-gray-50 transition-colors"
+                  >
+                    사진 첨부
+                  </button>
                 )}
               </div>
 
@@ -685,6 +681,31 @@ export default function PaymentPage() {
           >
             + 환자 추가
           </button>
+        </div>
+      )}
+
+      {/* 영수증 입력 소스 선택 — 숨겨진 inputs */}
+      <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f && receiptPickerCb) receiptPickerCb(f); e.target.value = ''; setReceiptPickerCb(null) }}
+      />
+      <input ref={galleryRef} type="file" accept="image/*" className="hidden"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f && receiptPickerCb) receiptPickerCb(f); e.target.value = ''; setReceiptPickerCb(null) }}
+      />
+      <input ref={fileRef} type="file" className="hidden"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f && receiptPickerCb) receiptPickerCb(f); e.target.value = ''; setReceiptPickerCb(null) }}
+      />
+
+      {/* 영수증 소스 선택 바텀시트 */}
+      {receiptPickerCb && (
+        <div className="fixed inset-0 z-50 bg-black/40" onClick={() => setReceiptPickerCb(null)}>
+          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl px-4 pt-5 pb-10" onClick={(e) => e.stopPropagation()}>
+            <p className="text-center text-sm text-gray-400 mb-4">사진 등록 방법 선택</p>
+            <div className="flex flex-col gap-2">
+              <button onClick={() => cameraRef.current?.click()} className="w-full py-3.5 rounded-xl bg-gray-50 text-gray-700 text-sm font-medium active:bg-gray-100 transition-colors">카메라</button>
+              <button onClick={() => galleryRef.current?.click()} className="w-full py-3.5 rounded-xl bg-gray-50 text-gray-700 text-sm font-medium active:bg-gray-100 transition-colors">사진첩</button>
+              <button onClick={() => fileRef.current?.click()} className="w-full py-3.5 rounded-xl bg-gray-50 text-gray-700 text-sm font-medium active:bg-gray-100 transition-colors">파일</button>
+            </div>
+          </div>
         </div>
       )}
 

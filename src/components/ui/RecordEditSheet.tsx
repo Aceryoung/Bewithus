@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/auth'
 import { calcSupport } from '@/lib/utils'
@@ -75,6 +75,10 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
   const [receiptAction, setReceiptAction] = useState<'none' | 'upload' | 'delete'>('none')
   const [errorModal, setErrorModal] = useState<{ code: AppErrorCode; detail?: string } | null>(null)
   const [receiptFile, setReceiptFile] = useState<File | null>(null)
+  const [showReceiptPicker, setShowReceiptPicker] = useState(false)
+  const cameraRef = useRef<HTMLInputElement>(null)
+  const galleryRef = useRef<HTMLInputElement>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
   const receiptPreview = receiptAction === 'upload' && receiptFile
     ? URL.createObjectURL(receiptFile)
     : receiptAction === 'delete'
@@ -325,16 +329,12 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
                   onClick={() => window.open(receiptPreview, '_blank')}
                 />
                 <div className="absolute top-2 right-2 flex gap-1.5">
-                  <label className="px-2.5 py-1 rounded-full bg-black/50 text-white text-xs cursor-pointer">
+                  <button
+                    onClick={() => setShowReceiptPicker(true)}
+                    className="px-2.5 py-1 rounded-full bg-black/50 text-white text-xs"
+                  >
                     사진
-                    <input type="file" accept="image/*" capture="environment" className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0]
-                        if (file) { setReceiptFile(file); setReceiptAction('upload') }
-                        e.target.value = ''
-                      }}
-                    />
-                  </label>
+                  </button>
                   <button
                     onClick={() => { setReceiptAction('delete'); setReceiptFile(null) }}
                     className="px-2.5 py-1 rounded-full bg-black/50 text-white text-xs"
@@ -344,16 +344,12 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
                 </div>
               </div>
             ) : (
-              <label className="flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed border-gray-200 rounded-xl text-gray-400 text-sm cursor-pointer active:bg-gray-50 transition-colors">
-                <span>사진 첨부</span>
-                <input type="file" accept="image/*" capture="environment" className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0]
-                    if (file) { setReceiptFile(file); setReceiptAction('upload') }
-                    e.target.value = ''
-                  }}
-                />
-              </label>
+              <button
+                onClick={() => setShowReceiptPicker(true)}
+                className="flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed border-gray-200 rounded-xl text-gray-400 text-sm active:bg-gray-50 transition-colors"
+              >
+                사진 첨부
+              </button>
             )}
           </div>}
 
@@ -385,6 +381,31 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
         </div>
       </div>
     </div>
+
+    {/* 영수증 입력 소스 선택 — 숨겨진 inputs */}
+    <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden"
+      onChange={(e) => { const f = e.target.files?.[0]; if (f) { setReceiptFile(f); setReceiptAction('upload') }; e.target.value = ''; setShowReceiptPicker(false) }}
+    />
+    <input ref={galleryRef} type="file" accept="image/*" className="hidden"
+      onChange={(e) => { const f = e.target.files?.[0]; if (f) { setReceiptFile(f); setReceiptAction('upload') }; e.target.value = ''; setShowReceiptPicker(false) }}
+    />
+    <input ref={fileRef} type="file" className="hidden"
+      onChange={(e) => { const f = e.target.files?.[0]; if (f) { setReceiptFile(f); setReceiptAction('upload') }; e.target.value = ''; setShowReceiptPicker(false) }}
+    />
+
+    {/* 영수증 소스 선택 바텀시트 */}
+    {showReceiptPicker && (
+      <div className="fixed inset-0 z-[60] bg-black/40" onClick={() => setShowReceiptPicker(false)}>
+        <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl px-4 pt-5 pb-10" onClick={(e) => e.stopPropagation()}>
+          <p className="text-center text-sm text-gray-400 mb-4">사진 등록 방법 선택</p>
+          <div className="flex flex-col gap-2">
+            <button onClick={() => cameraRef.current?.click()} className="w-full py-3.5 rounded-xl bg-gray-50 text-gray-700 text-sm font-medium active:bg-gray-100 transition-colors">카메라</button>
+            <button onClick={() => galleryRef.current?.click()} className="w-full py-3.5 rounded-xl bg-gray-50 text-gray-700 text-sm font-medium active:bg-gray-100 transition-colors">사진첩</button>
+            <button onClick={() => fileRef.current?.click()} className="w-full py-3.5 rounded-xl bg-gray-50 text-gray-700 text-sm font-medium active:bg-gray-100 transition-colors">파일</button>
+          </div>
+        </div>
+      </div>
+    )}
     </>
   )
 }
