@@ -61,7 +61,6 @@ interface PayRow {
 }
 
 function newPayRow(): PayRow {
-  const thisMonth = new Date().toISOString().slice(0, 7)
   return {
     id: crypto.randomUUID(),
     patient_name: '',
@@ -79,7 +78,7 @@ function newPayRow(): PayRow {
     remaining_support: 0,
     self_payment: 0,
     total_amount: 0,
-    billing_months: [thisMonth],
+    billing_months: [],
   }
 }
 
@@ -650,6 +649,8 @@ export default function PaymentPage() {
                   payment_method: row.payment_method,
                   secondary_methods: row.secondary_methods,
                   secondary_overrides: row.secondary_overrides,
+                  secondary_unit_prices: row.secondary_unit_prices,
+                  secondary_session_counts: row.secondary_session_counts,
                   payment_note: row.payment_note,
                 }}
                 feeTables={feeTables}
