@@ -230,10 +230,10 @@ export default function PaymentPage() {
     const valid = countRows.filter((r) => r.patient_name.trim())
     if (valid.length === 0) return
 
-    /* ── 중복 체크 ── */
+    /* ── 중복 체크 (건수 탭 내 동일 날짜·동일 이름만 검사) ── */
     if (!force) {
       const { data: existing } = await supabase
-        .from('records').select('patient_name').eq('teacher_id', user.id).eq('date', date)
+        .from('records').select('patient_name').eq('teacher_id', user.id).eq('date', date).neq('attendance', 'payment')
       const existingNames = new Set((existing ?? []).map((r) => r.patient_name))
       const dups = valid.map((r) => r.patient_name.trim()).filter((n) => existingNames.has(n))
       if (dups.length > 0) {
@@ -282,10 +282,10 @@ export default function PaymentPage() {
     const valid = payRows.filter((r) => r.patient_name.trim())
     if (valid.length === 0) return
 
-    /* ── 중복 체크 ── */
+    /* ── 중복 체크 (결제 탭 내 동일 날짜·동일 이름만 검사) ── */
     if (!force) {
       const { data: existing2 } = await supabase
-        .from('records').select('patient_name').eq('teacher_id', user.id).eq('date', date)
+        .from('records').select('patient_name').eq('teacher_id', user.id).eq('date', date).eq('attendance', 'payment')
       const existingNames2 = new Set((existing2 ?? []).map((r) => r.patient_name))
       const dups2 = valid.map((r) => r.patient_name.trim()).filter((n) => existingNames2.has(n))
       if (dups2.length > 0) {
