@@ -122,23 +122,43 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
 
   const total = state.attendance === 'absent' ? 0 : state.unit_price * state.session_count
 
-  // 각 바우처 독립 용량 계산
-  const capacities: Partial<Record<PaymentMethod, number>> = {}
-  if (state.attendance !== 'absent') {
-    for (const method of state.secondary_methods) {
-      const override = state.secondary_overrides[method]
-      capacities[method] = calcSupport(total, method, monthlyUsed[method] ?? 0, override).support
-    }
-  }
-
-  // cascade: 순서대로 남은 금액 충당
+  // 바우처별 실제 지원금: 직접입력은 순서대로 처리, 자동계산은 잔여 금액을 비례 배분
   const voucherSupports: Partial<Record<PaymentMethod, number>> = {}
-  let remaining = total
-  for (const method of state.secondary_methods) {
-    const capacity = capacities[method] ?? 0
-    const actual = Math.min(capacity, remaining)
-    voucherSupports[method] = actual
-    remaining -= actual
+  if (state.attendance === 'absent') {
+    for (const m of state.secondary_methods) voucherSupports[m] = 0
+  } else {
+    const overrideMethods = state.secondary_methods.filter((m) => state.secondary_overrides[m] !== undefined)
+    const autoMethods = state.secondary_methods.filter((m) => state.secondary_overrides[m] === undefined)
+
+    let remAfterOverride = total
+    for (const method of overrideMethods) {
+      const cap = calcSupport(remAfterOverride, method, monthlyUsed[method] ?? 0, state.secondary_overrides[method]).support
+      voucherSupports[method] = cap
+      remAfterOverride -= cap
+    }
+
+    const autoRawCaps: Partial<Record<PaymentMethod, number>> = {}
+    for (const method of autoMethods) {
+      autoRawCaps[method] = calcSupport(remAfterOverride, method, monthlyUsed[method] ?? 0, undefined).support
+    }
+    const totalAutoCap = Object.values(autoRawCaps).reduce((a, b) => a + (b ?? 0), 0)
+    if (totalAutoCap <= 0) {
+      for (const m of autoMethods) voucherSupports[m] = 0
+    } else if (totalAutoCap <= remAfterOverride) {
+      for (const m of autoMethods) voucherSupports[m] = autoRawCaps[m] ?? 0
+    } else {
+      let allocated = 0
+      for (let i = 0; i < autoMethods.length; i++) {
+        const m = autoMethods[i]
+        if (i === autoMethods.length - 1) {
+          voucherSupports[m] = Math.max(0, remAfterOverride - allocated)
+        } else {
+          const share = Math.floor(remAfterOverride * ((autoRawCaps[m] ?? 0) / totalAutoCap))
+          voucherSupports[m] = Math.min(share, autoRawCaps[m] ?? 0)
+          allocated += voucherSupports[m]!
+        }
+      }
+    }
   }
 
   const totalSupportUsed = Object.values(voucherSupports).reduce((a, b) => a + (b ?? 0), 0)

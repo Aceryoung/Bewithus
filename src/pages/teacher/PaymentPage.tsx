@@ -93,23 +93,43 @@ function recalcPayRows(
 
     const total = row.unit_price * row.session_count
 
-    // 각 바우처의 독립 용량 계산
-    const capacities: Partial<Record<PaymentMethod, number>> = {}
-    for (const method of row.secondary_methods) {
-      const override = row.secondary_overrides[method]
+    // 바우처별 실제 지원금: 직접입력은 순서대로 처리, 자동계산은 잔여 금액을 비례 배분
+    const actualSupports: Partial<Record<PaymentMethod, number>> = {}
+    const overrideMethods = row.secondary_methods.filter((m) => row.secondary_overrides[m] !== undefined)
+    const autoMethods = row.secondary_methods.filter((m) => row.secondary_overrides[m] === undefined)
+
+    let remAfterOverride = total
+    for (const method of overrideMethods) {
       const dbUsed = name ? (monthlyUsed[name]?.[method] ?? 0) : 0
       const formUsed = name ? (inFormAccum[name]?.[method] ?? 0) : 0
-      capacities[method] = calcSupport(total, method, dbUsed + formUsed, override, branchLimits).support
+      const cap = calcSupport(remAfterOverride, method, dbUsed + formUsed, row.secondary_overrides[method], branchLimits).support
+      actualSupports[method] = cap
+      remAfterOverride -= cap
     }
 
-    // cascade: 각 바우처가 순서대로 남은 금액 충당
-    const actualSupports: Partial<Record<PaymentMethod, number>> = {}
-    let remaining = total
-    for (const method of row.secondary_methods) {
-      const capacity = capacities[method] ?? 0
-      const actual = Math.min(capacity, remaining)
-      actualSupports[method] = actual
-      remaining -= actual
+    const autoRawCaps: Partial<Record<PaymentMethod, number>> = {}
+    for (const method of autoMethods) {
+      const dbUsed = name ? (monthlyUsed[name]?.[method] ?? 0) : 0
+      const formUsed = name ? (inFormAccum[name]?.[method] ?? 0) : 0
+      autoRawCaps[method] = calcSupport(remAfterOverride, method, dbUsed + formUsed, undefined, branchLimits).support
+    }
+    const totalAutoCap = Object.values(autoRawCaps).reduce((a, b) => a + (b ?? 0), 0)
+    if (totalAutoCap <= 0) {
+      for (const m of autoMethods) actualSupports[m] = 0
+    } else if (totalAutoCap <= remAfterOverride) {
+      for (const m of autoMethods) actualSupports[m] = autoRawCaps[m] ?? 0
+    } else {
+      let allocated = 0
+      for (let i = 0; i < autoMethods.length; i++) {
+        const m = autoMethods[i]
+        if (i === autoMethods.length - 1) {
+          actualSupports[m] = Math.max(0, remAfterOverride - allocated)
+        } else {
+          const share = Math.floor(remAfterOverride * ((autoRawCaps[m] ?? 0) / totalAutoCap))
+          actualSupports[m] = Math.min(share, autoRawCaps[m] ?? 0)
+          allocated += actualSupports[m]!
+        }
+      }
     }
 
     const totalSupportUsed = Object.values(actualSupports).reduce((a, b) => a + (b ?? 0), 0)
