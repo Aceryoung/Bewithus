@@ -7,7 +7,7 @@ import { uploadReceipt, deleteReceipt } from '@/lib/storage'
 import RecordFormFields from '@/components/ui/RecordFormFields'
 import ErrorModal from '@/components/ui/ErrorModal'
 import { isAppError } from '@/lib/appErrors'
-import { useFeeTables, useMonthlyUsed } from '@/hooks/queries'
+import { useFeeTables, useMonthlyUsed, useBranchVoucherConfig } from '@/hooks/queries'
 import type { Record as SessionRecord, Attendance, PaymentMethod } from '@/types'
 import type { AppErrorCode } from '@/lib/appErrors'
 
@@ -86,6 +86,7 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
     : record.receipt_url ?? null
 
   const { data: feeTables = [] } = useFeeTables(record.branch_id)
+  const { data: voucherConfig = [] } = useBranchVoucherConfig(record.branch_id)
   // record.date가 아닌 해당 월 말일로 조회해야 이후 기록까지 반영됨
   const recordYM = record.date.slice(0, 7)
   const [ry, rm] = recordYM.split('-').map(Number)
@@ -312,6 +313,7 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
                 remainingSupport={autoRemainingSupport}
                 selfPayment={selfPayment}
                 onChange={update}
+                voucherConfig={voucherConfig}
                 allowHalfSession={record.branch_id === '22222222-0000-0000-0000-000000000002'}
               />
             </>

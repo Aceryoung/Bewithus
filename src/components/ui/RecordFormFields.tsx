@@ -93,7 +93,7 @@ export default function RecordFormFields({
           <input
             type="number"
             inputMode="numeric"
-            placeholder="1회 단가 입력 (원)"
+            placeholder="(원)"
             value={state.unit_price || ''}
             onKeyDown={(e) => { if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault() }}
             onChange={(e) => onChange({ unit_price: Math.max(0, Number(e.target.value)) })}
