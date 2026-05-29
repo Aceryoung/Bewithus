@@ -195,13 +195,6 @@ export default function PaymentPage() {
     return new Set(Object.keys(counts).filter((n) => counts[n] > 1))
   }, [payRows])
 
-  const recentMonths = useMemo(() => {
-    const now = new Date()
-    return Array.from({ length: 6 }, (_, i) => {
-      const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1)
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-    })
-  }, [])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -662,32 +655,27 @@ export default function PaymentPage() {
                 <p className="text-xs text-gray-400 mb-1.5">
                   청구 월 <span className="text-gray-300">(여러 달 선택 가능)</span>
                 </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {recentMonths.map((m) => {
-                    const selected = row.billing_months.includes(m)
-                    const isCurrentMonth = m === date.slice(0, 7)
-                    return (
-                      <button
-                        key={m}
-                        type="button"
-                        onClick={() => {
-                          const next = selected
-                            ? row.billing_months.filter((bm) => bm !== m)
-                            : [...row.billing_months, m].sort()
-                          updatePayRow(row.id, { billing_months: next })
-                        }}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
-                          ${selected
-                            ? isCurrentMonth
-                              ? 'bg-[#00b4d8] text-white'
-                              : 'bg-orange-400 text-white'
-                            : 'bg-gray-100 text-gray-500'}`}
-                      >
+                <input
+                  type="month"
+                  value=""
+                  onChange={(e) => {
+                    const m = e.target.value
+                    if (!m || row.billing_months.includes(m)) return
+                    updatePayRow(row.id, { billing_months: [...row.billing_months, m].sort() })
+                    e.target.value = ''
+                  }}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#00b4d8]"
+                />
+                {row.billing_months.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {row.billing_months.map((m) => (
+                      <span key={m} className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium ${m === date.slice(0, 7) ? 'bg-[#e8f7fb] text-[#00b4d8]' : 'bg-orange-50 text-orange-500'}`}>
                         {m.slice(0, 4)}년 {m.slice(5)}월
-                      </button>
-                    )
-                  })}
-                </div>
+                        <button type="button" onClick={() => updatePayRow(row.id, { billing_months: row.billing_months.filter((bm) => bm !== m) })} className="ml-0.5 opacity-60 hover:opacity-100">✕</button>
+                      </span>
+                    ))}
+                  </div>
+                )}
                 <p className="text-xs text-gray-500 mt-1.5 min-h-[1rem]">
                   {row.billing_months.length === 0
                     ? <span className="text-red-400">청구 월을 1개 이상 선택해주세요</span>
