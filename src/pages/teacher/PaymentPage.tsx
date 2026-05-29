@@ -157,12 +157,7 @@ export default function PaymentPage() {
   const [savedCountN, setSavedCountN] = useState(0)
 
   /* 결제 탭 상태 */
-  const [payRows, setPayRows] = useState<PayRow[]>(() => {
-    if (!user) return [newPayRow()]
-    const draft = loadDraft<PayRow[]>(user.id, 'payRows')
-    // receiptFile은 File 객체 → JSON 직렬화 불가 → 불러올 때 제거
-    return draft ? draft.data.map((r) => ({ ...r, receiptFile: undefined })) : [newPayRow()]
-  })
+  const [payRows, setPayRows] = useState<PayRow[]>([newPayRow()])
   const [savingPay, setSavingPay] = useState(false)
   const [savedPayN, setSavedPayN] = useState(0)
   const [errorModal, setErrorModal] = useState<{ code: AppErrorCode; detail?: string } | null>(null)
@@ -218,11 +213,6 @@ export default function PaymentPage() {
     saveDraft(user.id, 'countRows', countRows)
   }, [countRows, user])
 
-  useEffect(() => {
-    if (!user) return
-    // receiptFile(File 객체)은 JSON 직렬화 불가 → 저장 시 제거
-    saveDraft(user.id, 'payRows', payRows.map(({ receiptFile: _, ...rest }) => rest))
-  }, [payRows, user])
 
   const updatePayRow = (id: string, updates: Partial<PayRow>) => {
     setPayRows((prev) => {
@@ -351,7 +341,6 @@ export default function PaymentPage() {
         setErrorModal({ code, detail: e instanceof Error ? e.message : undefined })
       }
     }
-    clearDraft(user.id, 'payRows')
     setSavedPayN(inserted.length)
     setPayRows([newPayRow()])
     setTimeout(() => setSavedPayN(0), 3000)
