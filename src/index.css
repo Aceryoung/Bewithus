@@ -27,11 +27,24 @@
   }
 
   #root {
+    /* dvh 미지원 브라우저 폴백 */
+    min-height: 100vh;
     min-height: 100dvh;
     max-width: 480px;
     margin: 0 auto;
     background: #f7f8fc;
     display: flex;
     flex-direction: column;
+  }
+}
+
+@layer utilities {
+  /* 하단 BottomNav + 홈 인디케이터 여백 (pb-16 대체) */
+  .pb-nav {
+    padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+  }
+  /* 하단 BottomNav + 홈 인디케이터 여백 (pb-24 대체) */
+  .pb-nav-lg {
+    padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
   }
 }

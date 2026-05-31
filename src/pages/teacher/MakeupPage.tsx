@@ -65,7 +65,7 @@ export default function MakeupPage() {
   const completed = sessions.filter((s) => s.status === 'completed')
 
   return (
-    <div className="flex flex-col min-h-dvh pb-16">
+    <div className="flex flex-col min-h-dvh pb-nav">
       <PageHeader title="보강 관리" />
 
       <div className="flex-1 px-4 py-4 space-y-4">

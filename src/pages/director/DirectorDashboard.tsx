@@ -129,7 +129,7 @@ export default function DirectorDashboard() {
   const totalSupport = stats.reduce((a, s) => a + s.supportAmount, 0)
 
   return (
-    <div className="flex flex-col min-h-dvh bg-slate-50 pb-16">
+    <div className="flex flex-col min-h-dvh bg-slate-50 pb-nav">
       {/* 헤더 */}
       <div className="bg-white border-b border-gray-100 px-5 pt-12 pb-5 md:pt-6">
         <div className="md:max-w-3xl md:mx-auto md:w-full">

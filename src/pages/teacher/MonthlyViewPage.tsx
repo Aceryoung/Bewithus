@@ -89,7 +89,7 @@ export default function MonthlyViewPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-dvh pb-16">
+    <div className="flex flex-col min-h-dvh pb-nav">
       <PageHeader title="월별 건수" />
 
       <div className="flex-1 px-4 py-4 space-y-4 md:max-w-3xl md:mx-auto md:w-full">

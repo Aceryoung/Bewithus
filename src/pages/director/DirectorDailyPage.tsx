@@ -35,7 +35,7 @@ export default function DirectorDailyPage() {
   const selfPayment  = records.reduce((acc, r) => acc + r.self_payment, 0)
 
   return (
-    <div className="flex flex-col min-h-dvh pb-16">
+    <div className="flex flex-col min-h-dvh pb-nav">
       <PageHeader title="일건수 확인" />
 
       <div className="flex-1 px-4 py-4 space-y-4">

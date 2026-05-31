@@ -817,7 +817,7 @@ export default function PaymentPage() {
 
       {/* 저장 버튼 고정 */}
       {tab === 'count' && (
-        <div className="fixed bottom-16 left-1/2 -translate-x-1/2 w-full max-w-[480px] px-4 pb-3 pt-2 bg-white border-t border-gray-100 shadow-lg">
+        <div className="fixed left-1/2 -translate-x-1/2 w-full max-w-[480px] px-4 pb-3 pt-2 bg-white border-t border-gray-100 shadow-lg" style={{ bottom: "calc(4rem + env(safe-area-inset-bottom, 0px))" }}>
           <button
             onClick={() => void handleSaveCount()}
             disabled={savingCount || countRows.every((r) => !r.patient_name.trim())}
@@ -829,7 +829,7 @@ export default function PaymentPage() {
       )}
 
       {tab === 'payment' && (
-        <div className="fixed bottom-16 left-1/2 -translate-x-1/2 w-full max-w-[480px] px-4 pb-3 pt-2 bg-white border-t border-gray-100 shadow-lg">
+        <div className="fixed left-1/2 -translate-x-1/2 w-full max-w-[480px] px-4 pb-3 pt-2 bg-white border-t border-gray-100 shadow-lg" style={{ bottom: "calc(4rem + env(safe-area-inset-bottom, 0px))" }}>
           <div className="flex justify-between text-sm text-gray-500 py-2">
             <span>자부담 합계</span>
             <span className="font-bold text-gray-900">{formatKRW(totalSelf)}</span>

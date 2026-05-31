@@ -152,7 +152,7 @@ export default function TeacherDashboard() {
         </div>
       </div>
 
-      <div className="flex-1 px-4 space-y-3 pb-24 pt-3 md:max-w-3xl md:mx-auto md:w-full">
+      <div className="flex-1 px-4 space-y-3 pb-nav-lg pt-3 md:max-w-3xl md:mx-auto md:w-full">
         {/* 건수 입력 CTA */}
         <button
           onClick={() => navigate('/teacher/payment')}
