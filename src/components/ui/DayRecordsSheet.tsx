@@ -52,19 +52,21 @@ export default function DayRecordsSheet({ date, records, role, teacherNames = {}
   }, {})
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex flex-col justify-end md:items-center md:justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40" />
       <div
-        className="relative bg-white rounded-t-2xl max-h-[78dvh] flex flex-col"
+        className="relative bg-white flex flex-col
+          rounded-t-2xl max-h-[78dvh]
+          md:rounded-2xl md:w-full md:max-w-md md:max-h-[80vh] md:shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* 드래그 핸들 */}
-        <div className="flex justify-center pt-3 pb-1 shrink-0">
+        {/* 드래그 핸들 (모바일만) */}
+        <div className="flex justify-center pt-3 pb-1 shrink-0 md:hidden">
           <div className="w-10 h-1 bg-gray-300 rounded-full" />
         </div>
 
         {/* 헤더 */}
-        <div className="flex justify-between items-center px-4 py-3 shrink-0">
+        <div className="flex justify-between items-center px-4 py-3 shrink-0 md:border-b md:border-gray-100 md:pt-4">
           <h2 className="font-bold text-gray-900">{month}월 {day}일 기록</h2>
           <button onClick={onClose} className="text-gray-400 text-xl px-1">×</button>
         </div>
@@ -74,11 +76,11 @@ export default function DayRecordsSheet({ date, records, role, teacherNames = {}
           {records.length === 0 ? (
             <p className="text-gray-300 text-sm text-center py-10">기록이 없습니다</p>
           ) : role === 'teacher' ? (
-            <div className="space-y-2">
+            <div className="space-y-2 py-2">
               {records.map((r) => <RecordRow key={r.id} r={r} />)}
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-4 py-2">
               {Object.entries(byTeacher).map(([teacherId, teacherRecords]) => (
                 <div key={teacherId}>
                   <p className="text-xs font-semibold text-gray-400 mb-1.5">
@@ -94,7 +96,7 @@ export default function DayRecordsSheet({ date, records, role, teacherNames = {}
         </div>
 
         {/* 건수 입력 버튼 */}
-        <div className="px-4 pt-2 pb-8 shrink-0 border-t border-gray-50">
+        <div className="px-4 pt-2 pb-8 shrink-0 border-t border-gray-50 md:pb-4">
           <button
             onClick={() => { navigate(role === 'director' ? '/director/payment' : '/teacher/payment'); onClose() }}
             className="w-full py-4 bg-[#00b4d8] text-white rounded-xl font-bold text-sm active:bg-[#0096b8] transition-colors"
