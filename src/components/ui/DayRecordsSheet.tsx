@@ -98,7 +98,7 @@ export default function DayRecordsSheet({ date, records, role, teacherNames = {}
         {/* 건수 입력 버튼 */}
         <div className="px-4 pt-2 pb-8 shrink-0 border-t border-gray-50 md:pb-4">
           <button
-            onClick={() => { navigate(role === 'director' ? '/director/payment' : '/teacher/payment'); onClose() }}
+            onClick={() => { navigate(`${role === 'director' ? '/director/payment' : '/teacher/payment'}?date=${date}`); onClose() }}
             className="w-full py-4 bg-[#00b4d8] text-white rounded-xl font-bold text-sm active:bg-[#0096b8] transition-colors"
           >
             + 건수 입력하기

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/auth'
@@ -164,7 +165,8 @@ export default function PaymentPage() {
   const user = useAuthStore((s) => s.user)
   const queryClient = useQueryClient()
   const [tab, setTab] = useState<ActiveTab>('count')
-  const [date, setDate] = useState(todayStr())
+  const [searchParams] = useSearchParams()
+  const [date, setDate] = useState(() => searchParams.get('date') ?? todayStr())
 
   /* 건수 탭 상태 */
   const [countRows, setCountRows] = useState<CountRow[]>(() => {
