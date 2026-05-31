@@ -8,7 +8,9 @@ import { useAuthStore } from '@/store/auth'
 import BottomNav from '@/components/ui/BottomNav'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
 import ErrorState from '@/components/ui/ErrorState'
-import { useDirectorDashboard, qk } from '@/hooks/queries'
+import CalendarView from '@/components/ui/CalendarView'
+import DayRecordsSheet from '@/components/ui/DayRecordsSheet'
+import { useDirectorDashboard, useDirectorMonthlyRecords, qk } from '@/hooks/queries'
 import type { User, Record as SessionRecord } from '@/types'
 
 interface BranchStats {
@@ -32,12 +34,17 @@ export default function DirectorDashboard() {
   const [pinForm, setPinForm] = useState({ current: '', next: '', confirm: '' })
   const [pinLoading, setPinLoading] = useState(false)
   const [pinError, setPinError] = useState('')
+  const [selectedDate, setSelectedDate] = useState<string | null>(null)
 
   const now = new Date()
   const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 
+  const [calYear, setCalYear] = useState(now.getFullYear())
+  const [calMonth, setCalMonth] = useState(now.getMonth() + 1)
+
   const { data, isLoading, error, refetch } = useDirectorDashboard(monthStart, today)
+  const { data: calendarRecords = [] } = useDirectorMonthlyRecords(calYear, calMonth, 'all', 'all')
 
   // 실시간 구독 → 캐시 무효화
   useEffect(() => {
@@ -91,6 +98,9 @@ export default function DirectorDashboard() {
   }
 
   const { branches, users, records } = data
+
+  const teacherNames: Record<string, string> = {}
+  for (const u of users) teacherNames[u.id] = u.name
 
   const stats: BranchStats[] = branches.map((branch) => {
     const branchTeachers = users.filter((u) => u.branch_id === branch.id)
@@ -172,6 +182,17 @@ export default function DirectorDashboard() {
         </div>
       </div>
 
+      {/* 달력 */}
+      <div className="px-4 pt-4 md:max-w-3xl md:mx-auto md:w-full">
+        <CalendarView
+          year={calYear}
+          month={calMonth}
+          records={calendarRecords}
+          onDateSelect={setSelectedDate}
+          onMonthChange={(y, m) => { setCalYear(y); setCalMonth(m) }}
+        />
+      </div>
+
       {/* 지점별 카드 */}
       <div className="px-4 py-4 space-y-3 md:max-w-3xl md:mx-auto md:w-full">
         {stats.map((s) => (
@@ -221,6 +242,16 @@ export default function DirectorDashboard() {
       </div>
 
       <BottomNav />
+
+      {selectedDate && (
+        <DayRecordsSheet
+          date={selectedDate}
+          records={calendarRecords.filter((r) => r.date === selectedDate)}
+          role="director"
+          teacherNames={teacherNames}
+          onClose={() => setSelectedDate(null)}
+        />
+      )}
 
       {showPinModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-5">

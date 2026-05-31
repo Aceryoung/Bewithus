@@ -7,8 +7,10 @@ import { todayStr, formatKRW, formatDate, paymentLabel } from '@/lib/utils'
 import { ATTENDANCE_LABELS, PAYMENT_METHOD_LABELS } from '@/constants'
 import BottomNav from '@/components/ui/BottomNav'
 import RecordEditSheet from '@/components/ui/RecordEditSheet'
+import CalendarView from '@/components/ui/CalendarView'
+import DayRecordsSheet from '@/components/ui/DayRecordsSheet'
 import ErrorState from '@/components/ui/ErrorState'
-import { useTodayRecords, useMonthSummary, qk } from '@/hooks/queries'
+import { useTodayRecords, useMonthSummary, useMonthlyRecords, qk } from '@/hooks/queries'
 import type { Record as SessionRecord } from '@/types'
 
 export default function TeacherDashboard() {
@@ -22,15 +24,20 @@ export default function TeacherDashboard() {
   const [pinLoading, setPinLoading] = useState(false)
   const [pinError, setPinError] = useState('')
   const [editingRecord, setEditingRecord] = useState<SessionRecord | null>(null)
+  const [selectedDate, setSelectedDate] = useState<string | null>(null)
 
   const today = todayStr()
   const now = new Date()
   const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
 
+  const [calYear, setCalYear] = useState(now.getFullYear())
+  const [calMonth, setCalMonth] = useState(now.getMonth() + 1)
+
   const { data: todayRecords = [], isLoading: loadingToday, error: errorToday, refetch: refetchToday } =
     useTodayRecords(user?.id ?? null, today)
   const { data: monthSummary = { total: 0, present: 0, absent: 0, makeup: 0, amount: 0 }, isLoading: loadingSummary, error: errorSummary, refetch: refetchSummary } =
     useMonthSummary(user?.id ?? null, monthStart, today)
+  const { data: calendarRecords = [] } = useMonthlyRecords(user?.id ?? null, calYear, calMonth)
 
   const loading = loadingToday || loadingSummary
   const error = errorToday || errorSummary
@@ -171,6 +178,15 @@ export default function TeacherDashboard() {
           </div>
         </div>
 
+        {/* 달력 */}
+        <CalendarView
+          year={calYear}
+          month={calMonth}
+          records={calendarRecords}
+          onDateSelect={setSelectedDate}
+          onMonthChange={(y, m) => { setCalYear(y); setCalMonth(m) }}
+        />
+
         {/* 오늘 입력 내역 */}
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="flex justify-between items-center px-4 pt-4 pb-3">
@@ -273,6 +289,15 @@ export default function TeacherDashboard() {
           onSave={(updated) => { setEditingRecord(null); handleRecordSaved(updated) }}
           onDelete={(id) => { setEditingRecord(null); handleRecordDeleted(id) }}
           onClose={() => setEditingRecord(null)}
+        />
+      )}
+
+      {selectedDate && (
+        <DayRecordsSheet
+          date={selectedDate}
+          records={calendarRecords.filter((r) => r.date === selectedDate)}
+          role="teacher"
+          onClose={() => setSelectedDate(null)}
         />
       )}
 
