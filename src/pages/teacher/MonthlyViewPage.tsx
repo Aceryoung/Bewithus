@@ -171,7 +171,12 @@ export default function MonthlyViewPage() {
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-900">{r.patient_name}</p>
                           <p className="text-xs text-gray-400 mt-0.5">
-                            {r.date.slice(5)} · {ATTENDANCE_LABELS[r.attendance]}
+                            {r.date.slice(5)} · <span className={
+                              r.attendance === 'present' ? 'text-[#00b4d8] font-medium' :
+                              r.attendance === 'absent'  ? 'text-[#e85b8a] font-medium' :
+                              r.attendance === 'makeup'  ? 'text-[#7db83a] font-medium' :
+                              ''
+                            }>{ATTENDANCE_LABELS[r.attendance]}</span>
                             {' · '}{r.fee_type} {r.session_count}회
                             {' · '}{paymentLabel(r.payment_method, r.payment_note, r.secondary_method, r.tertiary_method, PAYMENT_METHOD_LABELS)}
                             {r.updated_by_name && <span className="text-orange-400"> · 수정: {r.updated_by_name}</span>}
