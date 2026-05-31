@@ -65,9 +65,9 @@ export default function CalendarView({ year, month, records, onDateSelect, onMon
           return (
             <button
               key={dateStr}
-              onClick={() => s ? onDateSelect(dateStr) : undefined}
+              onClick={() => onDateSelect(dateStr)}
               className={`flex flex-col items-center justify-start pt-1.5 pb-1 rounded-xl min-h-[48px] transition-colors
-                ${isToday ? 'bg-[#00b4d8]' : s ? 'active:bg-gray-100' : 'cursor-default'}`}
+                ${isToday ? 'bg-[#00b4d8]' : 'active:bg-gray-100'}`}
             >
               <span className={`text-xs font-semibold leading-none
                 ${isToday ? 'text-white' :
