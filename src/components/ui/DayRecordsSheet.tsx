@@ -56,8 +56,8 @@ export default function DayRecordsSheet({ date, records, role, teacherNames = {}
       <div className="absolute inset-0 bg-black/40" />
       <div
         className="relative bg-white flex flex-col
-          rounded-t-2xl max-h-[78dvh]
-          md:rounded-2xl md:w-full md:max-w-md md:max-h-[80vh] md:shadow-2xl"
+          rounded-t-2xl
+          md:rounded-2xl md:w-full md:max-w-md md:shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 드래그 핸들 (모바일만) */}
@@ -72,7 +72,7 @@ export default function DayRecordsSheet({ date, records, role, teacherNames = {}
         </div>
 
         {/* 기록 목록 */}
-        <div className="overflow-y-auto flex-1 px-4 pb-2">
+        <div className="overflow-y-auto px-4 pb-2 max-h-[50dvh] md:max-h-[50vh]">
           {records.length === 0 ? (
             <p className="text-gray-300 text-sm text-center py-10">기록이 없습니다</p>
           ) : role === 'teacher' ? (
