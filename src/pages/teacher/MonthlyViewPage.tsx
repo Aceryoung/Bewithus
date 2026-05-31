@@ -166,7 +166,10 @@ export default function MonthlyViewPage() {
                 <div key={week} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
                   <h2 className="text-sm font-semibold text-gray-500 mb-3">{week}주차</h2>
                   {weekRecords.map((r) => (
-                    <div key={r.id} className="py-2.5 border-b border-gray-50 last:border-0">
+                    <div key={r.id} className={`py-2.5 px-2 -mx-2 rounded-xl mb-1 last:mb-0
+                      ${r.attendance === 'present' ? 'bg-[#e8f7fb]' :
+                        r.attendance === 'absent'  ? 'bg-[#fde8f0]' :
+                        r.attendance === 'makeup'  ? 'bg-[#f0f9e8]' : ''}`}>
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-900">{r.patient_name}</p>
