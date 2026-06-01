@@ -48,6 +48,7 @@ interface PatientRow {
   totalAmount: number
   selfPayment: number
   lastDate: string
+  billingMonths: string
   vouchers: Record<string, number>
   remainingSupport: number
   primaryMethod: string
@@ -97,6 +98,17 @@ function buildPatientRows(
     const [, m, d] = lastDate.split('-')
     const dateLabel = lastDate ? `${parseInt(m)}월 ${parseInt(d)}일` : ''
 
+    /* 청구 월 집계: billing_month는 "YYYY-MM" 또는 "YYYY-MM,YYYY-MM" */
+    const billingMonthSet = new Set<string>()
+    for (const r of rows) {
+      const bm = r.billing_month ?? r.date.slice(0, 7)
+      bm.split(',').forEach((m) => billingMonthSet.add(m.trim()))
+    }
+    const billingMonths = [...billingMonthSet]
+      .sort()
+      .map((m) => `${parseInt(m.slice(5))}월`)
+      .join(', ')
+
     return {
       name,
       pendingMakeup: branchName === '2호점' ? absent.length : (pendingMakeups[name] ?? ''),
@@ -105,6 +117,7 @@ function buildPatientRows(
       totalAmount:  rows.reduce((a, r) => a + r.total_amount, 0),
       selfPayment:  rows.reduce((a, r) => a + r.self_payment, 0),
       lastDate:     dateLabel,
+      billingMonths,
       vouchers,
       remainingSupport,
       primaryMethod,
@@ -160,6 +173,7 @@ function buildSummarySheet(
     { key: 'totalAmount',   width: 12 },
     { key: 'selfPayment',   width: 12 },
     { key: 'lastDate',      width: 11 },
+    { key: 'billingMonths', width: 14 },
     ...usedVouchers.map((v) => ({ key: v, width: 11 })),
     { key: 'remaining',     width: 11 },
     { key: 'note',          width: 20 },
@@ -167,7 +181,7 @@ function buildSummarySheet(
   ws.columns = columns
 
   const headers = [
-    '이름', '남은보강', '보강', '건수', '건수금액', '결제금액', '날짜',
+    '이름', '남은보강', '보강', '건수', '건수금액', '결제금액', '날짜', '청구 월',
     ...usedVouchers.map((v) => VOUCHER_COLUMN_LABELS[v]),
     '남은지원금', '비고',
   ]
@@ -192,13 +206,14 @@ function buildSummarySheet(
       p.totalAmount || '',
       p.selfPayment === 0 ? '₩0' : p.selfPayment,
       p.lastDate,
+      p.billingMonths,
       ...voucherValues,
       p.remainingSupport || '',
       p.note,
     ])
 
     /* 금액 셀 포맷: totalAmount(5), selfPayment(6), voucher cols, remaining */
-    const amountColIndices = [5, 6, ...usedVouchers.map((_, i) => 8 + i), 8 + usedVouchers.length]
+    const amountColIndices = [5, 6, ...usedVouchers.map((_, i) => 9 + i), 9 + usedVouchers.length]
     amountColIndices.forEach((col) => {
       const cell = row.getCell(col)
       if (typeof cell.value === 'number' && cell.value !== 0) cell.numFmt = '₩#,##0'
