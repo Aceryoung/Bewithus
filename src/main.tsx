@@ -2,8 +2,12 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Buffer } from 'buffer'
+import { registerSW } from 'virtual:pwa-register'
 import './index.css'
 import App from './App.tsx'
+
+// 새 버전 배포 시 자동 페이지 새로고침 (구버전 캐시 제거)
+registerSW({ onNeedRefresh() { window.location.reload() } })
 
 // exceljs 브라우저 호환을 위한 Buffer 폴리필
 if (typeof window !== 'undefined') {
