@@ -24,14 +24,18 @@ export default function MonthPicker({ year, month, onSelect, onClose }: Props) {
           <button
             type="button"
             onClick={() => setPickerYear((y) => y - 1)}
-            className="w-8 h-8 flex items-center justify-center text-[#00b4d8] text-xl rounded-lg active:bg-gray-100"
-          >‹</button>
+            className="w-8 h-8 flex items-center justify-center text-[#00b4d8] rounded-lg active:bg-gray-100"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8L10 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
           <span className="font-bold text-gray-900">{pickerYear}년</span>
           <button
             type="button"
             onClick={() => setPickerYear((y) => y + 1)}
-            className="w-8 h-8 flex items-center justify-center text-[#00b4d8] text-xl rounded-lg active:bg-gray-100"
-          >›</button>
+            className="w-8 h-8 flex items-center justify-center text-[#00b4d8] rounded-lg active:bg-gray-100"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 4L10 8L6 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
         </div>
 
         {/* 월 그리드 */}

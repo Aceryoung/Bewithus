@@ -41,11 +41,15 @@ export default function CalendarView({ year, month, records, onDateSelect, onMon
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
       {/* 월 네비게이션 */}
       <div className="flex items-center justify-between mb-3">
-        <button type="button" onClick={prevMonth} className="text-[#00b4d8] text-xl w-8 h-8 flex items-center justify-center rounded-lg active:bg-gray-100">‹</button>
+        <button type="button" onClick={prevMonth} className="text-[#00b4d8] w-8 h-8 flex items-center justify-center rounded-lg active:bg-gray-100">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8L10 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        </button>
         <button type="button" onClick={() => setShowPicker(true)} className="font-semibold text-gray-800 px-2 py-1 rounded-lg active:bg-gray-100">
           {year}년 {month}월 ▾
         </button>
-        <button type="button" onClick={nextMonth} className="text-[#00b4d8] text-xl w-8 h-8 flex items-center justify-center rounded-lg active:bg-gray-100">›</button>
+        <button type="button" onClick={nextMonth} className="text-[#00b4d8] w-8 h-8 flex items-center justify-center rounded-lg active:bg-gray-100">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 4L10 8L6 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        </button>
       </div>
 
       {showPicker && (
