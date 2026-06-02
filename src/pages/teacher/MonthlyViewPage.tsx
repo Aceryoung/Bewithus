@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import MonthPicker from '@/components/ui/MonthPicker'
 import { useAuthStore } from '@/store/auth'
 import { formatKRW, getWeekOfMonth, paymentLabel } from '@/lib/utils'
 import { ATTENDANCE_LABELS, PAYMENT_METHOD_LABELS } from '@/constants'
@@ -18,6 +19,7 @@ export default function MonthlyViewPage() {
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [editingRecord, setEditingRecord] = useState<SessionRecord | null>(null)
+  const [showPicker, setShowPicker] = useState(false)
 
   const { data: records = [], isLoading: loading, error, refetch } =
     useMonthlyRecords(user?.id ?? null, year, month)
@@ -95,10 +97,21 @@ export default function MonthlyViewPage() {
       <div className="flex-1 px-4 py-4 space-y-4 md:max-w-3xl md:mx-auto md:w-full">
         {/* 월 선택 */}
         <div className="flex items-center justify-between bg-white border border-gray-200 rounded-xl px-4 py-3">
-          <button onClick={prevMonth} className="text-[#00b4d8] text-xl px-2">‹</button>
-          <span className="font-semibold text-gray-800">{year}년 {month}월</span>
-          <button onClick={nextMonth} className="text-[#00b4d8] text-xl px-2">›</button>
+          <button type="button" onClick={prevMonth} className="text-[#00b4d8] text-xl w-8 h-8 flex items-center justify-center rounded-lg active:bg-gray-100">‹</button>
+          <button type="button" onClick={() => setShowPicker(true)} className="font-semibold text-gray-800 px-2 py-1 rounded-lg active:bg-gray-100">
+            {year}년 {month}월 ▾
+          </button>
+          <button type="button" onClick={nextMonth} className="text-[#00b4d8] text-xl w-8 h-8 flex items-center justify-center rounded-lg active:bg-gray-100">›</button>
         </div>
+
+        {showPicker && (
+          <MonthPicker
+            year={year}
+            month={month}
+            onSelect={(y, m) => { setYear(y); setMonth(m) }}
+            onClose={() => setShowPicker(false)}
+          />
+        )}
 
         {loading ? (
           <LoadingSpinner />

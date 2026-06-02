@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import MonthPicker from '@/components/ui/MonthPicker'
 import { useAuthStore } from '@/store/auth'
 import { todayStr, formatKRW, paymentLabel } from '@/lib/utils'
 import { ATTENDANCE_LABELS, PAYMENT_METHOD_LABELS } from '@/constants'
@@ -43,6 +44,7 @@ export default function DirectorRecordsPage() {
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [expandedTeacher, setExpandedTeacher] = useState<string | null>(null)
   const [editingRecord, setEditingRecord] = useState<Record | null>(null)
+  const [showPicker, setShowPicker] = useState(false)
 
   const { data: branches = [] } = useBranches()
   const { data: allUsers = [] } = useDirectorUsers()
@@ -160,10 +162,20 @@ export default function DirectorRecordsPage() {
         ) : (
           <div className="flex items-center gap-2">
             <div className="flex items-center justify-between bg-white border border-gray-100 rounded-xl px-3 py-3 shadow-sm flex-1">
-              <button onClick={prevMonth} className="text-[#00b4d8] text-xl px-2">‹</button>
-              <span className="font-bold text-gray-800">{year}년 {month}월</span>
-              <button onClick={nextMonth} className="text-[#00b4d8] text-xl px-2">›</button>
+              <button type="button" onClick={prevMonth} className="text-[#00b4d8] text-xl w-8 h-8 flex items-center justify-center rounded-lg active:bg-gray-100">‹</button>
+              <button type="button" onClick={() => setShowPicker(true)} className="font-bold text-gray-800 px-2 py-1 rounded-lg active:bg-gray-100">
+                {year}년 {month}월 ▾
+              </button>
+              <button type="button" onClick={nextMonth} className="text-[#00b4d8] text-xl w-8 h-8 flex items-center justify-center rounded-lg active:bg-gray-100">›</button>
             </div>
+            {showPicker && (
+              <MonthPicker
+                year={year}
+                month={month}
+                onSelect={(y, m) => { setYear(y); setMonth(m) }}
+                onClose={() => setShowPicker(false)}
+              />
+            )}
             <button
               onClick={() => void import('@/lib/excel').then(({ exportAllTeachersMonthly }) =>
                 exportAllTeachersMonthly(

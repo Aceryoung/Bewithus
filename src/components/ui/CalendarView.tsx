@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import type { Record as SessionRecord } from '@/types'
+import MonthPicker from './MonthPicker'
 
 const DAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
 
@@ -11,6 +13,7 @@ interface Props {
 }
 
 export default function CalendarView({ year, month, records, onDateSelect, onMonthChange }: Props) {
+  const [showPicker, setShowPicker] = useState(false)
   const firstDow = new Date(year, month - 1, 1).getDay()
   const daysInMonth = new Date(year, month, 0).getDate()
 
@@ -38,10 +41,21 @@ export default function CalendarView({ year, month, records, onDateSelect, onMon
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
       {/* 월 네비게이션 */}
       <div className="flex items-center justify-between mb-3">
-        <button onClick={prevMonth} className="text-[#00b4d8] text-xl px-2 py-1 active:opacity-60">‹</button>
-        <span className="font-semibold text-gray-800">{year}년 {month}월</span>
-        <button onClick={nextMonth} className="text-[#00b4d8] text-xl px-2 py-1 active:opacity-60">›</button>
+        <button type="button" onClick={prevMonth} className="text-[#00b4d8] text-xl w-8 h-8 flex items-center justify-center rounded-lg active:bg-gray-100">‹</button>
+        <button type="button" onClick={() => setShowPicker(true)} className="font-semibold text-gray-800 px-2 py-1 rounded-lg active:bg-gray-100">
+          {year}년 {month}월 ▾
+        </button>
+        <button type="button" onClick={nextMonth} className="text-[#00b4d8] text-xl w-8 h-8 flex items-center justify-center rounded-lg active:bg-gray-100">›</button>
       </div>
+
+      {showPicker && (
+        <MonthPicker
+          year={year}
+          month={month}
+          onSelect={(y, m) => onMonthChange(y, m)}
+          onClose={() => setShowPicker(false)}
+        />
+      )}
 
       {/* 요일 헤더 */}
       <div className="grid grid-cols-7 mb-1">
