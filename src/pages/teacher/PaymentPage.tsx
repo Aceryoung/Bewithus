@@ -12,7 +12,7 @@ import RecordFormFields from '@/components/ui/RecordFormFields'
 import SavedToast from '@/components/ui/SavedToast'
 import ErrorModal from '@/components/ui/ErrorModal'
 import PatientInput from '@/components/ui/PatientInput'
-import { isAppError } from '@/lib/appErrors'
+import { isAppError, friendlyDbError } from '@/lib/appErrors'
 import { saveDraft, loadDraft, clearDraft } from '@/lib/draft'
 import { useFeeTables, useMonthlyUsed, useRecentPatients, useBranchVoucherConfig, usePatientLastVouchers, usePatientRemainingSupport } from '@/hooks/queries'
 import type { Attendance, PaymentMethod } from '@/types'
@@ -315,7 +315,7 @@ export default function PaymentPage() {
       })),
     )
     setSavingCount(false)
-    if (error) { setErrorModal({ code: 'ERR-101', detail: error.message }); return }
+    if (error) { setErrorModal({ code: 'ERR-101', detail: friendlyDbError(error) }); return }
     clearDraft(user.id, 'countRows')
     setSavedCountN(valid.length)
     setCountRows([newCountRow()])
@@ -371,7 +371,7 @@ export default function PaymentPage() {
       })),
     ).select('id')
     setSavingPay(false)
-    if (error || !inserted) { setErrorModal({ code: 'ERR-101', detail: error?.message }); return }
+    if (error || !inserted) { setErrorModal({ code: 'ERR-101', detail: friendlyDbError(error) }); return }
 
     for (let i = 0; i < inserted.length; i++) {
       const file = valid[i].receiptFile

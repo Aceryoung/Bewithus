@@ -6,7 +6,7 @@ import { ATTENDANCE_LABELS, MONTHLY_SUPPORT_LIMITS } from '@/constants'
 import { uploadReceipt, deleteReceipt } from '@/lib/storage'
 import RecordFormFields from '@/components/ui/RecordFormFields'
 import ErrorModal from '@/components/ui/ErrorModal'
-import { isAppError } from '@/lib/appErrors'
+import { isAppError, friendlyDbError } from '@/lib/appErrors'
 import { useFeeTables, useMonthlyUsed, useBranchVoucherConfig } from '@/hooks/queries'
 import type { Record as SessionRecord, Attendance, PaymentMethod } from '@/types'
 import type { AppErrorCode } from '@/lib/appErrors'
@@ -245,7 +245,7 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
 
     setSaving(false)
     if (error) {
-      setErrorModal({ code: 'ERR-102', detail: error.message })
+      setErrorModal({ code: 'ERR-102', detail: friendlyDbError(error) })
     } else {
       const updatedRecord: SessionRecord = {
         ...record,
@@ -263,7 +263,7 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
     const { error } = await supabase.from('records').delete().eq('id', record.id)
     setDeleting(false)
     if (error) {
-      setErrorModal({ code: 'ERR-103', detail: error.message })
+      setErrorModal({ code: 'ERR-103', detail: friendlyDbError(error) })
     } else {
       onDelete(record.id)
     }
