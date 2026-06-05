@@ -82,7 +82,7 @@ export default function Sidebar() {
   const user = useAuthStore((s) => s.user)
   const logout = useAuthStore((s) => s.logout)
   const navigate = useNavigate()
-  const { data: unreadCount = 0 } = useUnreadInquiryCount(user?.role === 'director' || user?.role === 'admin')
+  const { data: unreadCount = 0 } = useUnreadInquiryCount(user?.role === 'admin')
 
   if (!user) return null
 
@@ -142,7 +142,7 @@ export default function Sidebar() {
           </svg>
           <span>환자 검색</span>
         </NavLink>
-        {(user.role === 'director' || user.role === 'admin') && (
+        {user.role === 'admin' && (
           <NavLink
             to="/director/inquiries"
             className={({ isActive }) =>

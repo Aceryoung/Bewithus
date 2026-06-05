@@ -19,7 +19,6 @@ const DIRECTOR_NAVS: NavItem[] = [
   { to: '/director/payment', label: '결제/건수' },
   { to: '/director/records', label: '건수현황' },
   { to: '/director/accounts', label: '직원관리' },
-  { to: '/director/inquiries', label: '문의함' },
 ]
 
 const ADMIN_NAVS: NavItem[] = [
@@ -31,8 +30,7 @@ const ADMIN_NAVS: NavItem[] = [
 
 export default function BottomNav() {
   const user = useAuthStore((s) => s.user)
-  const isDirectorOrAdmin = user?.role === 'director' || user?.role === 'admin'
-  const { data: unreadCount = 0 } = useUnreadInquiryCount()
+  const { data: unreadCount = 0 } = useUnreadInquiryCount(user?.role === 'admin')
 
   const navs =
     user?.role === 'director' ? DIRECTOR_NAVS :
@@ -52,7 +50,7 @@ export default function BottomNav() {
           }
         >
           <span className="text-xs font-medium">{nav.label}</span>
-          {isDirectorOrAdmin && nav.to === '/director/inquiries' && unreadCount > 0 && (
+          {nav.to === '/director/inquiries' && unreadCount > 0 && (
             <span className="absolute top-2.5 right-1/4 translate-x-full min-w-[16px] h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
