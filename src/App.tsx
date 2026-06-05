@@ -1,9 +1,13 @@
 import { lazy, Suspense, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/auth'
 import OfflineBanner from '@/components/ui/OfflineBanner'
 import ErrorBoundary from '@/components/ui/ErrorBoundary'
+import Sidebar from '@/components/layout/Sidebar'
+import DesktopTopBar from '@/components/layout/DesktopTopBar'
+import SearchProvider from '@/context/SearchProvider'
 
 import TeacherDashboard   from '@/pages/teacher/TeacherDashboard'
 import MonthlyViewPage    from '@/pages/teacher/MonthlyViewPage'
@@ -12,6 +16,7 @@ import DirectorDashboard  from '@/pages/director/DirectorDashboard'
 import DirectorRecordsPage from '@/pages/director/DirectorRecordsPage'
 import AccountsPage       from '@/pages/director/AccountsPage'
 import InquiryPage        from '@/pages/director/InquiryPage'
+import PatientSearchPage  from '@/pages/search/PatientSearchPage'
 
 const LoginPage = lazy(() => import('@/pages/auth/LoginPage'))
 
@@ -46,6 +51,7 @@ function RequireDirector({ children }: { children: React.ReactNode }) {
 export default function App() {
   const user = useAuthStore((s) => s.user)
   const restoreSession = useAuthStore((s) => s.restoreSession)
+  const queryClient = useQueryClient()
 
   useEffect(() => {
     restoreSession()
@@ -55,6 +61,7 @@ export default function App() {
     } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT') {
         useAuthStore.setState({ user: null })
+        queryClient.removeQueries({ queryKey: ['patientSearch'] })
       } else if (event === 'TOKEN_REFRESHED') {
         // SIGNED_IN은 제외 — 활성 로그인 플로우(finishLogin)가 직접 처리함
         // SIGNED_IN 시 restoreSession 호출하면 LoginPage 리마운트 race condition 발생
@@ -67,9 +74,12 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <SearchProvider>
       <OfflineBanner />
+      <Sidebar />
       <ErrorBoundary>
       <Suspense fallback={<PageLoader />}>
+        <DesktopTopBar />
         <Routes>
           <Route
             path="/login"
@@ -81,6 +91,9 @@ export default function App() {
               )
             }
           />
+
+          {/* 공통 라우트 */}
+          <Route path="/search" element={<RequireAuth><PatientSearchPage /></RequireAuth>} />
 
           {/* 선생님 라우트 */}
           <Route path="/teacher"         element={<RequireAuth><TeacherDashboard /></RequireAuth>} />
@@ -111,6 +124,7 @@ export default function App() {
         </Routes>
       </Suspense>
       </ErrorBoundary>
+      </SearchProvider>
     </BrowserRouter>
   )
 }

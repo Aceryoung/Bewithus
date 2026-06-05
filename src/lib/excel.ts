@@ -385,7 +385,7 @@ export async function exportTeacherMonthly({
   branchName?: string
 }) {
   const wb = new ExcelJS.Workbook()
-  wb.creator = '비위더스 EMR'
+  wb.creator = '비위더스 SRA'
   buildSummarySheet(wb, `${month}월 건수`, teacherName, records, year, month, pendingMakeups, branchName)
   buildAttendanceSheet(wb, `${month}월 출석표`, teacherName, records, year, month)
   addLegendSheet(wb)
@@ -399,7 +399,7 @@ export async function exportAllTeachersMonthly(
   month: number,
 ) {
   const wb = new ExcelJS.Workbook()
-  wb.creator = '비위더스 EMR'
+  wb.creator = '비위더스 SRA'
 
   /* 전체 요약 시트 */
   const summaryWs = wb.addWorksheet('전체 요약')

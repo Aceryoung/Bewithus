@@ -292,7 +292,7 @@ export function useInquiries() {
   })
 }
 
-export function useUnreadInquiryCount() {
+export function useUnreadInquiryCount(enabled = true) {
   return useQuery({
     queryKey: ['inquiries', 'unread'] as const,
     queryFn: async () => {
@@ -304,6 +304,7 @@ export function useUnreadInquiryCount() {
       return count ?? 0
     },
     staleTime: 1000 * 30,
+    enabled,
   })
 }
 
@@ -427,6 +428,38 @@ export function useAccountsData(monthStart: string, today: string) {
         voucherConfigs: (voucherRes.error ? [] : voucherRes.data ?? []) as BranchVoucherConfig[],
       }
     },
+    staleTime: 1000 * 30,
+  })
+}
+
+// ── 환자 통합 검색 ────────────────────────────────────────────
+export type PatientSearchRecord = SessionRecord & {
+  teacher: Pick<User, 'id' | 'name' | 'job_title'>
+}
+
+export function usePatientSearch(name: string, yearMonth: string, role?: string, branchId?: string | null) {
+  const trimmed = name.trim()
+  return useQuery({
+    queryKey: ['patientSearch', trimmed, yearMonth, role, branchId] as const,
+    queryFn: async () => {
+      const [y, m] = yearMonth.split('-')
+      const start = `${y}-${m.padStart(2, '0')}-01`
+      const nextDate = new Date(Number(y), Number(m), 1) // month is 0-indexed in Date; Number(m) is already 1-indexed so this gives next month's 1st
+      const end = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}-01`
+
+      let query = supabase
+        .from('records')
+        .select('*, teacher:teacher_id(id, name, job_title)')
+        .ilike('patient_name', `%${trimmed}%`)
+        .gte('date', start)
+        .lt('date', end)
+        .order('date', { ascending: true })
+      if (role === 'teacher' && branchId) query = query.eq('branch_id', branchId)
+      const { data, error } = await query
+      if (error) throw error
+      return (data ?? []) as PatientSearchRecord[]
+    },
+    enabled: trimmed.length >= 2 && /^\d{4}-\d{2}$/.test(yearMonth),
     staleTime: 1000 * 30,
   })
 }

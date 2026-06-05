@@ -6,6 +6,7 @@ import { useAuthStore } from '@/store/auth'
 import { todayStr, formatKRW, formatDate, paymentLabel } from '@/lib/utils'
 import { ATTENDANCE_LABELS, PAYMENT_METHOD_LABELS } from '@/constants'
 import BottomNav from '@/components/ui/BottomNav'
+import { useSearch } from '@/context/SearchContext'
 import RecordEditSheet from '@/components/ui/RecordEditSheet'
 import CalendarView from '@/components/ui/CalendarView'
 import DayRecordsSheet from '@/components/ui/DayRecordsSheet'
@@ -18,6 +19,7 @@ export default function TeacherDashboard() {
   const user = useAuthStore((s) => s.user)
   const logout = useAuthStore((s) => s.logout)
   const queryClient = useQueryClient()
+  const { openSearch } = useSearch()
 
   const [showPinModal, setShowPinModal] = useState(false)
   const [pinForm, setPinForm] = useState({ current: '', next: '', confirm: '' })
@@ -129,6 +131,16 @@ export default function TeacherDashboard() {
             <p className="text-gray-400 text-sm mt-1">{formatDate(today)}</p>
           </div>
           <div className="flex gap-1.5 mt-1">
+            <button
+              onClick={openSearch}
+              className="lg:hidden text-gray-400 active:text-[#00b4d8] transition-colors p-1.5"
+              aria-label="환자 검색"
+            >
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <circle cx="9" cy="9" r="6" stroke="currentColor" strokeWidth="1.8" />
+                <path d="M14 14L18 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+              </svg>
+            </button>
             <button
               onClick={() => window.open('/manual.html', '_blank')}
               className="text-xs text-gray-400 bg-gray-100 px-3 py-1.5 rounded-full active:bg-gray-200 transition-colors"

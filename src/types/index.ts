@@ -110,6 +110,7 @@ export interface Inquiry {
   error_code: string | null
   message: string
   is_read: boolean
+  is_resolved: boolean
   created_at: string
 }
 

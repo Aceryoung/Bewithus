@@ -48,3 +48,17 @@
     padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
   }
 }
+
+/* 데스크탑: 사이드바(220px) 확보 후 #root 확장 */
+@media (min-width: 1024px) {
+  #root {
+    max-width: calc(100vw - 220px);
+    margin-left: 220px;
+    margin-right: 0;
+  }
+
+  .pb-nav,
+  .pb-nav-lg {
+    padding-bottom: 1.5rem;
+  }
+}

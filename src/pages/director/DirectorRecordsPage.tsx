@@ -132,7 +132,7 @@ export default function DirectorRecordsPage() {
 
   return (
     <div className="flex flex-col min-h-dvh bg-[#f7f8fc]">
-      <PageHeader title="건수 현황" />
+      <PageHeader title="건수 현황" showSearch />
 
       <div className="flex bg-white border-b border-gray-100 px-4 pt-2">
         {(['daily', 'monthly'] as ViewTab[]).map((t) => (

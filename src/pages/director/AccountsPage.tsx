@@ -138,7 +138,7 @@ export default function AccountsPage() {
   if (isLoading) {
     return (
       <div className="flex flex-col min-h-dvh pb-nav">
-        <PageHeader title="직원 관리" />
+        <PageHeader title="직원 관리" showSearch />
         <LoadingSpinner />
       </div>
     )
@@ -147,7 +147,7 @@ export default function AccountsPage() {
   if (error) {
     return (
       <div className="flex flex-col min-h-dvh pb-nav">
-        <PageHeader title="직원 관리" />
+        <PageHeader title="직원 관리" showSearch />
         <ErrorState onRetry={refetch} />
       </div>
     )
@@ -161,7 +161,7 @@ export default function AccountsPage() {
 
   return (
     <div className="flex flex-col min-h-dvh pb-nav">
-      <PageHeader title="직원 관리" />
+      <PageHeader title="직원 관리" showSearch />
 
       {/* 탭 */}
       <div className="bg-white border-b border-gray-100 px-4">

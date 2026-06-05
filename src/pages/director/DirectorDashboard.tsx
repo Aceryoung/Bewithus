@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { formatKRW } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth'
 import BottomNav from '@/components/ui/BottomNav'
+import { useSearch } from '@/context/SearchContext'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
 import ErrorState from '@/components/ui/ErrorState'
 import CalendarView from '@/components/ui/CalendarView'
@@ -29,6 +30,7 @@ export default function DirectorDashboard() {
   const user = useAuthStore((s) => s.user)
   const logout = useAuthStore((s) => s.logout)
   const queryClient = useQueryClient()
+  const { openSearch } = useSearch()
 
   const [showPinModal, setShowPinModal] = useState(false)
   const [pinForm, setPinForm] = useState({ current: '', next: '', confirm: '' })
@@ -139,6 +141,16 @@ export default function DirectorDashboard() {
             <p className="text-gray-400 text-sm mt-1">이달 통합 현황</p>
           </div>
           <div className="flex items-center gap-2 mt-1">
+            <button
+              onClick={openSearch}
+              className="lg:hidden text-gray-400 active:text-[#00b4d8] transition-colors p-1.5"
+              aria-label="환자 검색"
+            >
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <circle cx="9" cy="9" r="6" stroke="currentColor" strokeWidth="1.8" />
+                <path d="M14 14L18 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+              </svg>
+            </button>
             <div className="flex items-center gap-1.5 bg-[#f0f9e8] border border-[#7db83a]/30 px-2.5 py-1.5 rounded-full">
               <span className="w-1.5 h-1.5 rounded-full bg-[#7db83a] animate-pulse" />
               <span className="text-[#7db83a] text-xs font-semibold">실시간</span>

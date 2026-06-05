@@ -443,7 +443,7 @@ export default function PaymentPage() {
     )}
     <div className="flex flex-col min-h-dvh bg-[#f7f8fc]">
       <SavedToast count={savedCountN || savedPayN} />
-      <PageHeader title="결제 / 건수" showBack />
+      <PageHeader title="결제 / 건수" showBack showSearch />
 
       {/* 탭 */}
       <div className="flex bg-white border-b border-gray-100 px-4 pt-2">

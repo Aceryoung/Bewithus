@@ -40,7 +40,7 @@ export default function BottomNav() {
     TEACHER_NAVS
 
   return (
-    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-white border-t border-gray-200 flex z-50" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+    <nav className="lg:hidden fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-white border-t border-gray-200 flex z-50" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
       {navs.map((nav) => (
         <NavLink
           key={nav.to}
