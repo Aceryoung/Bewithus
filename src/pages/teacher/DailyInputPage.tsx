@@ -12,6 +12,8 @@ import SavedToast from '@/components/ui/SavedToast'
 import { useFeeTables, useMonthlyUsed, qk } from '@/hooks/queries'
 import type { Attendance, PaymentMethod } from '@/types'
 
+const EMPTY_MONTHLY_USED: Record<string, Record<PaymentMethod, number>> = {}
+
 interface Row {
   id: string
   patient_name: string
@@ -20,6 +22,7 @@ interface Row {
   unit_price: number
   session_count: number
   payment_method: PaymentMethod
+  secondary_methods?: PaymentMethod[]
   support_amount: number
   self_payment: number
   total_amount: number
@@ -89,7 +92,7 @@ export default function DailyInputPage() {
   const fileRef = useRef<HTMLInputElement>(null)
 
   const { data: feeTables = [] } = useFeeTables(user?.branch_id ?? null)
-  const { data: monthlyUsed = {} } = useMonthlyUsed(user?.id ?? null, date.slice(0, 7))
+  const { data: monthlyUsed = EMPTY_MONTHLY_USED } = useMonthlyUsed(user?.id ?? null, date.slice(0, 7))
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -120,11 +123,11 @@ export default function DailyInputPage() {
         date,
         patient_name: r.patient_name.trim(),
         attendance: r.attendance,
-        fee_type: r.skip_amount ? '금액없음' : (r.fee_type || '직접입력'),
+        fee_type: r.skip_amount ? (r.fee_type || '금액없음') : (r.fee_type || '직접입력'),
         session_count: r.session_count,
         unit_price: r.skip_amount ? 0 : r.unit_price,
         total_amount: r.total_amount,
-        payment_method: r.payment_method,
+        payment_method: r.payment_method === 'voucher_only' ? (r.secondary_methods?.[0] ?? 'other') : r.payment_method,
         payment_note: r.payment_note || null,
         support_amount: r.support_amount,
         self_payment: r.self_payment,
@@ -247,6 +250,28 @@ export default function DailyInputPage() {
               </button>
             )}
 
+            {/* 요금 종류 선택 (금액 없음 모드) */}
+            {row.attendance !== 'absent' && row.skip_amount && (
+              <div>
+                <p className="text-xs text-gray-400 mb-1.5">요금 종류</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {feeTables.map((ft) => (
+                    <button
+                      key={ft.id}
+                      onClick={() => updateRow(row.id, { fee_type: ft.fee_type })}
+                      className={`py-2 px-3 rounded-lg text-sm font-medium text-left transition-colors
+                        ${row.fee_type === ft.fee_type
+                          ? 'bg-[#e8f7fb] text-[#007a93] border border-[#00b4d8]'
+                          : 'bg-gray-50 text-gray-600 border border-gray-200'}`}
+                    >
+                      <span>{ft.fee_type}</span>
+                      <span className="text-xs text-gray-400 block">{formatKRW(ft.unit_price)}/회</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* 요금 종류 / 횟수 / 결제방식 / 금액 미리보기 / 영수증 (결석·금액없음 제외) */}
             {row.attendance !== 'absent' && !row.skip_amount && (
               <>
@@ -266,6 +291,8 @@ export default function DailyInputPage() {
                   remainingSupport={0}
                   selfPayment={row.self_payment}
                   onChange={(updates) => updateRow(row.id, updates as Partial<Row>)}
+                  allowVoucherAsPrimary
+                  branchName={user?.branch_name ?? undefined}
                 />
 
                 {/* 영수증 첨부 */}

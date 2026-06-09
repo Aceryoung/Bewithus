@@ -18,6 +18,10 @@ import { useFeeTables, useMonthlyUsed, useRecentPatients, useBranchVoucherConfig
 import type { Attendance, PaymentMethod } from '@/types'
 import type { AppErrorCode } from '@/lib/appErrors'
 
+const EMPTY_MONTHLY_USED: Record<string, Record<PaymentMethod, number>> = {}
+const EMPTY_PATIENT_VOUCHERS: Record<string, PaymentMethod[]> = {}
+const EMPTY_REMAINING_SUPPORT: Record<string, { amount: number; recordId: string }> = {}
+
 type ActiveTab = 'count' | 'payment'
 
 /* ── 건수 전용 행 ── */
@@ -28,6 +32,7 @@ interface CountRow {
   session_count: number
   birth_year?: string
   billing_month?: string
+  fee_type?: string
   _countDisplay?: string
 }
 
@@ -189,11 +194,11 @@ export default function PaymentPage() {
   const fileRef = useRef<HTMLInputElement>(null)
 
   const { data: feeTables = [] } = useFeeTables(user?.branch_id ?? null)
-  const { data: monthlyUsed = {} } = useMonthlyUsed(user?.id ?? null, date.slice(0, 7))
+  const { data: monthlyUsed = EMPTY_MONTHLY_USED } = useMonthlyUsed(user?.id ?? null, date.slice(0, 7))
   const { data: recentPatients = [] } = useRecentPatients(user?.id ?? null)
   const { data: voucherConfig } = useBranchVoucherConfig(user?.branch_id ?? null)
-  const { data: patientLastVouchers = {} } = usePatientLastVouchers(user?.id ?? null)
-  const { data: patientRemainingSupport = {} } = usePatientRemainingSupport(user?.id ?? null)
+  const { data: patientLastVouchers = EMPTY_PATIENT_VOUCHERS } = usePatientLastVouchers(user?.id ?? null)
+  const { data: patientRemainingSupport = EMPTY_REMAINING_SUPPORT } = usePatientRemainingSupport(user?.id ?? null)
 
   const branchLimits = useMemo(() => {
     if (voucherConfig && voucherConfig.length > 0) {
@@ -302,7 +307,7 @@ export default function PaymentPage() {
         patient_name: r.patient_name.trim(),
         birth_year: r.birth_year?.trim() || null,
         attendance: r.attendance,
-        fee_type: '금액없음',
+        fee_type: r.fee_type || '금액없음',
         session_count: r.session_count,
         unit_price: 0,
         total_amount: 0,
@@ -359,7 +364,7 @@ export default function PaymentPage() {
         session_count: r.session_count,
         unit_price: r.unit_price,
         total_amount: r.total_amount,
-        payment_method: r.payment_method,
+        payment_method: r.payment_method === 'voucher_only' ? (r.secondary_methods[0] ?? 'other') : r.payment_method,
         payment_note: r.payment_note || null,
         support_amount: r.support_amount,
         secondary_method: r.secondary_methods[0] ?? null,
@@ -525,6 +530,28 @@ export default function PaymentPage() {
                   </button>
                 ))}
               </div>
+
+              {/* 요금 종류 */}
+              {row.attendance !== 'absent' && (
+                <div>
+                  <p className="text-xs text-gray-400 mb-1.5">요금 종류</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {feeTables.map((ft) => (
+                      <button
+                        key={ft.id}
+                        onClick={() => setCountRows((prev) => prev.map((r) => r.id === row.id ? { ...r, fee_type: ft.fee_type } : r))}
+                        className={`py-2 px-3 rounded-lg text-sm font-medium text-left transition-colors
+                          ${row.fee_type === ft.fee_type
+                            ? 'bg-[#e8f7fb] text-[#007a93] border border-[#00b4d8]'
+                            : 'bg-gray-50 text-gray-600 border border-gray-200'}`}
+                      >
+                        <span>{ft.fee_type}</span>
+                        <span className="text-xs text-gray-400 block">{formatKRW(ft.unit_price)}/회</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* 횟수 */}
               <div>
@@ -717,6 +744,7 @@ export default function PaymentPage() {
                 branchName={user?.branch_name ?? undefined}
                 voucherConfig={voucherConfig}
                 allowHalfSession={user?.branch_id === '22222222-0000-0000-0000-000000000002'}
+                allowVoucherAsPrimary
               />
 
               {/* 영수증 첨부 */}
@@ -820,36 +848,40 @@ export default function PaymentPage() {
 
       {/* 저장 버튼 고정 */}
       {tab === 'count' && (
-        <div className="fixed left-1/2 -translate-x-1/2 w-full max-w-[480px] px-4 pb-3 pt-2 bg-white border-t border-gray-100 shadow-lg" style={{ bottom: "calc(4rem + env(safe-area-inset-bottom, 0px))" }}>
-          <button
-            onClick={() => void handleSaveCount()}
-            disabled={savingCount || countRows.every((r) => !r.patient_name.trim())}
-            className="w-full py-4 bg-[#00b4d8] text-white rounded-xl font-bold text-base active:bg-[#0096b8] disabled:opacity-40 transition-colors"
-          >
-            {savingCount ? '저장 중...' : '건수 저장하기'}
-          </button>
+        <div className="fixed left-0 lg:left-[220px] right-0 bg-[#f7f8fc] pb-3 pt-2" style={{ bottom: "calc(4rem + env(safe-area-inset-bottom, 0px))" }}>
+          <div className="md:max-w-3xl md:mx-auto px-4">
+            <button
+              onClick={() => void handleSaveCount()}
+              disabled={savingCount || countRows.every((r) => !r.patient_name.trim())}
+              className="w-full py-4 bg-[#00b4d8] text-white rounded-xl font-bold text-base active:bg-[#0096b8] disabled:opacity-40 transition-colors"
+            >
+              {savingCount ? '저장 중...' : '건수 저장하기'}
+            </button>
+          </div>
         </div>
       )}
 
       {tab === 'payment' && (
-        <div className="fixed left-1/2 -translate-x-1/2 w-full max-w-[480px] px-4 pb-3 pt-2 bg-white border-t border-gray-100 shadow-lg" style={{ bottom: "calc(4rem + env(safe-area-inset-bottom, 0px))" }}>
-          <div className="flex justify-between text-sm text-gray-500 py-2">
-            <span>자부담 합계</span>
-            <span className="font-bold text-gray-900">{formatKRW(totalSelf)}</span>
-          </div>
-          {totalSupport > 0 && (
-            <div className="flex justify-between text-sm text-[#7db83a] pb-2">
-              <span>지원금 합계</span>
-              <span>{formatKRW(totalSupport)}</span>
+        <div className="fixed left-0 lg:left-[220px] right-0 bg-[#f7f8fc] pb-3 pt-2" style={{ bottom: "calc(4rem + env(safe-area-inset-bottom, 0px))" }}>
+          <div className="md:max-w-3xl md:mx-auto px-4">
+            <div className="flex justify-between text-sm text-gray-500 py-1.5">
+              <span>자부담 합계</span>
+              <span className="font-bold text-gray-900">{formatKRW(totalSelf)}</span>
             </div>
-          )}
-          <button
-            onClick={() => void handleSavePay()}
-            disabled={savingPay || payRows.every((r) => !r.patient_name.trim()) || payRows.some((r) => r.patient_name.trim() && r.billing_months.length === 0)}
-            className="w-full py-4 bg-[#00b4d8] text-white rounded-xl font-bold text-base active:bg-[#0096b8] disabled:opacity-40 transition-colors"
-          >
-            {savingPay ? '저장 중...' : '결제 저장하기'}
-          </button>
+            {totalSupport > 0 && (
+              <div className="flex justify-between text-sm text-[#7db83a] pb-1.5">
+                <span>지원금 합계</span>
+                <span>{formatKRW(totalSupport)}</span>
+              </div>
+            )}
+            <button
+              onClick={() => void handleSavePay()}
+              disabled={savingPay || payRows.every((r) => !r.patient_name.trim()) || payRows.some((r) => r.patient_name.trim() && r.billing_months.length === 0)}
+              className="w-full py-4 bg-[#00b4d8] text-white rounded-xl font-bold text-base active:bg-[#0096b8] disabled:opacity-40 transition-colors"
+            >
+              {savingPay ? '저장 중...' : '결제 저장하기'}
+            </button>
+          </div>
         </div>
       )}
     </div>

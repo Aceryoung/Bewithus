@@ -3,7 +3,7 @@ export type BranchId = 'branch1' | 'branch2'
 export type Attendance = 'present' | 'absent' | 'makeup' | 'payment'
 export type PaymentMethod =
   | 'education' | 'sports_voucher' | 'after_school'
-  | 'card' | 'cash' | 'bank_transfer' | 'other'
+  | 'card' | 'cash' | 'bank_transfer' | 'other' | 'voucher_only'
   | 'developmental' | 'disabled_sports' | 'senior_voucher' | 'sci_rehab' | 'after_school_fee'
 export type MakeupStatus = 'pending' | 'completed'
 

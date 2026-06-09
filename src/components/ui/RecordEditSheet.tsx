@@ -228,7 +228,7 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
       unit_price: state.attendance === 'absent' ? 0 : state.unit_price,
       session_count: state.session_count,
       total_amount: total,
-      payment_method: state.payment_method,
+      payment_method: state.payment_method === 'voucher_only' ? (state.secondary_methods[0] ?? 'other') : state.payment_method,
       payment_note: state.payment_method === 'other' ? (state.payment_note || null) : null,
       support_amount: totalSupportUsed,
       secondary_method: state.secondary_methods[0] ?? null,
@@ -336,6 +336,54 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
             ))}
           </div>
 
+          {/* 건수 기록일 때 요금 종류 + 횟수 */}
+          {state.attendance !== 'payment' && state.attendance !== 'absent' && (
+            <>
+              <div>
+                <p className="text-xs text-gray-400 mb-1.5">요금 종류</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {feeTables.map((ft) => (
+                    <button
+                      key={ft.id}
+                      onClick={() => update({ fee_type: ft.fee_type, unit_price: ft.unit_price })}
+                      className={`py-2 px-3 rounded-lg text-sm font-medium text-left transition-colors
+                        ${state.fee_type === ft.fee_type
+                          ? 'bg-[#e8f7fb] text-[#007a93] border border-[#00b4d8]'
+                          : 'bg-gray-50 text-gray-600 border border-gray-200'}`}
+                    >
+                      <span>{ft.fee_type}</span>
+                      <span className="text-xs text-gray-400 block">{ft.unit_price > 0 ? `${ft.unit_price.toLocaleString()}원/회` : ''}</span>
+                    </button>
+                  ))}
+                </div>
+                {state.fee_type && (
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    placeholder="금액 직접입력 (원)"
+                    value={state.unit_price || ''}
+                    onKeyDown={(e) => { if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault() }}
+                    onChange={(e) => update({ unit_price: Math.max(0, Number(e.target.value)) })}
+                    className="w-full mt-2 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#00b4d8]"
+                  />
+                )}
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 mb-1.5">횟수</p>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={16}
+                  value={state.session_count || ''}
+                  onKeyDown={(e) => { if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault() }}
+                  onChange={(e) => update({ session_count: Math.min(16, Math.max(1, Math.round(Number(e.target.value) || 1))) })}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#00b4d8]"
+                />
+              </div>
+            </>
+          )}
+
           {/* 결제 기록일 때만 결제 관련 항목 표시 */}
           {state.attendance === 'payment' && (
             <>
@@ -368,6 +416,7 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
                 onChange={update}
                 voucherConfig={voucherConfig}
                 allowHalfSession={record.branch_id === '22222222-0000-0000-0000-000000000002'}
+                allowVoucherAsPrimary
               />
             </>
           )}

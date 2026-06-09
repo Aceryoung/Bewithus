@@ -15,6 +15,7 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   cash: '현금',
   bank_transfer: '계좌이체',
   other: '직접입력',
+  voucher_only: '전액 바우처',
   developmental: '발달바우처',
   disabled_sports: '장애인스포츠',
   senior_voucher: '노인바우처',

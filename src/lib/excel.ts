@@ -42,6 +42,7 @@ function colLetter(n: number): string {
 /** 한 환자의 월 집계 */
 interface PatientRow {
   name: string
+  feeTypes: string
   pendingMakeup: number | ''
   makeupDone: number
   count: number
@@ -109,8 +110,13 @@ function buildPatientRows(
       .map((m) => `${parseInt(m.slice(5))}월`)
       .join(', ')
 
+    const uniqueFeeTypes = [...new Set(
+      rows.map((r) => r.fee_type).filter((ft) => ft && ft !== '금액없음' && ft !== '직접입력')
+    )]
+
     return {
       name,
+      feeTypes:     uniqueFeeTypes.join(', '),
       pendingMakeup: branchName === '2호점' ? absent.length : (pendingMakeups[name] ?? ''),
       makeupDone:   sumSessions(makeup),
       count:        sumSessions(present),
@@ -152,7 +158,7 @@ function buildSummarySheet(
     patientRows.some((p) => (p.vouchers[v] ?? 0) > 0)
   )
 
-  const totalCols = 7 + usedVouchers.length + 2 // 고정 7 + 바우처 + 남은지원금 + 비고
+  const totalCols = 8 + usedVouchers.length + 2 // 고정 8 + 바우처 + 남은지원금 + 비고
   const lastColLetter = colLetter(totalCols)
 
   /* 월 제목 행 */
@@ -167,6 +173,7 @@ function buildSummarySheet(
   /* 컬럼 정의 */
   const columns: ExcelJS.Column[] = [
     { key: 'name',          width: 10 },
+    { key: 'feeTypes',      width: 12 },
     { key: 'pendingMakeup', width: 9  },
     { key: 'makeupDone',    width: 7  },
     { key: 'count',         width: 7  },
@@ -181,7 +188,7 @@ function buildSummarySheet(
   ws.columns = columns
 
   const headers = [
-    '이름', '남은보강', '보강', '건수', '건수금액', '결제금액', '날짜', '청구 월',
+    '이름', '요금 종류', '남은보강', '보강', '건수', '건수금액', '결제금액', '날짜', '청구 월',
     ...usedVouchers.map((v) => VOUCHER_COLUMN_LABELS[v]),
     '남은지원금', '비고',
   ]
@@ -200,6 +207,7 @@ function buildSummarySheet(
     const voucherValues = usedVouchers.map((v) => p.vouchers[v] || '')
     const row = ws.addRow([
       p.name,
+      p.feeTypes,
       p.pendingMakeup,
       p.makeupDone || '',
       p.count || '',
@@ -212,8 +220,8 @@ function buildSummarySheet(
       p.note,
     ])
 
-    /* 금액 셀 포맷: totalAmount(5), selfPayment(6), voucher cols, remaining */
-    const amountColIndices = [5, 6, ...usedVouchers.map((_, i) => 9 + i), 9 + usedVouchers.length]
+    /* 금액 셀 포맷: totalAmount(6), selfPayment(7), voucher cols, remaining */
+    const amountColIndices = [6, 7, ...usedVouchers.map((_, i) => 10 + i), 10 + usedVouchers.length]
     amountColIndices.forEach((col) => {
       const cell = row.getCell(col)
       if (typeof cell.value === 'number' && cell.value !== 0) cell.numFmt = '₩#,##0'
@@ -231,15 +239,15 @@ function buildSummarySheet(
   ws.addRow([])
 
   const totalRow = ws.addRow([
-    '총합', `보강총합`, makeupTotal, `실적총합`, countTotal, amountTotal,
-    '', ...usedVouchers.map(() => ''), '', '',
+    '총합', '', `보강총합`, makeupTotal, `실적총합`, countTotal, amountTotal,
+    '', '', ...usedVouchers.map(() => ''), '', '',
   ])
   totalRow.font = { bold: true }
-  totalRow.getCell(6).numFmt = '₩#,##0'
+  totalRow.getCell(7).numFmt = '₩#,##0'
   totalRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD5F0F5' } }
 
   const grandRow = ws.addRow([
-    `${teacherName} 총실적`, makeupTotal + countTotal,
+    `${teacherName} 총실적`, '', makeupTotal + countTotal,
     '', '', '', '', '', ...usedVouchers.map(() => ''), '', '',
   ])
   grandRow.font = { bold: true, color: { argb: 'FF007A93' } }

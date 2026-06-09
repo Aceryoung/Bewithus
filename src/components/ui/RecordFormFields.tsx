@@ -31,10 +31,11 @@ interface Props {
   branchName?: string
   voucherConfig?: BranchVoucherConfig[]
   allowHalfSession?: boolean
+  allowVoucherAsPrimary?: boolean
 }
 
 export default function RecordFormFields({
-  state, feeTables, total, voucherSupports, remainingSupport, appliedRemaining, selfPayment, onChange, branchName, voucherConfig, allowHalfSession = false,
+  state, feeTables, total, voucherSupports, remainingSupport, appliedRemaining, selfPayment, onChange, branchName, voucherConfig, allowHalfSession = false, allowVoucherAsPrimary = false,
 }: Props) {
   const totalSupport = Object.values(voucherSupports).reduce((a, b) => a + (b ?? 0), 0)
   const [countDisplay, setCountDisplay] = useState(String(state.session_count))
@@ -86,21 +87,12 @@ export default function RecordFormFields({
               <span className="text-xs text-gray-400 block">{formatKRW(ft.unit_price)}/회</span>
             </button>
           ))}
-          <button
-            onClick={() => onChange({ fee_type: '직접입력', unit_price: 0 })}
-            className={`py-2 px-3 rounded-lg text-sm font-medium text-left transition-colors
-              ${state.fee_type === '직접입력'
-                ? 'bg-[#e8f7fb] text-[#007a93] border border-[#00b4d8]'
-                : 'bg-gray-50 text-gray-600 border border-gray-200'}`}
-          >
-            직접입력
-          </button>
         </div>
-        {state.fee_type === '직접입력' && (
+        {state.fee_type && (
           <input
             type="number"
             inputMode="numeric"
-            placeholder="(원)"
+            placeholder="금액 직접입력 (원)"
             value={state.unit_price || ''}
             onKeyDown={(e) => { if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault() }}
             onChange={(e) => onChange({ unit_price: Math.max(0, Number(e.target.value)) })}
@@ -166,6 +158,15 @@ export default function RecordFormFields({
             </button>
           ))}
         </div>
+        {allowVoucherAsPrimary && (
+          <button
+            onClick={() => onChange({ payment_method: state.payment_method === 'voucher_only' ? 'card' : 'voucher_only' })}
+            className={`w-full mt-1.5 py-2 rounded-lg text-xs font-medium transition-colors
+              ${state.payment_method === 'voucher_only' ? 'bg-[#7db83a] text-white' : 'bg-gray-100 text-gray-600'}`}
+          >
+            전액 바우처
+          </button>
+        )}
       </div>
 
       {/* 결제 방식 직접입력 메모 */}

@@ -69,7 +69,7 @@ export function useMonthlyUsed(teacherId: string | null, billingMonth: string) {
         if (!used[name]) {
           used[name] = {
             education: 0, sports_voucher: 0, after_school: 0,
-            card: 0, cash: 0, bank_transfer: 0, other: 0,
+            card: 0, cash: 0, bank_transfer: 0, other: 0, voucher_only: 0,
             developmental: 0, disabled_sports: 0, senior_voucher: 0, sci_rehab: 0, after_school_fee: 0,
           }
         }
