@@ -374,10 +374,9 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
                   type="number"
                   inputMode="numeric"
                   min={1}
-                  max={16}
                   value={state.session_count || ''}
                   onKeyDown={(e) => { if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault() }}
-                  onChange={(e) => update({ session_count: Math.min(16, Math.max(1, Math.round(Number(e.target.value) || 1))) })}
+                  onChange={(e) => update({ session_count: Math.max(1, Math.round(Number(e.target.value) || 1)) })}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#00b4d8]"
                 />
               </div>

@@ -570,12 +570,12 @@ export default function PaymentPage() {
                       setCountRows((prev) => prev.map((r) => {
                         if (r.id !== row.id) return r
                         const updates: Partial<CountRow> = { _countDisplay: text }
-                        if (!isNaN(num) && num > 0) updates.session_count = Math.min(16, Math.max(0.5, Math.round(num * 2) / 2))
+                        if (!isNaN(num) && num > 0) updates.session_count = Math.max(0.5, Math.round(num * 2) / 2)
                         return { ...r, ...updates }
                       }))
                     }}
                     onBlur={(e) => {
-                      const n = Math.min(16, Math.max(0.5, Math.round((parseFloat(e.target.value) || 0.5) * 2) / 2))
+                      const n = Math.max(0.5, Math.round((parseFloat(e.target.value) || 0.5) * 2) / 2)
                       setCountRows((prev) => prev.map((r) => r.id === row.id ? { ...r, session_count: n, _countDisplay: String(n) } : r))
                     }}
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#00b4d8]"
@@ -585,12 +585,11 @@ export default function PaymentPage() {
                     type="number"
                     inputMode="numeric"
                     min={1}
-                    max={16}
                     placeholder="횟수 입력"
                     value={row.session_count || ''}
                     onKeyDown={(e) => { if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault() }}
                     onChange={(e) => {
-                      const n = Math.min(16, Math.max(1, Math.round(Number(e.target.value) || 1)))
+                      const n = Math.max(1, Math.round(Number(e.target.value) || 1))
                       setCountRows((prev) => prev.map((r) => r.id === row.id ? { ...r, session_count: n } : r))
                     }}
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#00b4d8]"

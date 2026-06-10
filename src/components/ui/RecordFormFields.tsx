@@ -116,10 +116,10 @@ export default function RecordFormFields({
               const text = e.target.value
               setCountDisplay(text)
               const num = parseFloat(text)
-              if (!isNaN(num) && num > 0) onChange({ session_count: Math.min(16, Math.max(0.5, Math.round(num * 2) / 2)) })
+              if (!isNaN(num) && num > 0) onChange({ session_count: Math.max(0.5, Math.round(num * 2) / 2) })
             }}
             onBlur={(e) => {
-              const n = Math.min(16, Math.max(0.5, Math.round((parseFloat(e.target.value) || 0.5) * 2) / 2))
+              const n = Math.max(0.5, Math.round((parseFloat(e.target.value) || 0.5) * 2) / 2)
               setCountDisplay(String(n))
               onChange({ session_count: n })
             }}
@@ -130,12 +130,11 @@ export default function RecordFormFields({
             type="number"
             inputMode="numeric"
             min={1}
-            max={16}
             placeholder="횟수 입력"
             value={state.session_count || ''}
             onKeyDown={(e) => { if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault() }}
             onChange={(e) => {
-              const n = Math.min(16, Math.max(1, Math.round(Number(e.target.value) || 1)))
+              const n = Math.max(1, Math.round(Number(e.target.value) || 1))
               onChange({ session_count: n })
             }}
             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#00b4d8]"
