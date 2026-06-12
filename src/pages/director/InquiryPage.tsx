@@ -6,6 +6,7 @@ import BottomNav from '@/components/ui/BottomNav'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
 import ErrorState from '@/components/ui/ErrorState'
 import { useInquiries } from '@/hooks/queries'
+import { APP_ERRORS } from '@/lib/appErrors'
 import type { Inquiry } from '@/types'
 
 function timeAgo(dateStr: string): string {
@@ -104,6 +105,9 @@ export default function InquiryPage() {
                       </div>
                       <span className="text-xs text-gray-400 shrink-0">{timeAgo(inquiry.created_at)}</span>
                     </div>
+                    {inquiry.error_code && APP_ERRORS[inquiry.error_code as keyof typeof APP_ERRORS] && (
+                      <p className="text-xs text-red-400">{APP_ERRORS[inquiry.error_code as keyof typeof APP_ERRORS]}</p>
+                    )}
                     <p className="text-sm text-gray-700 leading-relaxed">{inquiry.message}</p>
                     {isAdmin && (
                       <div className="flex justify-end pt-1">
