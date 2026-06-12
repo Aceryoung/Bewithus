@@ -26,7 +26,7 @@ export function isAppError(err: unknown): err is AppError {
 }
 
 const DB_CONSTRAINT_MESSAGES: Record<string, string> = {
-  records_session_count_check: '횟수는 0.5~16 범위만 입력 가능합니다.',
+  records_session_count_check: '횟수는 0.5 이상이어야 합니다.',
   records_attendance_check: '유효하지 않은 출결 상태입니다.',
   records_payment_method_check: '유효하지 않은 결제 방식입니다.',
 }

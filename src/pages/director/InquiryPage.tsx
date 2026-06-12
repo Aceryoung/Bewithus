@@ -19,7 +19,7 @@ function timeAgo(dateStr: string): string {
 export default function InquiryPage() {
   const queryClient = useQueryClient()
   const user = useAuthStore((s) => s.user)
-  const isAdmin = user?.role === 'admin'
+  const isAdmin = user?.role === 'admin' || user?.role === 'director'
   const { data: inquiries = [], isLoading, error, refetch } = useInquiries()
 
   const markRead = async (inquiry: Inquiry) => {
