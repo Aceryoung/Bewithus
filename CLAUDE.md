@@ -1,6 +1,8 @@
-# CLAUDE.md — bewithus-emr
+# CLAUDE.md
 
-비위더스 치료 센터의 EMR(전자의무기록) 시스템. 선생님과 대표(원장)의 두 역할로 구분된 진료 기록 관리 앱.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+비위더스 치료 센터의 EMR(전자의무기록) 시스템. `teacher` / `director` / `admin` 세 역할로 구분된 진료 기록 관리 앱.
 
 ---
 
@@ -120,19 +122,30 @@ src/
 ## 🔧 핵심 도메인 타입
 
 ```typescript
-Role = 'director' | 'teacher'
-Attendance = 'present' | 'absent' | 'makeup'
+Role = 'director' | 'teacher' | 'admin'
+Attendance = 'present' | 'absent' | 'makeup' | 'payment'
 PaymentMethod = 'education' | 'sports_voucher' | 'after_school' | 'card' | 'cash'
+             | 'bank_transfer' | 'other' | 'voucher_only' | 'developmental'
+             | 'disabled_sports' | 'senior_voucher' | 'sci_rehab' | 'after_school_fee'
 MakeupStatus = 'pending' | 'completed'
 ```
 
-주요 엔티티: `User`, `Record`, `MakeupSession`, `FeeTable`, `Branch`
+실제 타입 정의는 항상 `src/types/index.ts`가 정본. 위 목록은 요약이므로 불일치 시 파일을 확인하세요.
+
+주요 엔티티: `User`, `Record`, `MakeupSession`, `FeeTable`, `Branch`, `BranchVoucherConfig`, `Inquiry`
 
 ## 🔐 역할별 접근 제어
 
-- `RequireAuth` — 로그인 필요 (teacher/director 공통)
-- `RequireDirector` — director 역할 전용
+| 역할 | 진입점 | 특이사항 |
+|------|--------|---------|
+| `teacher` | `/teacher` | 자신의 지점 기록만 조회/입력 |
+| `director` | `/director` | 지점 전체 열람·관리 |
+| `admin` | `/director` (공유) | director 권한 + 문의함 조치완료 버튼 노출 |
+
+- `RequireAuth` — 로그인 필요 (모든 역할 공통)
+- `RequireDirector` — director + admin 전용 (teacher 진입 불가)
 - 미로그인 → `/login`, 권한 없음 → 역할에 맞는 대시보드로 리다이렉트
+- BottomNav: `TEACHER_NAVS` / `DIRECTOR_NAVS` / `ADMIN_NAVS` 세 세트로 분기
 
 ## 📐 코딩 규약
 
@@ -174,17 +187,28 @@ MakeupStatus = 'pending' | 'completed'
 ## 🚀 개발 명령어
 
 ```bash
-npm run dev      # 개발 서버 (Vite)
-npm run build    # 프로덕션 빌드
+npm run dev      # 개발 서버 (Vite, http://localhost:5173)
+npm run build    # TypeScript 컴파일 후 Vite 프로덕션 빌드
 npm run lint     # ESLint
 npm run preview  # 빌드 결과물 미리보기
 ```
+
+타입 체크만 별도로 실행: `npx tsc --noEmit`
+
+## 🗄️ DB 마이그레이션 규칙
+
+- 스키마 변경은 반드시 `supabase/migration_vX.XX_*.sql` 파일로 작성
+- 파일 생성 후 Supabase 대시보드 SQL 에디터에서 수동 실행 (로컬 CLI 미사용)
+- 마이그레이션 오류는 리셋 대신 수정 마이그레이션으로 해결 (`DROP CONSTRAINT → ADD CONSTRAINT` 패턴)
+- 최신 스키마 정본: `supabase/schema.sql`
 
 ## 📌 주요 참고 사항
 
 - 이 앱은 **PWA**로 설정되어 있음 (`vite-plugin-pwa`)
 - 치료 기록은 민감한 개인정보 — 데이터 처리 시 주의
 - 지점(branch)별로 데이터가 분리됨 (`branch_id` 필수)
+- 에러 코드 → 한국어 메시지 매핑: `src/lib/appErrors.ts`의 `APP_ERRORS` 객체
+- `pinToPassword(pin)`: PIN에 `@bw` 접미사를 붙여 Supabase Auth 최소 길이를 충족 — 의도된 설계
 
 ---
 
