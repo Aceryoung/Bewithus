@@ -1,9 +1,9 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/auth'
 import { calcSupport } from '@/lib/utils'
 import { ATTENDANCE_LABELS, MONTHLY_SUPPORT_LIMITS } from '@/constants'
-import { uploadReceipt, deleteReceipt } from '@/lib/storage'
+import { uploadReceipt, deleteReceipt, getReceiptSignedUrl } from '@/lib/storage'
 import RecordFormFields from '@/components/ui/RecordFormFields'
 import ErrorModal from '@/components/ui/ErrorModal'
 import { isAppError, friendlyDbError } from '@/lib/appErrors'
@@ -105,14 +105,24 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
   const [errorModal, setErrorModal] = useState<{ code: AppErrorCode; detail?: string } | null>(null)
   const [receiptFile, setReceiptFile] = useState<File | null>(null)
   const [showReceiptPicker, setShowReceiptPicker] = useState(false)
+  const [signedReceiptUrl, setSignedReceiptUrl] = useState<string | null>(null)
   const cameraRef = useRef<HTMLInputElement>(null)
   const galleryRef = useRef<HTMLInputElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (receiptAction === 'none' && record.receipt_url) {
+      getReceiptSignedUrl(record.receipt_url).then((url) => setSignedReceiptUrl(url))
+    } else {
+      setSignedReceiptUrl(null)
+    }
+  }, [record.receipt_url, receiptAction])
+
   const receiptPreview = receiptAction === 'upload' && receiptFile
     ? URL.createObjectURL(receiptFile)
     : receiptAction === 'delete'
     ? null
-    : record.receipt_url ?? null
+    : signedReceiptUrl
 
   const { data: feeTables = [] } = useFeeTables(record.branch_id)
   const { data: voucherConfig = [] } = useBranchVoucherConfig(record.branch_id)

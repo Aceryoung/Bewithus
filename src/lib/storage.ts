@@ -56,7 +56,7 @@ async function compressImage(file: File): Promise<Blob> {
 /**
  * 영수증 이미지 업로드
  * 저장 경로: receipts/{teacherId}/{recordId}.jpg
- * @returns 공개 URL (실패 시 null)
+ * @returns 스토리지 경로 (예: teacherId/recordId.jpg)
  */
 const MAX_FILE_SIZE_MB = 10
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
@@ -87,7 +87,17 @@ export async function uploadReceipt(
 
   if (error) throw createAppError('ERR-301', error.message)
 
-  return supabase.storage.from('receipts').getPublicUrl(path).data.publicUrl
+  return path
+}
+
+/** 스토리지 경로 또는 레거시 공개 URL → 서명된 임시 URL (기본 1시간), 실패 시 null */
+export async function getReceiptSignedUrl(pathOrUrl: string, expiresIn = 3600): Promise<string | null> {
+  // 레거시 공개 URL에서 경로 추출: .../public/receipts/{path}
+  const path = pathOrUrl.startsWith('http')
+    ? (pathOrUrl.match(/\/receipts\/(.+)$/)?.[1] ?? pathOrUrl)
+    : pathOrUrl
+  const { data } = await supabase.storage.from('receipts').createSignedUrl(path, expiresIn)
+  return data?.signedUrl ?? null
 }
 
 /** 영수증 이미지 삭제 */

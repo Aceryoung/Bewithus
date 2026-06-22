@@ -3,6 +3,7 @@ import { usePatientSearch, type PatientSearchRecord } from '@/hooks/queries'
 import { useAuthStore } from '@/store/auth'
 import { formatKRW, formatDate, paymentLabel } from '@/lib/utils'
 import { ATTENDANCE_LABELS, PAYMENT_METHOD_LABELS } from '@/constants'
+import { getReceiptSignedUrl } from '@/lib/storage'
 import PageHeader from '@/components/ui/PageHeader'
 import BottomNav from '@/components/ui/BottomNav'
 import MonthPicker from '@/components/ui/MonthPicker'
@@ -116,12 +117,12 @@ function PatientCard({ patientName, records }: { patientName: string; records: P
                   <span className="text-gray-500 shrink-0">{r.session_count}회</span>
                   <span className="text-gray-400 truncate">{r.teacher.name}</span>
                   {r.receipt_url && (
-                    <a href={r.receipt_url} target="_blank" rel="noreferrer" className="ml-auto text-[#00b4d8] shrink-0" title="영수증">
+                    <button type="button" onClick={async () => { const url = await getReceiptSignedUrl(r.receipt_url!); if (url) window.open(url, '_blank') }} className="ml-auto text-[#00b4d8] shrink-0" title="영수증">
                       <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                         <path d="M2 1h5l3 3v7H2V1z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
                         <path d="M7 1v3h3" stroke="currentColor" strokeWidth="1.2" />
                       </svg>
-                    </a>
+                    </button>
                   )}
                 </div>
               ))}
@@ -152,13 +153,13 @@ function PatientCard({ patientName, records }: { patientName: string; records: P
                     </div>
                   )}
                   {r.receipt_url && (
-                    <a href={r.receipt_url} target="_blank" rel="noreferrer" className="mt-1 flex items-center gap-1 text-[10px] text-[#00b4d8]">
+                    <button type="button" onClick={async () => { const url = await getReceiptSignedUrl(r.receipt_url!); if (url) window.open(url, '_blank') }} className="mt-1 flex items-center gap-1 text-[10px] text-[#00b4d8]">
                       <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
                         <path d="M2 1h5l3 3v7H2V1z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
                         <path d="M7 1v3h3" stroke="currentColor" strokeWidth="1.2" />
                       </svg>
                       영수증 보기
-                    </a>
+                    </button>
                   )}
                 </div>
               ))}

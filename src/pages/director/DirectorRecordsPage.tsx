@@ -4,6 +4,7 @@ import MonthPicker from '@/components/ui/MonthPicker'
 import { useAuthStore } from '@/store/auth'
 import { todayStr, formatKRW, paymentLabel } from '@/lib/utils'
 import { ATTENDANCE_LABELS, PAYMENT_METHOD_LABELS } from '@/constants'
+import { getReceiptSignedUrl } from '@/lib/storage'
 import PageHeader from '@/components/ui/PageHeader'
 import BottomNav from '@/components/ui/BottomNav'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
@@ -381,7 +382,7 @@ export default function DirectorRecordsPage() {
                                   </div>
                                   {r.receipt_url && (
                                     <button
-                                      onClick={() => window.open(r.receipt_url!, '_blank')}
+                                      onClick={async () => { const url = await getReceiptSignedUrl(r.receipt_url!); if (url) window.open(url, '_blank') }}
                                       className="text-sm text-gray-400 bg-gray-100 px-2 py-1 rounded-lg active:bg-gray-200 transition-colors"
                                       title="영수증 보기"
                                     >📷</button>
