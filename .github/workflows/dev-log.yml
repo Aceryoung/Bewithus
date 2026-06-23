@@ -1,0 +1,57 @@
+name: Dev Log
+
+on:
+  push:
+    branches: ['**']
+
+jobs:
+  devlog:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Insert dev log to ERP
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          USER_ID: ${{ secrets.ERP_USER_ID }}
+          PROJECT_ID: ${{ secrets.ERP_PROJECT_ID }}
+          COMMITS_JSON: ${{ toJson(github.event.commits) }}
+        run: |
+          python3 - << 'PYEOF'
+          import json, subprocess, os
+
+          commits = json.loads(os.environ['COMMITS_JSON'])
+          url = os.environ['SUPABASE_URL']
+          key = os.environ['SERVICE_KEY']
+          user_id = os.environ['USER_ID']
+          project_id = os.environ['PROJECT_ID']
+
+          for commit in commits:
+              short = commit['id'][:7]
+              msg = commit['message'].strip().split('\n')[0]
+              log_date = commit['timestamp'][:10]
+              content = f'[{short}] {msg}'
+
+              body = json.dumps({
+                  'user_id': user_id,
+                  'project_id': project_id,
+                  'log_date': log_date,
+                  'content': content
+              })
+
+              result = subprocess.run([
+                  'curl', '-s', '-o', '/dev/null', '-w', '%{http_code}',
+                  '-X', 'POST', f'{url}/rest/v1/project_logs',
+                  '-H', f'apikey: {key}',
+                  '-H', f'Authorization: Bearer {key}',
+                  '-H', 'Content-Type: application/json',
+                  '-H', 'Prefer: return=minimal',
+                  '-d', body
+              ], capture_output=True, text=True)
+
+              http_code = result.stdout.strip()
+              if http_code == '201':
+                  print(f'Dev log inserted: {short} - {msg}')
+              else:
+                  print(f'Failed (HTTP {http_code}): {short} - {msg}')
+                  raise SystemExit(1)
+          PYEOF
