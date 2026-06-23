@@ -39,7 +39,7 @@ jobs:
               })
 
               result = subprocess.run([
-                  'curl', '-s', '-o', '/dev/null', '-w', '%{http_code}',
+                  'curl', '-s', '-w', '\n%{http_code}',
                   '-X', 'POST', f'{url}/rest/v1/project_logs',
                   '-H', f'apikey: {key}',
                   '-H', f'Authorization: Bearer {key}',
@@ -48,10 +48,14 @@ jobs:
                   '-d', body
               ], capture_output=True, text=True)
 
-              http_code = result.stdout.strip()
+              lines = result.stdout.strip().split('\n')
+              http_code = lines[-1]
+              response_body = '\n'.join(lines[:-1])
+
               if http_code == '201':
                   print(f'Dev log inserted: {short} - {msg}')
               else:
                   print(f'Failed (HTTP {http_code}): {short} - {msg}')
+                  print(f'Response: {response_body}')
                   raise SystemExit(1)
           PYEOF
