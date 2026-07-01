@@ -23,8 +23,9 @@ export default function InquiryModal({ errorCode, detail, onClose }: Props) {
       error_code: errorCode ?? null,
       message: message.trim(),
     }).select().single()
+    // 문의는 DB에 저장 완료 — 이메일 전송 실패해도 사용자에게 성공 표시
     if (!error && data) {
-      void supabase.functions.invoke('send-inquiry-email', { body: { record: data } })
+      await supabase.functions.invoke('send-inquiry-email', { body: { record: data } })
     }
     setSending(false)
     setDone(true)

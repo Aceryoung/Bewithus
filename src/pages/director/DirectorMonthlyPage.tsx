@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { formatKRW } from '@/lib/utils'
 import { ATTENDANCE_LABELS, PAYMENT_METHOD_LABELS } from '@/constants'
-import { exportTeacherMonthly, exportAllTeachersMonthly } from '@/lib/excel'
 import PageHeader from '@/components/ui/PageHeader'
 import BottomNav from '@/components/ui/BottomNav'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
@@ -84,13 +83,15 @@ export default function DirectorMonthlyPage() {
           </div>
           <button
             onClick={() =>
-              void exportAllTeachersMonthly(
-                allBranchSummaries.map((s) => ({
-                  teacherName: s.teacher.name,
-                  records: s.records as import('@/types').Record[],
-                  branchName: branches.find((b) => b.id === s.teacher.branch_id)?.name,
-                })),
-                year, month,
+              void import('@/lib/excel').then(({ exportAllTeachersMonthly }) =>
+                exportAllTeachersMonthly(
+                  allBranchSummaries.map((s) => ({
+                    teacherName: s.teacher.name,
+                    records: s.records as import('@/types').Record[],
+                    branchName: branches.find((b) => b.id === s.teacher.branch_id)?.name,
+                  })),
+                  year, month,
+                )
               )
             }
             disabled={allBranchSummaries.length === 0 || isLoading}
@@ -158,7 +159,7 @@ export default function DirectorMonthlyPage() {
                       </div>
                     </button>
                     <button
-                      onClick={() => void exportTeacherMonthly({ teacherName: s.teacher.name, records: s.records as import('@/types').Record[], year, month, branchName: branches.find((b) => b.id === s.teacher.branch_id)?.name })}
+                      onClick={() => void import('@/lib/excel').then(({ exportTeacherMonthly }) => exportTeacherMonthly({ teacherName: s.teacher.name, records: s.records as import('@/types').Record[], year, month, branchName: branches.find((b) => b.id === s.teacher.branch_id)?.name }))}
                       className="flex items-center gap-1 text-xs text-[#00b4d8] bg-[#e8f7fb] px-2.5 py-1.5 rounded-lg active:bg-[#d0eff7] transition-colors shrink-0 mt-0.5"
                     >
                       <span>⬇</span><span>엑셀</span>

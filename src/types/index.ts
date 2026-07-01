@@ -22,6 +22,8 @@ export interface User {
   branch_name: string | null
   is_active: boolean
   pin_must_change: boolean
+  login_failed_count: number
+  login_locked_until: string | null
   created_at: string
 }
 

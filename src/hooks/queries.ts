@@ -198,18 +198,31 @@ export function useDirectorDashboard(monthStart: string, today: string) {
   return useQuery({
     queryKey: qk.directorDashboard(monthStart, today),
     queryFn: async () => {
-      const [branchRes, userRes, recordRes] = await Promise.all([
+      const [branchRes, userRes] = await Promise.all([
         supabase.from('branches').select('id, name'),
         supabase.from('users').select('*').in('role', ['teacher', 'director']).eq('is_active', true),
-        supabase.from('records').select('*').gte('date', monthStart).lte('date', today),
       ])
       if (branchRes.error) throw branchRes.error
       if (userRes.error) throw userRes.error
-      if (recordRes.error) throw recordRes.error
+
+      const PAGE = 1000
+      let allRecords: SessionRecord[] = []
+      let page = 0
+      while (true) {
+        const { data, error } = await supabase
+          .from('records').select('*').gte('date', monthStart).lte('date', today)
+          .order('date', { ascending: false })
+          .range(page * PAGE, (page + 1) * PAGE - 1)
+        if (error) throw error
+        allRecords = allRecords.concat((data ?? []) as SessionRecord[])
+        if (!data || data.length < PAGE) break
+        page++
+      }
+
       return {
         branches: (branchRes.data ?? []) as { id: string; name: string }[],
         users: (userRes.data ?? []) as User[],
-        records: (recordRes.data ?? []) as SessionRecord[],
+        records: allRecords,
       }
     },
     staleTime: 1000 * 30,
@@ -244,14 +257,23 @@ export function useDirectorMonthlyRecords(
     queryFn: async () => {
       const monthStart = `${year}-${String(month).padStart(2, '0')}-01`
       const nextM = month === 12 ? `${year + 1}-01-01` : `${year}-${String(month + 1).padStart(2, '0')}-01`
-      let query = supabase.from('records').select('*').gte('date', monthStart).lt('date', nextM)
-      if (branchId !== 'all') query = query.eq('branch_id', branchId)
-      if (teacherId !== 'all') query = query.eq('teacher_id', teacherId)
-      const { data, error } = await query.order('date', { ascending: false })
-      if (error) throw error
-      return (data ?? []) as SessionRecord[]
+      const PAGE = 1000
+      let all: SessionRecord[] = []
+      let page = 0
+      while (true) {
+        let q = supabase.from('records').select('*').gte('date', monthStart).lt('date', nextM)
+        if (branchId !== 'all') q = q.eq('branch_id', branchId)
+        if (teacherId !== 'all') q = q.eq('teacher_id', teacherId)
+        const { data, error } = await q.order('date', { ascending: false }).range(page * PAGE, (page + 1) * PAGE - 1)
+        if (error) throw error
+        all = all.concat((data ?? []) as SessionRecord[])
+        if (!data || data.length < PAGE) break
+        page++
+      }
+      return all
     },
-    staleTime: 1000 * 60,
+    staleTime: 0,
+    refetchOnMount: 'always',
   })
 }
 
@@ -407,23 +429,37 @@ export function useAccountsData(monthStart: string, today: string) {
   return useQuery({
     queryKey: qk.accountsData(monthStart, today),
     queryFn: async () => {
-      const [branchRes, userRes, recordRes, feeRes] = await Promise.all([
+      const [branchRes, userRes, feeRes] = await Promise.all([
         supabase.from('branches').select('id, name'),
         supabase.from('users').select('*').in('role', ['teacher', 'admin', 'director']).order('name'),
-        supabase.from('records').select('teacher_id, total_amount, self_payment, session_count, attendance').gte('date', monthStart).lte('date', today),
         supabase.from('fee_tables').select('*').eq('is_active', true).order('fee_type'),
       ])
       if (branchRes.error) throw branchRes.error
       if (userRes.error) throw userRes.error
-      if (recordRes.error) throw recordRes.error
       if (feeRes.error) throw feeRes.error
+
+      const PAGE = 1000
+      type AccountRecord = { teacher_id: string; total_amount: number; self_payment: number; session_count: number; attendance: string }
+      let allRecords: AccountRecord[] = []
+      let page = 0
+      while (true) {
+        const { data, error } = await supabase
+          .from('records').select('teacher_id, total_amount, self_payment, session_count, attendance')
+          .gte('date', monthStart).lte('date', today)
+          .range(page * PAGE, (page + 1) * PAGE - 1)
+        if (error) throw error
+        allRecords = allRecords.concat((data ?? []) as AccountRecord[])
+        if (!data || data.length < PAGE) break
+        page++
+      }
+
       // branch_voucher_config: migration 미실행 시 빈 배열로 fallback
       const voucherRes = await supabase
         .from('branch_voucher_config').select('*').eq('is_active', true).order('payment_method')
       return {
         branches: (branchRes.data ?? []) as { id: string; name: string }[],
         users: (userRes.data ?? []) as User[],
-        records: (recordRes.data ?? []) as { teacher_id: string; total_amount: number; self_payment: number; session_count: number; attendance: string }[],
+        records: allRecords,
         feeTables: (feeRes.data ?? []) as FeeTable[],
         voucherConfigs: (voucherRes.error ? [] : voucherRes.data ?? []) as BranchVoucherConfig[],
       }

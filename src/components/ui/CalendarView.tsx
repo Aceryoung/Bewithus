@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import type { Record as SessionRecord } from '@/types'
 import MonthPicker from './MonthPicker'
 
@@ -21,14 +21,17 @@ export default function CalendarView({ year, month, records, onDateSelect, onMon
   const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 
   // 날짜별 출석 통계
-  const stats: Record<string, { presentCount: number; hasAbsent: boolean; hasMakeup: boolean; hasPayment: boolean }> = {}
-  for (const r of records) {
-    if (!stats[r.date]) stats[r.date] = { presentCount: 0, hasAbsent: false, hasMakeup: false, hasPayment: false }
-    if (r.attendance === 'present')      stats[r.date].presentCount += Number(r.session_count ?? 1)
-    else if (r.attendance === 'absent')  stats[r.date].hasAbsent = true
-    else if (r.attendance === 'makeup')  stats[r.date].hasMakeup = true
-    else if (r.attendance === 'payment') stats[r.date].hasPayment = true
-  }
+  const stats = useMemo(() => {
+    const s: Record<string, { presentCount: number; hasAbsent: boolean; hasMakeup: boolean; hasPayment: boolean }> = {}
+    for (const r of records) {
+      if (!s[r.date]) s[r.date] = { presentCount: 0, hasAbsent: false, hasMakeup: false, hasPayment: false }
+      if (r.attendance === 'present')      s[r.date].presentCount += Number(r.session_count ?? 1)
+      else if (r.attendance === 'absent')  s[r.date].hasAbsent = true
+      else if (r.attendance === 'makeup')  s[r.date].hasMakeup = true
+      else if (r.attendance === 'payment') s[r.date].hasPayment = true
+    }
+    return s
+  }, [records])
 
   // 달력 그리드: 앞 빈칸 + 날짜
   const cells: (number | null)[] = [...Array(firstDow).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)]

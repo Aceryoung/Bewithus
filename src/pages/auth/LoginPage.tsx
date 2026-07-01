@@ -25,7 +25,6 @@ export default function LoginPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [pin, setPin] = useState('')
   const [error, setError] = useState('')
-  const [attempts, setAttempts] = useState(0)
   const [lockedUntil, setLockedUntil] = useState<number | null>(null)
   const [countdown, setCountdown] = useState(0)
   const [loginLoading, setLoginLoading] = useState(false)
@@ -71,8 +70,17 @@ export default function LoginPage() {
     setSelectedUser(found)
     setPin('')
     setError('')
-    setAttempts(0)
-    setLockedUntil(null)
+    if (found?.login_locked_until) {
+      const until = new Date(found.login_locked_until).getTime()
+      if (until > Date.now()) {
+        setLockedUntil(until)
+        setError(`${PIN_MAX_ATTEMPTS}회 오류. ${PIN_LOCKOUT_SECONDS}초 후 재시도 가능합니다.`)
+      } else {
+        setLockedUntil(null)
+      }
+    } else {
+      setLockedUntil(null)
+    }
   }
 
   const handlePinInput = (digit: string) => {
@@ -92,16 +100,19 @@ export default function LoginPage() {
     const { error: loginError } = await login(selectedUser.id, pin)
     setLoginLoading(false)
     if (loginError) {
-      const newAttempts = attempts + 1
-      setAttempts(newAttempts)
       setPin('')
-      if (newAttempts >= PIN_MAX_ATTEMPTS) {
-        setLockedUntil(Date.now() + PIN_LOCKOUT_SECONDS * 1000)
+      const { data: lockData } = await supabase.rpc('record_login_failure', { p_user_id: selectedUser.id })
+      const result = lockData as { locked_until: string | null; failed_count: number } | null
+      if (result?.locked_until) {
+        const until = new Date(result.locked_until).getTime()
+        setLockedUntil(until)
         setError(`${PIN_MAX_ATTEMPTS}회 오류. ${PIN_LOCKOUT_SECONDS}초 후 재시도 가능합니다.`)
       } else {
-        setError(`PIN이 올바르지 않습니다. (${newAttempts}/${PIN_MAX_ATTEMPTS})`)
+        const count = result?.failed_count ?? 1
+        setError(`PIN이 올바르지 않습니다. (${count}/${PIN_MAX_ATTEMPTS})`)
       }
     } else {
+      void supabase.rpc('reset_login_attempts', { p_user_id: selectedUser.id })
       const storeUser = useAuthStore.getState().user
       if (storeUser?.pin_must_change) {
         setPinChangeModal(true)
@@ -109,7 +120,7 @@ export default function LoginPage() {
         navigate(selectedUser.role === 'director' || selectedUser.role === 'admin' ? '/director' : '/teacher')
       }
     }
-  }, [pin, selectedUser, lockedUntil, attempts, login, navigate, loginLoading])
+  }, [pin, selectedUser, lockedUntil, login, navigate, loginLoading])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
