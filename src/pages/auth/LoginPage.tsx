@@ -49,7 +49,7 @@ export default function LoginPage() {
     const interval = setInterval(() => {
       const remaining = Math.ceil((lockedUntil - Date.now()) / 1000)
       if (remaining <= 0) {
-        setLockedUntil(null); setAttempts(0); setCountdown(0); clearInterval(interval)
+        setLockedUntil(null); setCountdown(0); clearInterval(interval)
       } else {
         setCountdown(remaining)
       }
