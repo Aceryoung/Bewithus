@@ -32,11 +32,8 @@ export default function DirectorMonthlyPage() {
   const { data: allUsers = [] } = useDirectorUsers()
   const teachers = allUsers.filter((u) => u.role === 'teacher' || u.role === 'director')
 
-  const { data: records = [], isLoading, error, refetch } =
-    useDirectorMonthlyRecords(year, month, selectedBranch, 'all')
-
-  // 전체 다운용: 필터 상태와 무관하게 항상 전체 선생님·전체 지점 데이터
-  const { data: allRecords = [] } =
+  // 항상 전체 기록 — branch 필터는 어떤 선생님을 보여줄지만 제어
+  const { data: allRecords = [], isLoading, error, refetch } =
     useDirectorMonthlyRecords(year, month, 'all', 'all')
 
   const filteredTeachers = selectedBranch === 'all'
@@ -63,7 +60,7 @@ export default function DirectorMonthlyPage() {
     }
   }
 
-  const summaries: TeacherSummary[] = visibleTeachers.map((t) => buildSummary(records, t))
+  const summaries: TeacherSummary[] = visibleTeachers.map((t) => buildSummary(allRecords, t))
   const allBranchSummaries: TeacherSummary[] = teachers.map((t) => buildSummary(allRecords, t))
 
   const prevMonth = () => { if (month === 1) { setYear((y) => y - 1); setMonth(12) } else setMonth((m) => m - 1) }
