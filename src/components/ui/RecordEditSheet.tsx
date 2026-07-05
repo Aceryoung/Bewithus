@@ -111,18 +111,25 @@ export default function RecordEditSheet({ record, onSave, onDelete, onClose }: P
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    if (receiptAction === 'none' && record.receipt_url) {
-      getReceiptSignedUrl(record.receipt_url).then((url) => setSignedReceiptUrl(url))
-    } else {
-      setSignedReceiptUrl(null)
+    if (receiptAction !== 'none' || !record.receipt_url) return
+    let cancelled = false
+    getReceiptSignedUrl(record.receipt_url).then((url) => {
+      if (!cancelled) setSignedReceiptUrl(url)
+    })
+    return () => {
+      cancelled = true
     }
   }, [record.receipt_url, receiptAction])
 
-  const receiptPreview = receiptAction === 'upload' && receiptFile
-    ? URL.createObjectURL(receiptFile)
+  const receiptPreview = receiptAction === 'upload'
+    ? receiptFile
+      ? URL.createObjectURL(receiptFile)
+      : null
     : receiptAction === 'delete'
     ? null
-    : signedReceiptUrl
+    : record.receipt_url
+    ? signedReceiptUrl
+    : null
 
   const { data: feeTables = [] } = useFeeTables(record.branch_id)
   const { data: voucherConfig = [] } = useBranchVoucherConfig(record.branch_id)
