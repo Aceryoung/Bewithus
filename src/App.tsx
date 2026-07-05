@@ -70,7 +70,7 @@ export default function App() {
     })
 
     return () => subscription.unsubscribe()
-  }, [restoreSession])
+  }, [restoreSession, queryClient])
 
   return (
     <BrowserRouter>
