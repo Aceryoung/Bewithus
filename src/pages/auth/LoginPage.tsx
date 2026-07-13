@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '@/lib/supabase'
+import { supabase, pinToPassword } from '@/lib/supabase'
 import { useAuthStore } from '@/store/auth'
-import { pinToPassword } from '@/lib/supabase'
 import { PIN_MAX_ATTEMPTS, PIN_LOCKOUT_SECONDS } from '@/constants'
 import type { User } from '@/types'
 import logo from '@/assets/logo.png'
@@ -97,21 +96,20 @@ export default function LoginPage() {
   const handlePinSubmit = useCallback(async () => {
     if (pin.length !== 4 || !selectedUser || loginLoading || lockedUntil) return
     setLoginLoading(true)
-    const { error: loginError } = await login(selectedUser.id, pin)
+    const { error: loginError, lockedUntil: lockoutUntil, failedCount } = await login(selectedUser.id, pin)
     setLoginLoading(false)
     if (loginError) {
       setPin('')
-      const { data: lockData } = await supabase.rpc('record_login_failure', { p_user_id: selectedUser.id })
-      const result = lockData as { locked_until: string | null; failed_count: number } | null
-      if (result?.locked_until) {
-        const until = new Date(result.locked_until).getTime()
+      if (lockoutUntil) {
+        const until = new Date(lockoutUntil).getTime()
         setLockedUntil(until)
         setError(`${PIN_MAX_ATTEMPTS}회 오류. ${PIN_LOCKOUT_SECONDS}초 후 재시도 가능합니다.`)
       } else {
-        const count = result?.failed_count ?? 1
-        setError(`PIN이 올바르지 않습니다. (${count}/${PIN_MAX_ATTEMPTS})`)
+        const count = failedCount ?? 0
+        setError(count > 0 ? `PIN이 올바르지 않습니다. (${count}/${PIN_MAX_ATTEMPTS})` : 'PIN이 올바르지 않습니다.')
       }
     } else {
+      // Case A(Auth 계정)는 verify_pin을 거치지 않아 DB에서 카운트 리셋이 안 됨 → 여기서 처리
       void supabase.rpc('reset_login_attempts', { p_user_id: selectedUser.id })
       const storeUser = useAuthStore.getState().user
       if (storeUser?.pin_must_change) {

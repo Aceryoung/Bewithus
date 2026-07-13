@@ -1,18 +1,34 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 
-const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
-const TO_EMAIL       = Deno.env.get('INQUIRY_TO_EMAIL') ?? 'qbizlab@gmail.com'
-const FROM_EMAIL     = Deno.env.get('INQUIRY_FROM_EMAIL') ?? 'onboarding@resend.dev'
+const RESEND_API_KEY    = Deno.env.get('RESEND_API_KEY')!
+const WEBHOOK_SECRET    = Deno.env.get('WEBHOOK_SECRET') ?? ''
+const TO_EMAIL          = Deno.env.get('INQUIRY_TO_EMAIL') ?? 'qbizlab@gmail.com'
+const FROM_EMAIL        = Deno.env.get('INQUIRY_FROM_EMAIL') ?? 'onboarding@resend.dev'
+
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
 
 serve(async (req) => {
+  // Supabase Database Webhook 서명 검증
+  // Supabase 대시보드 > Database > Webhooks > Secret 값을 WEBHOOK_SECRET 환경변수에 설정
+  const auth = req.headers.get('authorization') ?? ''
+  if (WEBHOOK_SECRET && auth !== `Bearer ${WEBHOOK_SECRET}`) {
+    return new Response('Unauthorized', { status: 401 })
+  }
+
   try {
     const payload = await req.json()
-    // Database Webhook payload: { type: 'INSERT', record: { ... } }
     const record = payload.record ?? payload
 
-    const teacherName = record.teacher_name ?? '알 수 없음'
-    const errorCode   = record.error_code ?? null
-    const message     = record.message ?? ''
+    const teacherName = escapeHtml(record.teacher_name ?? '알 수 없음')
+    const errorCode   = record.error_code ? escapeHtml(record.error_code) : null
+    const message     = escapeHtml(record.message ?? '')
     const createdAt   = new Date(record.created_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })
 
     const subject = errorCode
@@ -62,6 +78,6 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({ ok: true }), { status: 200 })
   } catch (e) {
-    return new Response(JSON.stringify({ error: String(e) }), { status: 500 })
+    return new Response(JSON.stringify({ error: 'Internal error' }), { status: 500 })
   }
 })

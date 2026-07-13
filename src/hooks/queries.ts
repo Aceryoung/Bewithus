@@ -183,7 +183,7 @@ export function useDirectorUsers() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('users')
-        .select('*')
+        .select('id, name, role, job_title, branch_id, is_active, pin_must_change, login_failed_count, login_locked_until, created_at')
         .in('role', ['teacher', 'director', 'admin'])
         .eq('is_active', true)
       if (error) throw error
@@ -200,7 +200,7 @@ export function useDirectorDashboard(monthStart: string, today: string) {
     queryFn: async () => {
       const [branchRes, userRes] = await Promise.all([
         supabase.from('branches').select('id, name'),
-        supabase.from('users').select('*').in('role', ['teacher', 'director']).eq('is_active', true),
+        supabase.from('users').select('id, name, role, job_title, branch_id, is_active, pin_must_change, login_failed_count, login_locked_until, created_at').in('role', ['teacher', 'director']).eq('is_active', true),
       ])
       if (branchRes.error) throw branchRes.error
       if (userRes.error) throw userRes.error
@@ -431,7 +431,7 @@ export function useAccountsData(monthStart: string, today: string) {
     queryFn: async () => {
       const [branchRes, userRes, feeRes] = await Promise.all([
         supabase.from('branches').select('id, name'),
-        supabase.from('users').select('*').in('role', ['teacher', 'admin', 'director']).order('name'),
+        supabase.from('users').select('id, name, role, job_title, branch_id, is_active, pin_must_change, login_failed_count, login_locked_until, created_at').in('role', ['teacher', 'admin', 'director']).order('name'),
         supabase.from('fee_tables').select('*').eq('is_active', true).order('fee_type'),
       ])
       if (branchRes.error) throw branchRes.error

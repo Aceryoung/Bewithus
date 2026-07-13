@@ -3,9 +3,15 @@ import { persist } from 'zustand/middleware'
 import { supabase, createTempClient, userEmail, pinToPassword } from '@/lib/supabase'
 import type { User } from '@/types'
 
+export interface LoginResult {
+  error: string | null
+  lockedUntil?: string | null
+  failedCount?: number
+}
+
 interface AuthState {
   user: User | null
-  login: (userId: string, pin: string) => Promise<{ error: string | null }>
+  login: (userId: string, pin: string) => Promise<LoginResult>
   logout: () => Promise<void>
   restoreSession: () => Promise<void>
 }
@@ -47,13 +53,19 @@ export const useAuthStore = create<AuthState>()(
 
         // ── 케이스 B: Auth 계정 없음 → pin_hash 로 검증 후 자동 생성 ──
         const pinHash = await hashPin(pin)
-        const { data: isValid } = await supabase.rpc('verify_pin', {
+        const { data: verifyData } = await supabase.rpc('verify_pin', {
           p_user_id: userId,
           p_pin_hash: pinHash,
         })
 
-        if (!isValid) {
-          return { error: 'PIN이 올바르지 않습니다.' }
+        const pinResult = verifyData as { valid: boolean; locked_until: string | null; failed_count: number } | null
+
+        if (!pinResult?.valid) {
+          return {
+            error: 'PIN이 올바르지 않습니다.',
+            lockedUntil: pinResult?.locked_until ?? null,
+            failedCount: pinResult?.failed_count ?? 0,
+          }
         }
 
         // 임시 클라이언트로 Supabase Auth 계정 생성 (대표 세션에 영향 없음)
@@ -117,13 +129,13 @@ export const useAuthStore = create<AuthState>()(
         // auth.uid() 로 users 테이블 조회
         const { data: profile } = await supabase
           .from('users')
-          .select('id, name, role, job_title, branch_id, is_active, pin_must_change, branch:branches(name)')
+          .select('id, name, role, job_title, branch_id, is_active, pin_must_change, created_at, branch:branches(name)')
           .eq('auth_id', session.user.id)
           .single()
 
         if (profile?.is_active) {
           const branch_name = (profile.branch as unknown as { name: string } | null)?.name ?? null
-          set({ user: { ...profile, job_title: profile.job_title ?? null, branch_name, pin_must_change: profile.pin_must_change ?? false, login_failed_count: 0, login_locked_until: null, created_at: '' } as User })
+          set({ user: { ...profile, job_title: profile.job_title ?? null, branch_name, pin_must_change: profile.pin_must_change ?? false, login_failed_count: 0, login_locked_until: null } as User })
         } else {
           // signOut 대신 user만 초기화 — signOut이 SIGNED_OUT 이벤트를 발생시켜
           // 로그인 진행 중인 LoginPage를 리마운트시키는 race condition 방지
@@ -146,7 +158,7 @@ async function finishLogin(
 ): Promise<{ error: string | null }> {
   const { data: profile, error } = await supabase
     .from('users')
-    .select('id, name, role, job_title, branch_id, is_active, auth_id, pin_must_change, branch:branches(name)')
+    .select('id, name, role, job_title, branch_id, is_active, auth_id, pin_must_change, created_at, branch:branches(name)')
     .eq('id', userId)
     .single()
 
@@ -165,8 +177,8 @@ async function finishLogin(
     }
   }
 
-  const { id, name, role, job_title, branch_id, is_active, pin_must_change } = profile
+  const { id, name, role, job_title, branch_id, is_active, pin_must_change, created_at } = profile
   const branch_name = (profile.branch as unknown as { name: string } | null)?.name ?? null
-  set({ user: { id, name, role, job_title: job_title ?? null, branch_id, branch_name, is_active, pin_must_change: pin_must_change ?? false, created_at: '' } as User })
+  set({ user: { id, name, role, job_title: job_title ?? null, branch_id, branch_name, is_active, pin_must_change: pin_must_change ?? false, created_at } as User })
   return { error: null }
 }
